@@ -20,6 +20,11 @@ async function bootstrap() {
 
   const app = await NestFactory.create(AppModule);
 
+  // Configure Express Trust Proxy for Render reverse proxy (1 hop) in production
+  if (isProduction) {
+    app.getHttpAdapter().getInstance().set('trust proxy', 1);
+  }
+
   // Global prefix for versioned API
   app.setGlobalPrefix('api/v1');
 

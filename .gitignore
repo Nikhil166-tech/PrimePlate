@@ -1,0 +1,34 @@
+# Dependencies
+node_modules/
+
+# Environment Files & Secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.cert
+
+# Build & Output Directories
+dist/
+build/
+out/
+*.tsbuildinfo
+
+# Databases & SQLite
+*.sqlite
+*.sqlite3
+*.db
+dev.sqlite
+
+# Logs
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+
+# OS & IDE Files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

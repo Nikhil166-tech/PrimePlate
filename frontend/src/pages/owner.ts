@@ -356,12 +356,12 @@ export async function renderOwnerPortal() {
             </div>
 
             <!-- 2-Column Workspace Grid -->
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 28px;">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 24px;">
               
               <!-- Column 1: Weekly Menu Editor -->
-              <div style="background: #fff; border: 1px solid var(--color-neutral-200); border-radius: 24px; padding: 28px; box-shadow: 0 4px 12px rgba(0,0,0,0.03);">
+              <div style="background: #fff; border: 1px solid var(--color-neutral-200); border-radius: 24px; padding: 24px; box-shadow: 0 4px 12px rgba(0,0,0,0.03);">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                  <h3 class="font-display" style="font-size: 20px; font-weight: 700; color: var(--color-neutral-900);">
+                  <h3 class="font-display" style="font-size: 18px; font-weight: 700; color: var(--color-neutral-900);">
                     <i class="fa-solid fa-utensils" style="color: var(--color-primary-600);"></i> Weekly Menu Editor
                   </h3>
                 </div>
@@ -371,7 +371,7 @@ export async function renderOwnerPortal() {
                     (day, dayIdx) => `
                     <div style="border-bottom: 1px solid var(--color-neutral-100); padding-bottom: 12px;">
                       <strong style="font-size: 14px; color: var(--color-neutral-900); display: block; margin-bottom: 8px;">${day}</strong>
-                      <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px;">
+                      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(85px, 1fr)); gap: 8px;">
                         <button class="edit-menu-btn btn-outline-action" data-day-idx="${dayIdx}" data-day="${day}" data-meal="Breakfast" style="font-size: 12px; padding: 8px; text-align: left; background: var(--color-neutral-50);">
                           <span style="color: #d97706; font-weight: 700; display: block;">Breakfast</span>
                           <span style="color: var(--color-neutral-600); display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(getMenuItem(dayIdx, 'Breakfast'))}</span>
@@ -392,12 +392,12 @@ export async function renderOwnerPortal() {
               </div>
 
               <!-- Column 2: Live Active Subscribers List Table -->
-              <div style="background: #fff; border: 1px solid var(--color-neutral-200); border-radius: 24px; padding: 28px; box-shadow: 0 4px 12px rgba(0,0,0,0.03);">
-                <h3 class="font-display" style="font-size: 20px; font-weight: 700; color: var(--color-neutral-900); margin-bottom: 20px;">
+              <div style="background: #fff; border: 1px solid var(--color-neutral-200); border-radius: 24px; padding: 24px; box-shadow: 0 4px 12px rgba(0,0,0,0.03);">
+                <h3 class="font-display" style="font-size: 18px; font-weight: 700; color: var(--color-neutral-900); margin-bottom: 20px;">
                   <i class="fa-solid fa-users-gear" style="color: var(--color-primary-600);"></i> Live Active Subscribers List
                 </h3>
 
-                <div style="overflow-x: auto;">
+                <div class="table-responsive-wrapper">
                   <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
                     <thead>
                       <tr style="border-bottom: 2px solid var(--color-neutral-200); text-align: left; color: var(--color-neutral-500);">

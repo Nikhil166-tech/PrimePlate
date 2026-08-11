@@ -46,20 +46,20 @@ export async function renderDashboard() {
   container.innerHTML = `
     ${renderNavbar()}
     <main class="main-content" style="padding-top: 88px; padding-bottom: 60px; background: #f8fafc;">
-      <div style="max-width: 1280px; margin: 0 auto; padding: 0 24px;">
+      <div style="max-width: 1280px; margin: 0 auto; padding: 0 16px;">
         <!-- Header -->
         <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 28px; flex-wrap: wrap; gap: 16px;">
           <div>
-            <h1 class="font-display" style="font-size: 36px; font-weight: 800; color: var(--color-neutral-900); margin-bottom: 4px;">My Mess Card</h1>
-            <p style="color: var(--color-neutral-600); font-size: 15px;">Welcome back, ${escapeHtml(userEmail.split('@')[0])}. Manage your digital mess passes and subscriptions.</p>
+            <h1 class="font-display" style="font-size: clamp(1.75rem, 4vw, 2.25rem); font-weight: 800; color: var(--color-neutral-900); margin-bottom: 4px;">My Mess Card</h1>
+            <p style="color: var(--color-neutral-600); font-size: clamp(0.875rem, 2vw, 0.95rem);">Welcome back, ${escapeHtml(userEmail.split('@')[0])}. Manage your digital mess passes and subscriptions.</p>
           </div>
-          <button id="dashNewSubBtn" class="btn-primary-action" style="padding: 12px 24px;">
+          <button id="dashNewSubBtn" class="btn-primary-action" style="padding: 10px 20px;">
             <i class="fa-solid fa-plus"></i> New Subscription
           </button>
         </div>
 
         <!-- 3-Metrics Overview Grid -->
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px; margin-bottom: 32px;">
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 28px;">
           <div style="background: #fff; border: 1px solid var(--color-neutral-200); border-radius: 20px; padding: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.03);">
             <div style="display: flex; align-items: center; gap: 10px; color: var(--color-neutral-500); margin-bottom: 8px;">
               <div style="width: 40px; height: 40px; border-radius: 12px; background: var(--color-success-50); color: var(--color-success-600); display: flex; align-items: center; justify-content: center; font-size: 18px;">
@@ -67,7 +67,7 @@ export async function renderDashboard() {
               </div>
               <span style="font-size: 13px; font-weight: 600;">Active Cards</span>
             </div>
-            <p id="activeCardsCount" class="font-display" style="font-size: 32px; font-weight: 800; color: var(--color-neutral-900);">0</p>
+            <p id="activeCardsCount" class="font-display" style="font-size: 28px; font-weight: 800; color: var(--color-neutral-900);">0</p>
           </div>
 
           <div style="background: #fff; border: 1px solid var(--color-neutral-200); border-radius: 20px; padding: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.03);">
@@ -77,7 +77,7 @@ export async function renderDashboard() {
               </div>
               <span style="font-size: 13px; font-weight: 600;">Total Spent</span>
             </div>
-            <p id="totalSpentAmount" class="font-display" style="font-size: 32px; font-weight: 800; color: var(--color-neutral-900);">--</p>
+            <p id="totalSpentAmount" class="font-display" style="font-size: 28px; font-weight: 800; color: var(--color-neutral-900);">--</p>
           </div>
 
           <div style="background: #fff; border: 1px solid var(--color-neutral-200); border-radius: 20px; padding: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.03);">
@@ -87,12 +87,12 @@ export async function renderDashboard() {
               </div>
               <span style="font-size: 13px; font-weight: 600;">Total Subscriptions</span>
             </div>
-            <p id="totalSubsCount" class="font-display" style="font-size: 32px; font-weight: 800; color: var(--color-neutral-900);">0</p>
+            <p id="totalSubsCount" class="font-display" style="font-size: 28px; font-weight: 800; color: var(--color-neutral-900);">0</p>
           </div>
         </div>
 
         <!-- Cards List Container -->
-        <div id="subsGrid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 24px;"></div>
+        <div id="subsGrid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px;"></div>
       </div>
     </main>
 

@@ -187,12 +187,12 @@ export async function renderProviderDetail(providerId: string) {
         </button>
 
         <!-- Hero Header -->
-        <div style="position: relative; border-radius: 24px; overflow: hidden; height: 340px; margin-bottom: 32px; box-shadow: 0 12px 30px rgba(0,0,0,0.1);">
-          <img src="${getSafeImageUrl(provider.imageUrl)}" alt="${escapeHtml(provider.name)}" style="width: 100%; height: 100%; object-fit: cover;" />
+        <div style="position: relative; border-radius: 24px; overflow: hidden; min-height: 260px; margin-bottom: 24px; box-shadow: 0 12px 30px rgba(0,0,0,0.1);">
+          <img src="${getSafeImageUrl(provider.imageUrl)}" alt="${escapeHtml(provider.name)}" style="width: 100%; height: 100%; position: absolute; inset: 0; object-fit: cover;" />
           <div style="position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,0.85) 0%, transparent 60%);"></div>
           
-          <div style="position: absolute; bottom: 24px; left: 24px; right: 24px; color: #fff; display: flex; align-items: flex-end; gap: 20px;">
-            <div style="width: 72px; height: 72px; border-radius: 16px; background: var(--color-primary-600); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 32px; box-shadow: 0 8px 20px rgba(0,0,0,0.3); border: 3px solid #fff;">
+          <div style="position: relative; padding: 24px; color: #fff; display: flex; align-items: flex-end; gap: 16px; min-height: 260px; flex-wrap: wrap;">
+            <div style="width: 60px; height: 60px; border-radius: 16px; background: var(--color-primary-600); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 26px; box-shadow: 0 8px 20px rgba(0,0,0,0.3); border: 3px solid #fff; flex-shrink: 0;">
               <i class="fa-solid fa-utensils"></i>
             </div>
 
@@ -213,7 +213,7 @@ export async function renderProviderDetail(providerId: string) {
                 }
               </div>
 
-              <h1 class="font-display" style="font-size: 36px; font-weight: 800; color: #fff; margin-bottom: 4px;">${escapeHtml(provider.name)}</h1>
+              <h1 class="font-display" style="font-size: clamp(1.75rem, 4vw, 2.25rem); font-weight: 800; color: #fff; margin-bottom: 4px;">${escapeHtml(provider.name)}</h1>
               <p style="font-size: 14px; color: rgba(255,255,255,0.9); margin-bottom: 4px;">
                 <i class="fa-solid fa-location-dot"></i> ${escapeHtml(provider.address || provider.city || '')}
               </p>
@@ -221,7 +221,7 @@ export async function renderProviderDetail(providerId: string) {
           </div>
         </div>
 
-        <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 32px;">
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 24px;">
           <!-- Left Column Content -->
           <div style="display: flex; flex-direction: column; gap: 32px;">
             <!-- About Mess -->

@@ -79,8 +79,8 @@ export async function renderCheckout(planId: string) {
   container.innerHTML = `
     ${renderNavbar()}
     <main class="main-content" style="padding-top: 88px; padding-bottom: 60px;">
-      <div style="max-width: 580px; margin: 40px auto; padding: 0 24px;">
-        <div style="background: #fff; border: 1px solid var(--color-neutral-200); border-radius: 24px; padding: 36px; box-shadow: 0 10px 30px rgba(0,0,0,0.06);">
+      <div style="max-width: 580px; margin: 20px auto; padding: 0 16px;">
+        <div style="background: #fff; border: 1px solid var(--color-neutral-200); border-radius: 24px; padding: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.06);">
           <div style="text-align: center; margin-bottom: 24px;">
             <span style="font-size: 12px; font-weight: 700; color: var(--color-success-600); background: var(--color-success-50); padding: 4px 12px; border-radius: 999px; display: inline-block; margin-bottom: 12px;">
               <i class="fa-solid fa-shield-halved"></i> Official Razorpay Secure Checkout

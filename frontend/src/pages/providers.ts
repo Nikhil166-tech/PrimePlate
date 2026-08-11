@@ -9,18 +9,18 @@ export async function renderProviders() {
   container.innerHTML = `
     ${renderNavbar()}
     <main class="main-content" style="padding-top: 88px; padding-bottom: 60px;">
-      <div style="max-width: 1280px; margin: 0 auto; padding: 0 24px;">
-        <div style="margin-bottom: 32px;">
-          <h1 class="font-display" style="font-size: 36px; font-weight: 800; color: var(--color-neutral-900); margin-bottom: 8px;">Browse Hostels & Messes</h1>
-          <p style="color: var(--color-neutral-600); font-size: 16px;">Find verified meal subscriptions near your location with daily fresh delivery</p>
+      <div style="max-width: 1280px; margin: 0 auto; padding: 0 16px;">
+        <div style="margin-bottom: 24px;">
+          <h1 class="font-display" style="font-size: clamp(1.75rem, 4vw, 2.25rem); font-weight: 800; color: var(--color-neutral-900); margin-bottom: 8px;">Browse Hostels & Messes</h1>
+          <p style="color: var(--color-neutral-600); font-size: clamp(0.9rem, 2vw, 1rem);">Find verified meal subscriptions near your location with daily fresh delivery</p>
         </div>
 
         <div class="filter-container">
-          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; align-items: center;">
-            <div style="grid-column: span 2;">
+          <div style="display: flex; flex-wrap: wrap; gap: 12px; align-items: center;">
+            <div style="flex: 2 1 240px;">
               <input type="text" id="searchInput" class="btn-outline-action" style="width: 100%; text-align: left; background: #fff;" placeholder="🔍 Search mess by name, city, or area..." />
             </div>
-            <div>
+            <div style="flex: 1 1 150px;">
               <select id="citySelect" class="btn-outline-action" style="width: 100%; text-align: left; background: #fff;">
                 <option value="">All Cities</option>
                 <option value="Bangalore">Bangalore</option>
@@ -28,7 +28,7 @@ export async function renderProviders() {
                 <option value="Delhi NCR">Delhi NCR</option>
               </select>
             </div>
-            <div>
+            <div style="flex: 1 1 150px;">
               <select id="typeSelect" class="btn-outline-action" style="width: 100%; text-align: left; background: #fff;">
                 <option value="">All Food Types</option>
                 <option value="Veg">Veg</option>
@@ -40,7 +40,7 @@ export async function renderProviders() {
           </div>
         </div>
 
-        <div id="browseGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 24px;">
+        <div id="browseGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px;">
           <div style="grid-column: 1/-1; text-align: center; padding: 60px;">
             <i class="fa-solid fa-spinner fa-spin fa-2x" style="color: var(--color-primary-600);"></i>
             <p style="margin-top: 12px; color: var(--color-neutral-600);">Loading partner messes...</p>

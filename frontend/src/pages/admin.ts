@@ -18,69 +18,69 @@ export async function renderAdminPortal() {
   container.innerHTML = `
     ${renderNavbar()}
     <main class="main-content" style="padding-top: 88px; padding-bottom: 60px;">
-      <div style="max-width: 1280px; margin: 0 auto; padding: 0 24px;">
-        <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 32px; flex-wrap: wrap; gap: 16px;">
+      <div style="max-width: 1280px; margin: 0 auto; padding: 0 16px;">
+        <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 24px; flex-wrap: wrap; gap: 16px;">
           <div>
             <span style="font-size: 12px; font-weight: 700; color: #dc2626; background: #fee2e2; padding: 4px 12px; border-radius: 999px;">
               Admin System Control Panel
             </span>
-            <h1 class="font-display" style="font-size: 36px; font-weight: 800; color: var(--color-neutral-900); margin-top: 8px; margin-bottom: 4px;">Platform Admin Dashboard</h1>
-            <p style="color: var(--color-neutral-600); font-size: 16px;">Review provider applications, approve mess listings, and monitor platform metrics</p>
+            <h1 class="font-display" style="font-size: clamp(1.75rem, 4vw, 2.25rem); font-weight: 800; color: var(--color-neutral-900); margin-top: 8px; margin-bottom: 4px;">Platform Admin Dashboard</h1>
+            <p style="color: var(--color-neutral-600); font-size: clamp(0.875rem, 2vw, 0.95rem);">Review provider applications, approve mess listings, and monitor platform metrics</p>
           </div>
         </div>
 
         <!-- Metrics Overview from Analytics Module -->
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; margin-bottom: 36px;">
-          <div style="background: #fff; border: 1px solid var(--color-neutral-200); border-radius: 20px; padding: 24px; box-shadow: 0 4px 12px rgba(0,0,0,0.03);">
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 28px;">
+          <div style="background: #fff; border: 1px solid var(--color-neutral-200); border-radius: 20px; padding: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.03);">
             <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
-              <div style="width: 42px; height: 42px; border-radius: 12px; background: var(--color-primary-50); color: var(--color-primary-600); display: flex; align-items: center; justify-content: center; font-size: 20px;">
+              <div style="width: 40px; height: 40px; border-radius: 12px; background: var(--color-primary-50); color: var(--color-primary-600); display: flex; align-items: center; justify-content: center; font-size: 18px;">
                 <i class="fa-solid fa-users"></i>
               </div>
-              <span style="color: var(--color-neutral-500); font-size: 14px;">Total Users</span>
+              <span style="color: var(--color-neutral-500); font-size: 13px;">Total Users</span>
             </div>
-            <p id="metricUsers" class="font-display" style="font-size: 32px; font-weight: 800; color: var(--color-neutral-900);">--</p>
+            <p id="metricUsers" class="font-display" style="font-size: 28px; font-weight: 800; color: var(--color-neutral-900);">--</p>
           </div>
 
-          <div style="background: #fff; border: 1px solid var(--color-neutral-200); border-radius: 20px; padding: 24px; box-shadow: 0 4px 12px rgba(0,0,0,0.03);">
+          <div style="background: #fff; border: 1px solid var(--color-neutral-200); border-radius: 20px; padding: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.03);">
             <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
-              <div style="width: 42px; height: 42px; border-radius: 12px; background: var(--color-success-50); color: var(--color-success-600); display: flex; align-items: center; justify-content: center; font-size: 20px;">
+              <div style="width: 40px; height: 40px; border-radius: 12px; background: var(--color-success-50); color: var(--color-success-600); display: flex; align-items: center; justify-content: center; font-size: 18px;">
                 <i class="fa-solid fa-store"></i>
               </div>
-              <span style="color: var(--color-neutral-500); font-size: 14px;">Approved Messes</span>
+              <span style="color: var(--color-neutral-500); font-size: 13px;">Approved Messes</span>
             </div>
-            <p id="metricProviders" class="font-display" style="font-size: 32px; font-weight: 800; color: var(--color-neutral-900);">--</p>
+            <p id="metricProviders" class="font-display" style="font-size: 28px; font-weight: 800; color: var(--color-neutral-900);">--</p>
           </div>
 
-          <div style="background: #fff; border: 1px solid var(--color-neutral-200); border-radius: 20px; padding: 24px; box-shadow: 0 4px 12px rgba(0,0,0,0.03);">
+          <div style="background: #fff; border: 1px solid var(--color-neutral-200); border-radius: 20px; padding: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.03);">
             <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
-              <div style="width: 42px; height: 42px; border-radius: 12px; background: var(--color-secondary-50); color: var(--color-secondary-500); display: flex; align-items: center; justify-content: center; font-size: 20px;">
+              <div style="width: 40px; height: 40px; border-radius: 12px; background: var(--color-secondary-50); color: var(--color-secondary-500); display: flex; align-items: center; justify-content: center; font-size: 18px;">
                 <i class="fa-solid fa-arrow-trend-up"></i>
               </div>
-              <span style="color: var(--color-neutral-500); font-size: 14px;">Total Revenue</span>
+              <span style="color: var(--color-neutral-500); font-size: 13px;">Total Revenue</span>
             </div>
-            <p id="metricRevenue" class="font-display" style="font-size: 32px; font-weight: 800; color: var(--color-neutral-900);">--</p>
+            <p id="metricRevenue" class="font-display" style="font-size: 28px; font-weight: 800; color: var(--color-neutral-900);">--</p>
           </div>
 
-          <div style="background: #fff; border: 1px solid var(--color-neutral-200); border-radius: 20px; padding: 24px; box-shadow: 0 4px 12px rgba(0,0,0,0.03);">
+          <div style="background: #fff; border: 1px solid var(--color-neutral-200); border-radius: 20px; padding: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.03);">
             <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
-              <div style="width: 42px; height: 42px; border-radius: 12px; background: #fef3c7; color: #d97706; display: flex; align-items: center; justify-content: center; font-size: 20px;">
+              <div style="width: 40px; height: 40px; border-radius: 12px; background: #fef3c7; color: #d97706; display: flex; align-items: center; justify-content: center; font-size: 18px;">
                 <i class="fa-solid fa-clock"></i>
               </div>
-              <span style="color: var(--color-neutral-500); font-size: 14px;">Pending Approvals</span>
+              <span style="color: var(--color-neutral-500); font-size: 13px;">Pending Approvals</span>
             </div>
-            <p id="metricPending" class="font-display" style="font-size: 32px; font-weight: 800; color: #d97706;">--</p>
+            <p id="metricPending" class="font-display" style="font-size: 28px; font-weight: 800; color: #d97706;">--</p>
           </div>
         </div>
 
         <!-- Pending Provider Approvals Section -->
-        <div style="background: #fff; border: 1px solid var(--color-neutral-200); border-radius: 24px; padding: 32px; margin-bottom: 36px; box-shadow: 0 4px 16px rgba(0,0,0,0.03);">
+        <div style="background: #fff; border: 1px solid var(--color-neutral-200); border-radius: 24px; padding: 24px; margin-bottom: 36px; box-shadow: 0 4px 16px rgba(0,0,0,0.03);">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
             <div>
-              <h2 class="font-display" style="font-size: 24px; font-weight: 700;">Pending Provider Applications</h2>
-              <p style="color: var(--color-neutral-600); font-size: 14px;">Only approved providers appear in student search results.</p>
+              <h2 class="font-display" style="font-size: 20px; font-weight: 700;">Pending Provider Applications</h2>
+              <p style="color: var(--color-neutral-600); font-size: 13px;">Only approved providers appear in student search results.</p>
             </div>
           </div>
-          <div id="pendingList" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px;"></div>
+          <div id="pendingList" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px;"></div>
         </div>
       </div>
     </main>

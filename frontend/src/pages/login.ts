@@ -11,8 +11,8 @@ export function renderLogin() {
     container.innerHTML = `
       ${renderNavbar()}
       <main class="main-content" style="padding-top: 88px; padding-bottom: 60px;">
-        <div style="max-width: 440px; margin: 40px auto; padding: 0 24px;">
-          <div style="background: #fff; border: 1px solid var(--color-neutral-200); border-radius: 24px; padding: 32px; box-shadow: 0 10px 30px rgba(0,0,0,0.06); text-align: center;">
+        <div style="max-width: 440px; margin: 20px auto; padding: 0 16px;">
+          <div style="background: #fff; border: 1px solid var(--color-neutral-200); border-radius: 24px; padding: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.06); text-align: center;">
             
             <div class="nav-brand-logo" style="width: 48px; height: 48px; margin: 0 auto 16px; font-size: 20px;">
               <i class="fa-solid fa-utensils"></i>

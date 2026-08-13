@@ -11,6 +11,7 @@ import {
 } from '../subscriptions/subscription.entity';
 import { Payment } from '../payments/payment.entity';
 import { Review } from '../reviews/review.entity';
+import { WeeklyMenu } from '../weekly-menus/weekly-menu.entity';
 import { Role } from './roles.enum';
 import { ProviderStatus } from './enums/provider-status.enum';
 import { Category } from './enums/category.enum';
@@ -28,60 +29,69 @@ export class SeedService implements OnApplicationBootstrap {
     @InjectRepository(Subscription) private subRepo: Repository<Subscription>,
     @InjectRepository(Payment) private paymentRepo: Repository<Payment>,
     @InjectRepository(Review) private reviewRepo: Repository<Review>,
+    @InjectRepository(WeeklyMenu)
+    private weeklyMenuRepo: Repository<WeeklyMenu>,
   ) {}
 
   async onApplicationBootstrap() {
+    const isProduction = process.env.NODE_ENV === 'production';
+    const isSeedEnabled = process.env.ENABLE_SEED === 'true';
+
+    this.logger.log(`Seed enabled: ${isSeedEnabled}`);
+
     try {
       await this.seedAdmin();
     } catch (err: any) {
-      this.logger.error('Error seeding admin:', err.message || err);
+      this.logger.error('Error initializing admin account:', err.message || err);
     }
 
-    // Production & Default Safety Guard for optional demo seed data
-    if (
-      process.env.NODE_ENV === 'production' ||
-      process.env.ENABLE_SEED !== 'true'
-    ) {
-      this.logger.log(
-        'Admin account verified. Set ENABLE_SEED=true in development to seed full mock provider data.',
-      );
+    // Production & Default Safety Guard: Disable mock seeding in production or when ENABLE_SEED is not explicitly 'true'
+    if (isProduction || !isSeedEnabled) {
+      this.logger.log('Production seed disabled. No mock business data created.');
       return;
     }
 
-    this.logger.log(
-      'Explicit ENABLE_SEED=true flag detected. Starting database seeding...',
-    );
+    this.logger.log('Explicit ENABLE_SEED=true flag detected in development. Starting mock database seeding...');
 
     try {
       const providers = await this.seedProviders();
       const students = await this.seedStudents();
       const plans = await this.seedMealPlans(providers);
+      await this.seedWeeklyMenus(providers);
       await this.seedReviews(students, providers);
       await this.seedSubscriptionsAndPayments(students, plans, providers);
-      this.logger.log(
-        'Database seeding completed successfully! All MVP seed data ready.',
-      );
+      this.logger.log('Database seeding completed successfully! All development mock data ready.');
     } catch (err: any) {
       this.logger.error('Error during database seeding:', err.message || err);
     }
   }
 
   private async seedAdmin() {
+    const adminEmail = process.env.ADMIN_EMAIL || 'admin@primeplate.com';
+    const adminPassword = process.env.ADMIN_PASSWORD;
+
     const existing = await this.userRepo.findOne({
-      where: { email: 'admin@primeplate.com' },
+      where: { role: Role.ADMIN },
     });
     if (existing) return existing;
 
-    const passwordHash = await bcrypt.hash('Admin@123', 10);
+    // Do not seed default admin password in production without explicit ADMIN_PASSWORD
+    if (!adminPassword && process.env.NODE_ENV === 'production') {
+      this.logger.log('No ADMIN_PASSWORD configured in production environment. Skipping initial admin seed.');
+      return null;
+    }
+
+    const passwordToUse = adminPassword || 'Admin@123';
+    const passwordHash = await bcrypt.hash(passwordToUse, 10);
     const admin = this.userRepo.create({
-      email: 'admin@primeplate.com',
+      email: adminEmail,
       passwordHash,
       name: 'System Admin',
       role: Role.ADMIN,
       status: 'ACTIVE',
     });
     const saved = await this.userRepo.save(admin);
-    this.logger.log('Seeded Admin account: admin@primeplate.com with password Admin@123');
+    this.logger.log(`Initialized Admin account: ${adminEmail}`);
     return saved;
   }
 
@@ -498,5 +508,77 @@ export class SeedService implements OnApplicationBootstrap {
         }),
       );
     }
+  }
+
+  private async seedWeeklyMenus(providers: MealProvider[]) {
+    const existingCount = await this.weeklyMenuRepo.count();
+    if (existingCount > 0) return;
+
+    const sampleWeeklySchedule = [
+      {
+        dayOfWeek: 0, // Monday
+        Breakfast: 'Puri Bhaji, Tea & Banana',
+        Lunch: 'Dal Tadka, Shahi Paneer, 4 Phulka Rotis, Basmati Rice & Salad',
+        Dinner: 'Mix Veg Curry, Dal Makhani, 4 Rotis & Rice',
+      },
+      {
+        dayOfWeek: 1, // Tuesday
+        Breakfast: 'Idli Vada Combo with Coconut Chutney & Sambar',
+        Lunch: 'Rajma Masala, Jeera Rice, 4 Rotis & Boondi Raita',
+        Dinner: 'Kadhai Paneer, Yellow Dal, 4 Rotis & Gulab Jamun',
+      },
+      {
+        dayOfWeek: 2, // Wednesday
+        Breakfast: 'Aloo Paratha with Curd & Butter',
+        Lunch: 'Chicken Curry / Paneer Do Pyaza, Steamed Rice & 4 Rotis',
+        Dinner: 'Egg Curry / Malai Kofta, Dal Fry, 4 Rotis & Rice',
+      },
+      {
+        dayOfWeek: 3, // Thursday
+        Breakfast: 'Masala Dosa with Sambar & Red Chutney',
+        Lunch: 'Chole Masala, Bhature / Rice, Salad & Pickle',
+        Dinner: 'Palak Paneer, Moong Dal, 4 Rotis & Rice',
+      },
+      {
+        dayOfWeek: 4, // Friday
+        Breakfast: 'Poha with Roasted Peanuts & Tea',
+        Lunch: 'Butter Chicken / Shahi Paneer, Dum Biryani & Rotis',
+        Dinner: 'Veg Kolhapuri, Dal Tadka, 4 Rotis & Kheer',
+      },
+      {
+        dayOfWeek: 5, // Saturday
+        Breakfast: 'Uttapam with Sambar & Coconut Chutney',
+        Lunch: 'Veg Thali Special: 2 Sabzi, Dal, 4 Rotis, Rice & Sweet',
+        Dinner: 'Paneer Butter Masala, Jeera Rice, 4 Phulkas & Salad',
+      },
+      {
+        dayOfWeek: 6, // Sunday
+        Breakfast: 'Chole Puri & Hot Masala Chai',
+        Lunch: 'Special Sunday Hyderabadi Biryani / Veg Dum Biryani + Raita',
+        Dinner: 'Light Khichdi / Butter Roti with Paneer Korma & Ice Cream',
+      },
+    ];
+
+    for (const provider of providers) {
+      for (const daySchedule of sampleWeeklySchedule) {
+        const meals: Array<[string, string]> = [
+          ['Breakfast', daySchedule.Breakfast],
+          ['Lunch', daySchedule.Lunch],
+          ['Dinner', daySchedule.Dinner],
+        ];
+
+        for (const [mealType, menuItems] of meals) {
+          const menu = this.weeklyMenuRepo.create({
+            provider,
+            dayOfWeek: daySchedule.dayOfWeek,
+            mealType,
+            menuItems,
+            description: `Freshly prepared ${mealType.toLowerCase()} item`,
+          });
+          await this.weeklyMenuRepo.save(menu);
+        }
+      }
+    }
+    this.logger.log('Seeded weekly 7-day menus for all mock providers.');
   }
 }

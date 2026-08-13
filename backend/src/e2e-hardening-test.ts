@@ -31,7 +31,7 @@ async function runE2ETest() {
     console.log('\n[Step 1] Registering Meal Provider...');
     await request(server)
       .post('/auth/register')
-      .send({ email: providerEmail, password, name: 'E2E Kitchen', role: 'PROVIDER' })
+      .send({ email: providerEmail, password, name: 'E2E Kitchen', phone: '+919876543210', role: 'PROVIDER' })
       .expect((res: any) => {
         if (res.status !== 200 && res.status !== 201) throw new Error(`Unexpected status ${res.status}`);
       });
@@ -103,7 +103,7 @@ async function runE2ETest() {
     console.log('[Step 7] Student registering...');
     await request(server)
       .post('/auth/register')
-      .send({ email: studentEmail, password, name: 'E2E Student', role: 'STUDENT' });
+      .send({ email: studentEmail, password, name: 'E2E Student', phone: '+919876543210', role: 'STUDENT' });
     console.log('  ✔ Student registered successfully.');
 
     // 8. Student Logins

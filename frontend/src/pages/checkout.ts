@@ -28,7 +28,18 @@ export async function renderCheckout(planId: string) {
     return;
   }
 
-  let selectedPlan: { id: string; title: string; price: number; duration: string; providerName?: string } | null = null;
+  const hashStr = window.location.hash;
+  let initialDays = 30;
+  if (hashStr.includes('?')) {
+    const queryPart = hashStr.split('?')[1];
+    const params = new URLSearchParams(queryPart);
+    const d = params.get('days');
+    if (d && !isNaN(Number(d)) && Number(d) > 0) {
+      initialDays = Number(d);
+    }
+  }
+
+  let selectedPlan: { id: string; title: string; basePrice: number; providerName?: string; description?: string } | null = null;
   let actualPlanId = planId;
   let planFetchError: string | null = null;
 
@@ -41,9 +52,9 @@ export async function renderCheckout(planId: string) {
         selectedPlan = {
           id: fetched.id,
           title: fetched.title,
-          price: priceNum,
-          duration: 'Monthly (30 Days)',
+          basePrice: priceNum,
           providerName: fetched.provider?.name || 'PrimePlate Partner Kitchen',
+          description: fetched.description || 'Daily fresh meals',
         };
       } else {
         planFetchError = 'Unable to load plan price.';
@@ -76,6 +87,33 @@ export async function renderCheckout(planId: string) {
     return;
   }
 
+  let selectedDays = initialDays;
+  const calcPrice = (days: number) => Math.max(1, Math.round(selectedPlan!.basePrice * (days / 30)));
+
+  const durationOptions = [
+    { days: 1, title: '1 Day Plan', description: 'Daily fresh 4 Roti, Rice, Dal & 2 Sabzi' },
+    { days: 7, title: '1 Week Plan (7 Days)', description: '7 days daily fresh meals subscription' },
+    { days: 15, title: '15 Days Plan', description: '15 days half-month meal subscription' },
+    { days: 30, title: '1 Month Plan (30 Days)', description: 'Full 30 days monthly meal subscription' },
+  ];
+
+  const durationCardsHtml = durationOptions.map((opt) => {
+    const isSelected = opt.days === selectedDays;
+    const pVal = calcPrice(opt.days);
+    return `
+      <label class="co-duration-card" style="display: flex; align-items: center; justify-content: space-between; border: ${isSelected ? '2px solid #f97316' : '1px solid #e5e7eb'}; background: ${isSelected ? '#fff8f0' : '#ffffff'}; border-radius: 14px; padding: 14px 16px; margin-bottom: 12px; cursor: pointer; transition: all 0.2s ease-in-out;">
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <input type="radio" name="coDurationPlan" value="${opt.days}" ${isSelected ? 'checked' : ''} style="width: 18px; height: 18px; accent-color: #ea580c; cursor: pointer;" />
+          <div>
+            <strong style="font-size: 15px; font-weight: 700; color: #111827; display: block; margin-bottom: 2px;">${escapeHtml(opt.title)}</strong>
+            <p style="font-size: 13px; color: #6b7280; margin: 0; line-height: 1.4;">${escapeHtml(opt.description)}</p>
+          </div>
+        </div>
+        <span style="font-weight: 800; color: #ea580c; font-size: 17px; white-space: nowrap; margin-left: 12px;">₹${pVal.toLocaleString('en-IN')}</span>
+      </label>
+    `;
+  }).join('');
+
   container.innerHTML = `
     ${renderNavbar()}
     <main class="main-content" style="padding-top: 88px; padding-bottom: 60px;">
@@ -90,31 +128,27 @@ export async function renderCheckout(planId: string) {
           </div>
 
           <div id="checkoutPlanDetails" style="background: var(--color-neutral-50); border: 1px solid var(--color-neutral-200); border-radius: 16px; padding: 24px; margin-bottom: 28px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 1px solid var(--color-neutral-200); padding-bottom: 12px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; border-bottom: 1px solid var(--color-neutral-200); padding-bottom: 12px;">
               <div>
                 <span style="font-size: 11px; text-transform: uppercase; font-weight: 700; color: var(--color-neutral-500);">Kitchen Provider</span>
                 <h3 id="providerName" class="font-display" style="font-size: 18px; font-weight: 700; color: var(--color-neutral-900);">${escapeHtml(selectedPlan.providerName || '')}</h3>
               </div>
             </div>
 
-            <div style="display: flex; justify-content: space-between; font-size: 14px; color: var(--color-neutral-600); margin-bottom: 8px;">
-              <span>Selected Meal Plan:</span>
-              <span style="font-weight: 700; color: var(--color-neutral-900);">${escapeHtml(selectedPlan.title)}</span>
-            </div>
-            <div style="display: flex; justify-content: space-between; font-size: 14px; color: var(--color-neutral-600); margin-bottom: 16px;">
-              <span>Duration:</span>
-              <span style="font-weight: 600; color: var(--color-neutral-900);">${escapeHtml(selectedPlan.duration)}</span>
+            <div style="margin-bottom: 16px;">
+              <label style="font-size: 14px; font-weight: 700; color: var(--color-neutral-900); display: block; margin-bottom: 10px;">Select Plan Duration</label>
+              ${durationCardsHtml}
             </div>
 
             <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px dashed var(--color-neutral-300); padding-top: 16px;">
               <span style="font-weight: 700; font-size: 16px; color: var(--color-neutral-900);">Total Amount Payable:</span>
-              <span id="planPriceDisplay" class="price-text" style="font-size: 26px; color: var(--color-primary-600);">₹${selectedPlan.price.toLocaleString('en-IN')}</span>
+              <span id="planPriceDisplay" class="price-text" style="font-size: 26px; color: var(--color-primary-600);">₹${calcPrice(selectedDays).toLocaleString('en-IN')}</span>
             </div>
           </div>
 
           <button id="payBtn" class="btn-primary-action" style="width: 100%; justify-content: center; padding: 14px; font-size: 16px; box-shadow: 0 4px 16px rgba(234, 88, 12, 0.3);">
             <i class="fa-solid fa-lock"></i>
-            <span>Pay with Razorpay (₹${selectedPlan.price.toLocaleString('en-IN')})</span>
+            <span id="payBtnText">Pay with Razorpay (₹${calcPrice(selectedDays).toLocaleString('en-IN')})</span>
           </button>
         </div>
       </div>
@@ -127,6 +161,31 @@ export async function renderCheckout(planId: string) {
 
   attachNavbarEvents();
 
+  document.querySelectorAll('input[name="coDurationPlan"]').forEach((radio) => {
+    radio.addEventListener('change', (e) => {
+      document.querySelectorAll('.co-duration-card').forEach((card) => {
+        (card as HTMLElement).style.borderColor = '#e5e7eb';
+        (card as HTMLElement).style.borderWidth = '1px';
+        (card as HTMLElement).style.background = '#ffffff';
+      });
+
+      const targetRadio = e.currentTarget as HTMLInputElement;
+      const cardLabel = targetRadio.closest('.co-duration-card') as HTMLElement;
+      if (cardLabel) {
+        cardLabel.style.borderColor = '#f97316';
+        cardLabel.style.borderWidth = '2px';
+        cardLabel.style.background = '#fff8f0';
+      }
+
+      selectedDays = Number(targetRadio.value) || 30;
+      const currentPrice = calcPrice(selectedDays);
+      const priceDisplay = document.getElementById('planPriceDisplay');
+      const payBtnText = document.getElementById('payBtnText');
+      if (priceDisplay) priceDisplay.textContent = `₹${currentPrice.toLocaleString('en-IN')}`;
+      if (payBtnText) payBtnText.textContent = `Pay with Razorpay (₹${currentPrice.toLocaleString('en-IN')})`;
+    });
+  });
+
   const payBtn = document.getElementById('payBtn') as HTMLButtonElement;
 
   payBtn.addEventListener('click', async () => {
@@ -137,13 +196,16 @@ export async function renderCheckout(planId: string) {
 
     try {
       // 1. Create Razorpay order via backend
-      const order: any = await api.post('/payments/create-order', { mealPlanId: actualPlanId });
+      const order: any = await api.post('/payments/create-order', {
+        mealPlanId: actualPlanId,
+        durationDays: selectedDays,
+      });
 
       // 2. Ensure Razorpay Checkout script is loaded
       const isLoaded = await loadRazorpayScript();
       if (!isLoaded || !(window as any).Razorpay) {
         showToast('Failed to load Razorpay Checkout SDK. Check internet connection.', 'error');
-        payBtn.innerHTML = `<i class="fa-solid fa-lock"></i> Pay with Razorpay (₹${selectedPlan.price.toLocaleString('en-IN')})`;
+        payBtn.innerHTML = `<i class="fa-solid fa-lock"></i> <span id="payBtnText">Pay with Razorpay (₹${calcPrice(selectedDays).toLocaleString('en-IN')})</span>`;
         payBtn.removeAttribute('disabled');
         return;
       }
@@ -153,7 +215,7 @@ export async function renderCheckout(planId: string) {
       const keyId = order.key_id || import.meta.env.VITE_RAZORPAY_KEY_ID;
       if (!keyId) {
         showToast('Razorpay payment Key ID is missing in configuration. Payment cancelled.', 'error');
-        payBtn.innerHTML = `<i class="fa-solid fa-lock"></i> Pay with Razorpay (₹${selectedPlan.price.toLocaleString('en-IN')})`;
+        payBtn.innerHTML = `<i class="fa-solid fa-lock"></i> <span id="payBtnText">Pay with Razorpay (₹${calcPrice(selectedDays).toLocaleString('en-IN')})</span>`;
         payBtn.removeAttribute('disabled');
         return;
       }
@@ -179,6 +241,7 @@ export async function renderCheckout(planId: string) {
               razorpay_order_id: response.razorpay_order_id,
               razorpay_signature: response.razorpay_signature,
               mealPlanId: actualPlanId,
+              durationDays: selectedDays,
             });
 
             const isVerified = result && result.success === true && result.verified === true && Boolean(result.subscription || result.payment);
@@ -188,19 +251,19 @@ export async function renderCheckout(planId: string) {
               navigate('#/student/dashboard');
             } else {
               showToast('Payment verification failed on server. Subscription was not activated.', 'error');
-              payBtn.innerHTML = `<i class="fa-solid fa-lock"></i> Pay with Razorpay (₹${selectedPlan.price.toLocaleString('en-IN')})`;
+              payBtn.innerHTML = `<i class="fa-solid fa-lock"></i> <span id="payBtnText">Pay with Razorpay (₹${calcPrice(selectedDays).toLocaleString('en-IN')})</span>`;
               payBtn.removeAttribute('disabled');
             }
           } catch (verifyErr: any) {
             showToast(verifyErr.message || 'Payment verification failed. Subscription was not activated.', 'error');
-            payBtn.innerHTML = `<i class="fa-solid fa-lock"></i> Pay with Razorpay (₹${selectedPlan.price.toLocaleString('en-IN')})`;
+            payBtn.innerHTML = `<i class="fa-solid fa-lock"></i> <span id="payBtnText">Pay with Razorpay (₹${calcPrice(selectedDays).toLocaleString('en-IN')})</span>`;
             payBtn.removeAttribute('disabled');
           }
         },
         modal: {
           ondismiss: function () {
             showToast('Payment window closed.', 'info');
-            payBtn.innerHTML = `<i class="fa-solid fa-lock"></i> Pay with Razorpay (₹${selectedPlan.price.toLocaleString('en-IN')})`;
+            payBtn.innerHTML = `<i class="fa-solid fa-lock"></i> <span id="payBtnText">Pay with Razorpay (₹${calcPrice(selectedDays).toLocaleString('en-IN')})</span>`;
             payBtn.removeAttribute('disabled');
           },
         },
@@ -210,7 +273,7 @@ export async function renderCheckout(planId: string) {
       rzp.open();
     } catch (err: any) {
       showToast(err.message || 'Failed to initiate payment', 'error');
-      payBtn.innerHTML = `<i class="fa-solid fa-lock"></i> Pay with Razorpay (₹${selectedPlan.price.toLocaleString('en-IN')})`;
+      payBtn.innerHTML = `<i class="fa-solid fa-lock"></i> <span id="payBtnText">Pay with Razorpay (₹${calcPrice(selectedDays).toLocaleString('en-IN')})</span>`;
       payBtn.removeAttribute('disabled');
     }
   });

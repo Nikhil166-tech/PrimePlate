@@ -24,7 +24,7 @@ export async function renderHome() {
             <p style="font-size: clamp(0.95rem, 2.5vw, 1.125rem); color: var(--color-neutral-600); line-height: 1.6; margin-bottom: 28px; max-width: 520px;">
               PrimePlate connects students and IT professionals with hostels and PGs that cook fresh food daily. Get a digital mess card and enjoy home-style meals without cooking.
             </p>
-            <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+            <div class="hero-btn-group" style="display: flex; gap: 12px; flex-wrap: wrap;">
               <button id="heroBrowseBtn" class="btn-primary-action" style="padding: 12px 24px; font-size: 15px; border-radius: 12px;">
                 Find a Mess Near You <i class="fa-solid fa-arrow-right"></i>
               </button>

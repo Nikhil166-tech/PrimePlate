@@ -55,10 +55,19 @@ export class ReviewsService {
     return saved;
   }
 
-  async findByProvider(providerId: string): Promise<Review[]> {
-    return this.reviewRepo.find({
+  async findByProvider(providerId: string): Promise<any[]> {
+    const reviews = await this.reviewRepo.find({
       where: { provider: { id: providerId } },
       order: { createdAt: 'DESC' },
+    });
+    return reviews.map((r: any) => {
+      const safeStudent = r.student
+        ? { id: r.student.id, name: r.student.name || 'Student Customer' }
+        : undefined;
+      return {
+        ...r,
+        student: safeStudent,
+      };
     });
   }
 

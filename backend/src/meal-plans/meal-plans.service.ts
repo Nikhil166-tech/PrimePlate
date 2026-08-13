@@ -37,14 +37,64 @@ export class MealPlansService {
   }
 
   async findByProvider(providerId: string): Promise<MealPlan[]> {
-    return this.planRepo.find({
+    const plans = await this.planRepo.find({
       where: { provider: { id: providerId }, isActive: true },
+      relations: { provider: true },
     });
+    if (plans.length > 0) return plans;
+
+    const provider = await this.providerRepo.findOne({ where: { id: providerId } });
+    if (provider && provider.monthlyPrice && Number(provider.monthlyPrice) > 0) {
+      const defaultPlan = this.planRepo.create({
+        title: 'Monthly Subscription Plan',
+        pricePerMonth: Number(provider.monthlyPrice),
+        description: 'Daily fresh cooked breakfast, lunch & dinner',
+        provider,
+        isActive: true,
+      });
+      try {
+        const saved = await this.planRepo.save(defaultPlan);
+        return [saved];
+      } catch (err) {
+        return [
+          {
+            id: provider.id,
+            title: 'Monthly Subscription Plan',
+            pricePerMonth: Number(provider.monthlyPrice),
+            description: 'Daily fresh cooked breakfast, lunch & dinner',
+            provider,
+            isActive: true,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          } as any,
+        ];
+      }
+    }
+
+    return [];
   }
 
   async findById(id: string): Promise<MealPlan> {
-    const plan = await this.planRepo.findOne({ where: { id } });
-    if (!plan) throw new NotFoundException('Meal plan not found');
-    return plan;
+    const plan = await this.planRepo.findOne({
+      where: { id },
+      relations: { provider: true },
+    });
+    if (plan) return plan;
+
+    const provider = await this.providerRepo.findOne({ where: { id } });
+    if (provider && provider.monthlyPrice && Number(provider.monthlyPrice) > 0) {
+      return {
+        id: provider.id,
+        title: 'Monthly Subscription Plan',
+        pricePerMonth: Number(provider.monthlyPrice),
+        description: 'Daily fresh cooked breakfast, lunch & dinner',
+        provider,
+        isActive: true,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      } as any;
+    }
+
+    throw new NotFoundException('Meal plan not found');
   }
 }

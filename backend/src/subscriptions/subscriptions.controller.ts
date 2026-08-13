@@ -25,6 +25,11 @@ export class SubscriptionsController {
     return this.subscriptionsService.findByStudent(req.user.userId);
   }
 
+  @Get('history')
+  async getSubscriptionHistory(@Req() req: AuthenticatedRequest) {
+    return this.subscriptionsService.findByStudent(req.user.userId);
+  }
+
   @Get('provider/:providerId')
   @Roles(Role.PROVIDER, Role.ADMIN)
   async getProviderSubscriptions(

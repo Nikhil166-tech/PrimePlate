@@ -35,9 +35,24 @@ export function renderLogin() {
             </div>
 
             <form id="authForm">
+              ${isRegisterMode
+        ? `
+                    <div style="text-align: left; margin-bottom: 16px;">
+                      <label style="font-size: 13px; font-weight: 600; color: var(--color-neutral-700); display: block; margin-bottom: 6px;">Full Name</label>
+                      <input type="text" id="name" class="btn-outline-action" style="width: 100%; text-align: left; background: #fff;" placeholder="Name" required />
+                    </div>
+
+                    <div style="text-align: left; margin-bottom: 16px;">
+                      <label style="font-size: 13px; font-weight: 600; color: var(--color-neutral-700); display: block; margin-bottom: 6px;">Phone Number</label>
+                      <input type="tel" id="phone" class="btn-outline-action" style="width: 100%; text-align: left; background: #fff;" placeholder="+91 98765 43210" required />
+                    </div>
+                  `
+        : ''
+      }
+
               <div style="text-align: left; margin-bottom: 16px;">
                 <label style="font-size: 13px; font-weight: 600; color: var(--color-neutral-700); display: block; margin-bottom: 6px;">Email Address</label>
-                <input type="email" id="email" class="btn-outline-action" style="width: 100%; text-align: left; background: #fff;" placeholder="student@university.edu" required />
+                <input type="email" id="email" class="btn-outline-action" style="width: 100%; text-align: left; background: #fff;" placeholder="you@example.com" required />
               </div>
 
               <div style="text-align: left; margin-bottom: 20px;">
@@ -45,17 +60,16 @@ export function renderLogin() {
                 <input type="password" id="password" class="btn-outline-action" style="width: 100%; text-align: left; background: #fff;" placeholder="••••••••" required />
               </div>
 
-              ${
-                isRegisterMode
-                  ? `<div style="text-align: left; margin-bottom: 20px;">
+              ${isRegisterMode
+        ? `<div style="text-align: left; margin-bottom: 20px;">
                       <label style="font-size: 13px; font-weight: 600; color: var(--color-neutral-700); display: block; margin-bottom: 6px;">Account Role</label>
                       <select id="role" class="btn-outline-action" style="width: 100%; text-align: left; background: #fff;">
                         <option value="STUDENT">Student / Customer</option>
                         <option value="PROVIDER">Hostel / Mess Owner</option>
                       </select>
                     </div>`
-                  : ''
-              }
+        : ''
+      }
 
               <button type="submit" class="btn-primary-action" style="width: 100%; justify-content: center; padding: 12px;">
                 <i class="fa-solid ${isRegisterMode ? 'fa-user-plus' : 'fa-right-to-bracket'}"></i>
@@ -99,9 +113,21 @@ export function renderLogin() {
       try {
         let res: any = null;
         if (isRegisterMode) {
+          const name = (form.querySelector('#name') as HTMLInputElement)?.value.trim() || '';
+          const phone = (form.querySelector('#phone') as HTMLInputElement)?.value.trim() || '';
           const role = (form.querySelector('#role') as HTMLSelectElement)?.value || 'STUDENT';
+
+          if (!name) {
+            showToast('Please enter your full name', 'error');
+            return;
+          }
+          if (!phone || phone.length < 8) {
+            showToast('Please enter a valid phone number', 'error');
+            return;
+          }
+
           try {
-            res = await api.post('/auth/register', { email, password, role });
+            res = await api.post('/auth/register', { name, phone, email, password, role });
             showToast('Account created successfully!', 'success');
           } catch (regErr: any) {
             if (regErr.message?.includes('already exists')) {
@@ -130,6 +156,12 @@ export function renderLogin() {
         const role = (user?.role || 'STUDENT').toUpperCase();
         localStorage.setItem('userRole', role);
         localStorage.setItem('userEmail', user?.email || email);
+        if (user?.name) {
+          localStorage.setItem('userName', user.name);
+        }
+        if (user?.phone) {
+          localStorage.setItem('userPhone', user.phone);
+        }
 
         const pendingRedirect = localStorage.getItem('redirectAfterAuth');
         if (pendingRedirect && role === 'STUDENT') {

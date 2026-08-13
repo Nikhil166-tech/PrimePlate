@@ -48,7 +48,7 @@ export class AuthService {
     await this.refreshTokenRepo.save(refreshTokenEntity);
 
     return {
-      user: { id: user.id, email: user.email, role: user.role, name: user.name },
+      user: { id: user.id, email: user.email, role: user.role, name: user.name, phone: user.phone },
       accessToken,
       refreshToken: rawRefreshToken,
     };
@@ -72,10 +72,15 @@ export class AuthService {
       }
     }
 
+    const trimmedName = dto.name ? dto.name.trim() : undefined;
+    const trimmedPhone = dto.phone ? dto.phone.trim() : undefined;
+
     const hashed = await bcrypt.hash(dto.password, 10);
     const user = await this.usersService.create({
       email: dto.email,
       passwordHash: hashed,
+      name: trimmedName,
+      phone: trimmedPhone,
       role,
     });
 

@@ -13,6 +13,7 @@ import { Role } from '../common/roles.enum';
 import { ProviderApprovalStatus } from '../common/enums/provider-approval-status.enum';
 
 import { Subscription, SubscriptionStatus } from '../subscriptions/subscription.entity';
+import { MealPlan } from '../meal-plans/meal-plan.entity';
 
 @Injectable()
 export class ProvidersService {
@@ -22,7 +23,7 @@ export class ProvidersService {
     @InjectRepository(Subscription)
     private readonly subRepo: Repository<Subscription>,
     private readonly usersService: UsersService,
-  ) {}
+  ) { }
 
   async create(userId: string, dto: ProviderDto): Promise<MealProvider> {
     const user = await this.usersService.findById(userId);
@@ -51,12 +52,12 @@ export class ProvidersService {
   }
 
   private async attachCapacityInfo(provider: MealProvider): Promise<any> {
-    const currentSubscribers = await this.subRepo.count({
-      where: {
-        mealPlan: { provider: { id: provider.id } },
-        status: SubscriptionStatus.ACTIVE,
-      },
-    });
+    const currentSubscribers = await this.subRepo
+      .createQueryBuilder('sub')
+      .innerJoin('sub.mealPlan', 'mp')
+      .where('mp.providerId = :pId', { pId: provider.id })
+      .andWhere('sub.status = :status', { status: SubscriptionStatus.ACTIVE })
+      .getCount();
     const totalCapacity =
       provider.totalCapacity !== undefined && provider.totalCapacity !== null
         ? Number(provider.totalCapacity)
@@ -138,7 +139,16 @@ export class ProvidersService {
     if (dto.acceptingSubscriptions !== undefined) provider.acceptingSubscriptions = dto.acceptingSubscriptions;
     if (dto.amenities !== undefined) provider.amenities = dto.amenities;
     if (dto.contactPhone !== undefined) provider.contactPhone = dto.contactPhone;
-    if (dto.monthlyPrice !== undefined) provider.monthlyPrice = dto.monthlyPrice;
+    if (dto.monthlyPrice !== undefined) {
+      provider.monthlyPrice = dto.monthlyPrice;
+      const plans = await this.providerRepo.manager.find(MealPlan, {
+        where: { provider: { id: provider.id } },
+      });
+      for (const p of plans) {
+        p.pricePerMonth = dto.monthlyPrice;
+        await this.providerRepo.manager.save(MealPlan, p);
+      }
+    }
 
     const saved = await this.providerRepo.save(provider);
     return this.attachCapacityInfo(saved);

@@ -8,6 +8,7 @@ import {
   SubscriptionStatus,
 } from '../subscriptions/subscription.entity';
 import { Payment } from '../payments/payment.entity';
+import { ProviderApprovalStatus } from '../common/enums/provider-approval-status.enum';
 
 @Injectable()
 export class AnalyticsService {
@@ -25,11 +26,15 @@ export class AnalyticsService {
   }
 
   async getTotalProviders(): Promise<number> {
-    return this.providerRepo.count({ where: { verified: true } });
+    return this.providerRepo.count({
+      where: { approvalStatus: ProviderApprovalStatus.APPROVED },
+    });
   }
 
   async getPendingApprovals(): Promise<number> {
-    return this.providerRepo.count({ where: { verified: false } });
+    return this.providerRepo.count({
+      where: { approvalStatus: ProviderApprovalStatus.PENDING },
+    });
   }
 
   async getTotalSubscriptions(): Promise<number> {

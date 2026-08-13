@@ -28,6 +28,7 @@ export class SubscriptionsService {
     mealPlanId: string,
     startDate?: string,
     endDate?: string,
+    durationDays: number = 30,
   ): Promise<Subscription> {
     if (!studentId) {
       throw new BadRequestException('Student ID is required');
@@ -106,9 +107,9 @@ export class SubscriptionsService {
       }
 
       const start = startDate || new Date().toISOString().split('T')[0];
-      const endObj = new Date();
-      endObj.setDate(endObj.getDate() + 30);
-      const end = endDate || endObj.toISOString().split('T')[0];
+      const startObj = new Date(start);
+      startObj.setDate(startObj.getDate() + (durationDays || 30));
+      const end = endDate || startObj.toISOString().split('T')[0];
 
       const subscription = manager.create(Subscription, {
         student,
@@ -139,11 +140,17 @@ export class SubscriptionsService {
     return subs.map((sub: any) => {
       const matchingPayment: any = payments.find(
         (p: any) => p.provider?.id === sub.mealPlan?.provider?.id,
-      ) || payments[0];
+      );
+
+      const rawAmount = matchingPayment ? Number(matchingPayment.amount) : null;
 
       return {
         ...sub,
-        amountPaid: matchingPayment ? Number(matchingPayment.amount) : null,
+        amountPaid: rawAmount,
+        razorpayOrderId: matchingPayment?.razorpayOrderId || null,
+        razorpayPaymentId: matchingPayment?.razorpayPaymentId || null,
+        paymentStatus: matchingPayment?.status ? String(matchingPayment.status).toUpperCase() : (rawAmount !== null ? 'PAID' : 'UNKNOWN'),
+        paymentDate: matchingPayment?.createdAt || sub.createdAt,
       };
     });
   }

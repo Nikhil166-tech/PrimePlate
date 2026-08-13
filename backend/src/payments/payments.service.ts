@@ -10,10 +10,45 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Payment } from './payment.entity';
 import { MealPlan } from '../meal-plans/meal-plan.entity';
+import { MealProvider } from '../providers/meal-provider.entity';
+import { Subscription, SubscriptionStatus } from '../subscriptions/subscription.entity';
 import { User } from '../users/user.entity';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import * as crypto from 'crypto';
 import Razorpay from 'razorpay';
+
+function parseDurationDays(durationInput: string | number | undefined): number {
+  if (!durationInput) return 30; // default to 1 month (30 days)
+
+  if (typeof durationInput === 'number') {
+    if ([1, 7, 15, 30].includes(durationInput)) return durationInput;
+    throw new BadRequestException(
+      'Invalid subscription duration. Supported durations: 1 Day (1), 1 Week (7), 15 Days (15), 1 Month (30).',
+    );
+  }
+
+  const normalized = String(durationInput).trim().toUpperCase();
+  if (normalized === 'DAY' || normalized === '1' || normalized === 'ONE_DAY' || normalized === 'ONEDAY') return 1;
+  if (normalized === 'WEEK' || normalized === '7' || normalized === 'ONE_WEEK' || normalized === 'ONEWEEK') return 7;
+  if (normalized === 'FIFTEEN_DAYS' || normalized === '15' || normalized === 'FIFTEENDAYS' || normalized === 'HALF_MONTH') return 15;
+  if (normalized === 'MONTH' || normalized === '30' || normalized === 'ONE_MONTH' || normalized === 'ONEMONTH') return 30;
+
+  const parsedNum = parseInt(normalized, 10);
+  if (!isNaN(parsedNum) && [1, 7, 15, 30].includes(parsedNum)) {
+    return parsedNum;
+  }
+
+  throw new BadRequestException(
+    'Invalid subscription duration. Supported duration values: DAY (1), WEEK (7), FIFTEEN_DAYS (15), MONTH (30).',
+  );
+}
+
+function calculateAuthoritativeAmount(monthlyPrice: number, durationDays: number): number {
+  if (isNaN(monthlyPrice) || !isFinite(monthlyPrice) || monthlyPrice <= 0) {
+    throw new BadRequestException('Invalid provider monthly price');
+  }
+  return Math.max(1, Math.round((monthlyPrice / 30) * durationDays));
+}
 
 @Injectable()
 export class PaymentsService {
@@ -38,8 +73,10 @@ export class PaymentsService {
     }
   }
 
-  async createOrder(mealPlanId: string, userId: string) {
+  async createOrder(mealPlanId: string, userId: string, durationInput?: string | number) {
     if (!mealPlanId) throw new BadRequestException('Meal plan ID is required');
+    const durationDays = parseDurationDays(durationInput);
+
     const plan = await this.planRepo.findOne({
       where: { id: mealPlanId },
       relations: { provider: true },
@@ -60,7 +97,9 @@ export class PaymentsService {
       }
     }
 
-    const amountInPaise = Math.round(plan.pricePerMonth * 100);
+    const baseMonthlyPrice = Number(plan.pricePerMonth || provider?.monthlyPrice || 0);
+    const authoritativeAmount = calculateAuthoritativeAmount(baseMonthlyPrice, durationDays);
+    const amountInPaise = Math.round(authoritativeAmount * 100);
     const receipt = `rcpt_${userId.slice(0, 8)}_${Date.now()}`;
     const isProduction = process.env.NODE_ENV === 'production';
 
@@ -82,7 +121,7 @@ export class PaymentsService {
         receipt,
         status: 'created',
         key_id: keyId,
-        notes: { mealPlanId, userId },
+        notes: { mealPlanId, userId, durationDays, authoritativeAmount },
       };
     }
 
@@ -91,7 +130,7 @@ export class PaymentsService {
         amount: amountInPaise,
         currency: 'INR',
         receipt,
-        notes: { mealPlanId, userId },
+        notes: { mealPlanId, userId, durationDays, authoritativeAmount },
       });
       return { ...order, key_id: this.config.get<string>('RAZORPAY_KEY_ID') };
     } catch (err: any) {
@@ -115,7 +154,7 @@ export class PaymentsService {
         receipt,
         status: 'created',
         key_id: keyId,
-        notes: { mealPlanId, userId },
+        notes: { mealPlanId, userId, durationDays, authoritativeAmount },
       };
     }
   }
@@ -162,6 +201,7 @@ export class PaymentsService {
     razorpayPaymentId: string;
     razorpaySignature: string;
     mealPlanId: string;
+    durationInput?: string | number;
   }) {
     const {
       userId,
@@ -169,7 +209,10 @@ export class PaymentsService {
       razorpayPaymentId,
       razorpaySignature,
       mealPlanId,
+      durationInput,
     } = params;
+
+    const durationDays = parseDurationDays(durationInput);
 
     // Idempotency check: Return existing payment record if already processed
     const existingPayment = await this.paymentRepo.findOne({
@@ -206,40 +249,136 @@ export class PaymentsService {
       }
     }
 
-    const student = await this.userRepo.findOne({ where: { id: userId } });
-    if (!student) throw new NotFoundException('Student user not found');
+    return await this.paymentRepo.manager.transaction(async (manager) => {
+      // 1. Idempotency check inside transaction
+      const existingPayment = await manager.findOne(Payment, {
+        where: [{ razorpayOrderId }, { razorpayPaymentId }],
+        relations: { student: true, provider: true },
+      });
 
-    const mealPlan = await this.planRepo.findOne({
-      where: { id: mealPlanId },
-      relations: { provider: true },
+      if (existingPayment && existingPayment.status === 'paid') {
+        this.logger.log(
+          `Payment ${razorpayPaymentId} already processed (Idempotent replay).`,
+        );
+        const existingSubs = await this.subscriptionsService.findByStudent(userId);
+        const sub = existingSubs.find((s) => s.mealPlan?.id === mealPlanId);
+        return {
+          success: true,
+          verified: true,
+          idempotent: true,
+          payment: existingPayment,
+          subscription: sub,
+        };
+      }
+
+      // 2. Load student and meal plan with provider inside transaction
+      const student = await manager.findOne(User, { where: { id: userId } });
+      if (!student) throw new NotFoundException('Student user not found');
+
+      const mealPlan = await manager.findOne(MealPlan, {
+        where: { id: mealPlanId },
+        relations: { provider: true },
+      });
+      if (!mealPlan) throw new NotFoundException('Meal plan not found');
+      if (!mealPlan.provider) throw new NotFoundException('Associated provider kitchen not found');
+
+      const providerId = mealPlan.provider.id;
+      const dbType = manager.connection.options.type;
+
+      // 3. Apply pessimistic write lock on PostgreSQL driver for capacity check
+      if (dbType === 'postgres') {
+        await manager
+          .createQueryBuilder(MealProvider, 'p')
+          .setLock('pessimistic_write')
+          .where('p.id = :id', { id: providerId })
+          .getOne();
+      }
+
+      const provider = await manager.findOne(MealProvider, { where: { id: providerId } });
+      if (!provider) throw new NotFoundException('Provider record not found');
+
+      if (provider.approvalStatus !== 'APPROVED') {
+        throw new BadRequestException('This provider is not currently approved for subscriptions');
+      }
+
+      if (!provider.acceptingSubscriptions) {
+        throw new BadRequestException('This provider is currently closed for new subscriptions');
+      }
+
+      const activeCount = await manager.count(Subscription, {
+        where: {
+          mealPlan: { provider: { id: provider.id } },
+          status: SubscriptionStatus.ACTIVE,
+        },
+      });
+
+      if (provider.totalCapacity === null || provider.totalCapacity === undefined) {
+        throw new BadRequestException('Provider total student capacity is not set');
+      }
+
+      const totalCap = Number(provider.totalCapacity);
+      if (activeCount >= totalCap) {
+        throw new BadRequestException('This mess is fully booked. Maximum student capacity reached.');
+      }
+
+      const baseMonthlyPrice = Number(mealPlan.pricePerMonth || provider.monthlyPrice || 0);
+      const authoritativeAmount = calculateAuthoritativeAmount(baseMonthlyPrice, durationDays);
+
+      const startDate = new Date().toISOString().split('T')[0];
+      const startObj = new Date(startDate);
+      startObj.setDate(startObj.getDate() + durationDays);
+      const endDate = startObj.toISOString().split('T')[0];
+
+      // 4. Create and save Subscription inside the transaction
+      const subscriptionEntity = manager.create(Subscription, {
+        student,
+        mealPlan,
+        status: SubscriptionStatus.ACTIVE,
+        startDate,
+        endDate,
+      });
+
+      const savedSubscription = await manager.save(Subscription, subscriptionEntity);
+
+      // 5. Create and save Payment record linked to student & provider with authoritative amount
+      const paymentEntity = manager.create(Payment, {
+        student,
+        provider,
+        amount: authoritativeAmount,
+        razorpayOrderId,
+        razorpayPaymentId,
+        razorpaySignature,
+        status: 'paid',
+      });
+
+      try {
+        const savedPayment = await manager.save(Payment, paymentEntity);
+
+        return {
+          success: true,
+          verified: true,
+          payment: savedPayment,
+          subscription: savedSubscription,
+        };
+      } catch (err: any) {
+        // Handle duplicate key / race condition gracefully
+        if (err.code === '23505' || err.message?.includes('duplicate') || err.message?.includes('UNIQUE')) {
+          this.logger.warn(`Duplicate payment key detected during transaction for order ${razorpayOrderId}. Returning idempotent state.`);
+          const existing = await manager.findOne(Payment, {
+            where: [{ razorpayOrderId }, { razorpayPaymentId }],
+            relations: { student: true, provider: true },
+          });
+          return {
+            success: true,
+            verified: true,
+            idempotent: true,
+            payment: existing || paymentEntity,
+            subscription: savedSubscription,
+          };
+        }
+        throw err;
+      }
     });
-    if (!mealPlan) throw new NotFoundException('Meal plan not found');
-
-    // Create Subscription first to enforce atomic capacity check inside transaction
-    const subscription = await this.subscriptionsService.create(
-      userId,
-      mealPlanId,
-    );
-
-    // Save Payment record linked to student & provider
-    const payment = this.paymentRepo.create({
-      student,
-      provider: mealPlan.provider,
-      amount: mealPlan.pricePerMonth,
-      razorpayOrderId,
-      razorpayPaymentId,
-      razorpaySignature,
-      status: 'paid',
-    });
-
-    const savedPayment = await this.paymentRepo.save(payment);
-
-    return {
-      success: true,
-      verified: true,
-      payment: savedPayment,
-      subscription,
-    };
   }
 
   async handleWebhook(rawBody: string | Buffer, signature: string, eventData: any) {

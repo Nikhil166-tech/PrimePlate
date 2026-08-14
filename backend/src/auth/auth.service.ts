@@ -6,12 +6,16 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, DataSource } from 'typeorm';
 import { UsersService } from '../users/users.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
+import { ForgotPasswordDto } from './dto/forgot-password.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
 import { RefreshToken } from './refresh-token.entity';
+import { PasswordResetToken } from './password-reset-token.entity';
 import { User } from '../users/user.entity';
+import { EmailService } from '../common/email.service';
 import * as bcrypt from 'bcryptjs';
 import * as crypto from 'crypto';
 import { JwtPayload } from './types/jwt-payload.type';
@@ -24,6 +28,10 @@ export class AuthService {
     private readonly jwtService: JwtService,
     @InjectRepository(RefreshToken)
     private readonly refreshTokenRepo: Repository<RefreshToken>,
+    @InjectRepository(PasswordResetToken)
+    private readonly passwordResetTokenRepo: Repository<PasswordResetToken>,
+    private readonly emailService: EmailService,
+    private readonly dataSource: DataSource,
   ) {}
 
   private hashToken(token: string): string {
@@ -137,5 +145,99 @@ export class AuthService {
       );
     }
     return { message: 'Logged out successfully' };
+  }
+
+  async forgotPassword(dto: ForgotPasswordDto) {
+    const email = dto.email ? dto.email.trim().toLowerCase() : '';
+    const genericResponse = {
+      message: 'If an account exists for this email, a password reset link has been sent.',
+    };
+
+    if (!email) {
+      return genericResponse;
+    }
+
+    const user = await this.usersService.findByEmail(email);
+    if (user) {
+      const rawToken = crypto.randomBytes(32).toString('hex');
+      const tokenHash = this.hashToken(rawToken);
+      const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
+
+      const resetToken = this.passwordResetTokenRepo.create({
+        user,
+        userId: user.id,
+        tokenHash,
+        expiresAt,
+      });
+
+      await this.passwordResetTokenRepo.save(resetToken);
+      await this.emailService.sendPasswordResetEmail(user.email, rawToken);
+    }
+
+    return genericResponse;
+  }
+
+  async resetPassword(dto: ResetPasswordDto) {
+    if (!dto.token) {
+      throw new BadRequestException('Reset token is required');
+    }
+    if (!dto.newPassword) {
+      throw new BadRequestException('New password is required');
+    }
+
+    const tokenHash = this.hashToken(dto.token);
+    const resetTokenRecord = await this.passwordResetTokenRepo.findOne({
+      where: { tokenHash },
+      relations: { user: true },
+    });
+
+    if (!resetTokenRecord || !resetTokenRecord.user) {
+      throw new BadRequestException('Invalid or expired password reset token');
+    }
+
+    if (resetTokenRecord.usedAt) {
+      throw new BadRequestException('Password reset token has already been used');
+    }
+
+    if (new Date() > resetTokenRecord.expiresAt) {
+      throw new BadRequestException('Password reset token has expired');
+    }
+
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      const newPasswordHash = await bcrypt.hash(dto.newPassword, 10);
+
+      // 1. Update user passwordHash
+      resetTokenRecord.user.passwordHash = newPasswordHash;
+      await queryRunner.manager.save(User, resetTokenRecord.user);
+
+      // 2. Mark reset token used
+      resetTokenRecord.usedAt = new Date();
+      await queryRunner.manager.save(PasswordResetToken, resetTokenRecord);
+
+      // 3. Revoke all existing refresh tokens for user
+      const activeRefreshTokens = await queryRunner.manager
+        .getRepository(RefreshToken)
+        .find({
+          where: { user: { id: resetTokenRecord.user.id }, revoked: false },
+        });
+
+      for (const token of activeRefreshTokens) {
+        token.revoked = true;
+        await queryRunner.manager.save(RefreshToken, token);
+      }
+
+      await queryRunner.commitTransaction();
+    } catch (err) {
+      await queryRunner.rollbackTransaction();
+      throw err;
+    } finally {
+      await queryRunner.release();
+    }
+
+    return { message: 'Password reset successfully.' };
   }
 }

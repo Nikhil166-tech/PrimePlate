@@ -65,6 +65,8 @@ async function bootstrap() {
   app.use('/api/v1/auth/login', authRateLimiter);
   app.use('/api/v1/auth/register', authRateLimiter);
   app.use('/api/v1/auth/refresh', authRateLimiter);
+  app.use('/api/v1/auth/forgot-password', authRateLimiter);
+  app.use('/api/v1/auth/reset-password', authRateLimiter);
 
   // Payment creation rate limiter (anti-abuse)
   const paymentRateLimiter = rateLimit({

@@ -18,6 +18,7 @@ import { Subscription } from './subscriptions/subscription.entity';
 import { Payment } from './payments/payment.entity';
 import { Review } from './reviews/review.entity';
 import { WeeklyMenu } from './weekly-menus/weekly-menu.entity';
+import { PasswordResetToken } from './auth/password-reset-token.entity';
 import { WeeklyMenusModule } from './weekly-menus/weekly-menus.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -68,6 +69,7 @@ import { AppService } from './app.service';
       Payment,
       Review,
       WeeklyMenu,
+      PasswordResetToken,
     ]),
     AuthModule,
     UsersModule,

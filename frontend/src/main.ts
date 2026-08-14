@@ -8,6 +8,8 @@ import { renderCheckout } from './pages/checkout';
 import { renderDashboard } from './pages/dashboard';
 import { renderOwnerPortal } from './pages/owner';
 import { renderAdminPortal } from './pages/admin';
+import { renderForgotPassword } from './pages/forgot-password';
+import { renderResetPassword } from './pages/reset-password';
 
 // Auth & Role guard
 function requireRole(allowedRoles: string[], callback: () => void) {
@@ -38,6 +40,8 @@ function requireRole(allowedRoles: string[], callback: () => void) {
 // Register routes
 registerRoute('#/home', renderHome);
 registerRoute('#/login', renderLogin);
+registerRoute('#/forgot-password', renderForgotPassword);
+registerRoute('#/reset-password', renderResetPassword);
 registerRoute('#/providers', renderProviders);
 registerRoute('#/dashboard', () => requireRole(['STUDENT'], renderDashboard));
 registerRoute('#/student/dashboard', () => requireRole(['STUDENT'], renderDashboard));

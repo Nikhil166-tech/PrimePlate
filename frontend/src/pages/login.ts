@@ -55,10 +55,30 @@ export function renderLogin() {
                 <input type="email" id="email" class="btn-outline-action" style="width: 100%; text-align: left; background: #fff;" placeholder="you@example.com" required />
               </div>
 
-              <div style="text-align: left; margin-bottom: 20px;">
+              <div style="text-align: left; margin-bottom: 16px;">
                 <label style="font-size: 13px; font-weight: 600; color: var(--color-neutral-700); display: block; margin-bottom: 6px;">Password</label>
-                <input type="password" id="password" class="btn-outline-action" style="width: 100%; text-align: left; background: #fff;" placeholder="••••••••" required />
+                <div style="position: relative;">
+                  <input type="password" id="password" class="btn-outline-action" style="width: 100%; text-align: left; background: #fff; padding-right: 40px; box-sizing: border-box;" placeholder="••••••••" required />
+                  <button type="button" id="togglePasswordBtn" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--color-neutral-500); cursor: pointer; padding: 4px; display: flex; align-items: center; justify-content: center;" aria-label="Toggle password visibility">
+                    <i class="fa-solid fa-eye" id="togglePasswordIcon"></i>
+                  </button>
+                </div>
+                ${isRegisterMode
+                  ? `<p style="font-size: 11px; color: var(--color-neutral-500); margin-top: 4px;">
+                      Must be 8+ characters with uppercase, lowercase, number & symbol (e.g. @, #, $)
+                    </p>`
+                  : ''
+                }
               </div>
+
+              ${!isRegisterMode
+                ? `<div style="text-align: right; margin-top: -10px; margin-bottom: 18px;">
+                    <a href="#/forgot-password" id="forgotPasswordLink" style="font-size: 13px; font-weight: 600; color: var(--color-primary-600); text-decoration: none;">
+                      Forgot Password?
+                    </a>
+                  </div>`
+                : ''
+              }
 
               ${isRegisterMode
         ? `<div style="text-align: left; margin-bottom: 20px;">
@@ -105,6 +125,18 @@ export function renderLogin() {
       }
     });
 
+    const togglePasswordBtn = document.getElementById('togglePasswordBtn');
+    const passwordInput = document.getElementById('password') as HTMLInputElement;
+    const togglePasswordIcon = document.getElementById('togglePasswordIcon');
+
+    if (togglePasswordBtn && passwordInput && togglePasswordIcon) {
+      togglePasswordBtn.addEventListener('click', () => {
+        const isPassword = passwordInput.type === 'password';
+        passwordInput.type = isPassword ? 'text' : 'password';
+        togglePasswordIcon.className = `fa-solid ${isPassword ? 'fa-eye-slash' : 'fa-eye'}`;
+      });
+    }
+
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
       const email = (form.querySelector('#email') as HTMLInputElement).value;
@@ -123,6 +155,17 @@ export function renderLogin() {
           }
           if (!phone || phone.length < 8) {
             showToast('Please enter a valid phone number', 'error');
+            return;
+          }
+
+          if (
+            password.length < 8 ||
+            !/[a-z]/.test(password) ||
+            !/[A-Z]/.test(password) ||
+            !/\d/.test(password) ||
+            !/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>/?~`]/.test(password)
+          ) {
+            showToast('Password must be at least 8 characters long and include an uppercase letter, lowercase letter, number, and special character', 'error');
             return;
           }
 

@@ -22,17 +22,18 @@ export function navigate(path: string) {
 }
 
 function onHashChange() {
-  const hash = window.location.hash || '#/home';
+  const fullHash = window.location.hash || '#/home';
+  const baseHash = fullHash.split('?')[0];
 
-  // 1. Exact match first
-  const exact = routes.find((r) => !r.isDynamic && r.pattern === hash);
+  // 1. Exact match first (using baseHash to support query parameters like ?token=...)
+  const exact = routes.find((r) => !r.isDynamic && r.pattern === baseHash);
   if (exact) {
     exact.handler();
     return;
   }
 
   // 2. Dynamic route match (e.g. #/providers/:id or #/checkout/:planId)
-  const dynamic = routes.find((r) => r.isDynamic && hash.startsWith(r.pattern));
+  const dynamic = routes.find((r) => r.isDynamic && baseHash.startsWith(r.pattern));
   if (dynamic) {
     dynamic.handler();
     return;

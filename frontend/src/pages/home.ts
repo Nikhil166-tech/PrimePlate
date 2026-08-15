@@ -112,6 +112,283 @@ export async function renderHome() {
         </div>
       </section>
 
+      <!-- Why Choose Us? / Why PrimePlate Section -->
+      <section id="why-primeplate" class="why-primeplate-wrapper" style="padding: 64px 16px;">
+        <div style="max-width: 1280px; margin: 0 auto;">
+          
+          <!-- Hero Header -->
+          <div style="max-width: 800px; margin: 0 auto 48px; text-align: center;">
+            <div class="why-badge">
+              <i class="fa-solid fa-circle-check"></i> The Student Food Revolution
+            </div>
+            <h2 class="why-hero-title">
+              YOUR TIME IS WORTH MORE<br class="hidden-xs" /> THAN YOUR KITCHEN.
+            </h2>
+            <p class="why-hero-sub">
+              Cooking every day costs more than groceries. <span style="font-weight: 700; color: var(--color-neutral-900);">It costs your time, energy, and attention.</span>
+            </p>
+            <p class="why-hero-highlight">
+              PrimePlate makes your everyday meals simple.
+            </p>
+          </div>
+
+          <!-- Comparison Grid -->
+          <div id="comparison" style="max-width: 1150px; margin: 0 auto;">
+            <div class="why-comparison-grid">
+              
+              <!-- LEFT CARD: COOK IT YOURSELF -->
+              <div class="why-card-cooking why-card-shadow">
+                <div class="why-card-tag-light">The Hard Way</div>
+
+                <div>
+                  <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 20px;">
+                    <div style="width: 44px; height: 44px; border-radius: 14px; background: #fff7ed; color: #d97706; display: flex; align-items: center; justify-content: center; font-size: 20px;">
+                      🍳
+                    </div>
+                    <div>
+                      <h3 class="font-display" style="font-size: 18px; font-weight: 700; color: var(--color-neutral-900);">Cook It Yourself</h3>
+                      <p style="font-size: 12px; color: var(--color-neutral-500);">In your rented room or PG kitchen</p>
+                    </div>
+                  </div>
+
+                  <div style="margin-bottom: 20px;">
+                    <div style="font-size: 11px; font-weight: 700; color: var(--color-neutral-400); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">Estimated Monthly Breakdown</div>
+                    
+                    <div style="font-size: 13px;">
+                      <div class="why-cost-row-light">
+                        <span style="color: var(--color-neutral-600); font-weight: 500;">Groceries</span>
+                        <span style="font-weight: 700; color: var(--color-neutral-800);">₹3,500 – ₹4,500</span>
+                      </div>
+                      <div class="why-cost-row-light">
+                        <span style="color: var(--color-neutral-600); font-weight: 500;">Gas / Electricity</span>
+                        <span style="font-weight: 700; color: var(--color-neutral-800);">₹300 – ₹600</span>
+                      </div>
+                      <div class="why-cost-row-light">
+                        <span style="color: var(--color-neutral-600); font-weight: 500;">Oil / Spices / Essentials</span>
+                        <span style="font-weight: 700; color: var(--color-neutral-800);">₹300 – ₹500</span>
+                      </div>
+                      <div class="why-cost-row-light">
+                        <span style="color: var(--color-neutral-600); font-weight: 500;">Wastage / Miscellaneous</span>
+                        <span style="font-weight: 700; color: var(--color-neutral-800);">₹200 – ₹400</span>
+                      </div>
+                    </div>
+
+                    <div class="why-total-box-light">
+                      <div>
+                        <span style="font-size: 11px; font-weight: 700; color: var(--color-neutral-500); display: block; text-transform: uppercase;">Estimated Total</span>
+                        <span style="font-size: 10px; color: var(--color-neutral-400);">*Illustrative range</span>
+                      </div>
+                      <div class="font-display" style="font-size: 18px; font-weight: 800; color: var(--color-neutral-900);">
+                        ₹4,500 – ₹6,000 <span style="font-size: 12px; font-weight: 400; color: var(--color-neutral-500);">/mo</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style="padding-top: 12px; border-top: 1px solid var(--color-neutral-100);">
+                    <div style="font-size: 11px; font-weight: 700; color: var(--color-neutral-400); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">Daily Hidden Effort</div>
+                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px;">
+                      <div class="why-effort-pill">
+                        <span>🛒</span><span>Grocery trips</span>
+                      </div>
+                      <div class="why-effort-pill">
+                        <span>🍳</span><span>Cooking daily</span>
+                      </div>
+                      <div class="why-effort-pill">
+                        <span>🍽</span><span>Cleaning utensils</span>
+                      </div>
+                      <div class="why-effort-pill">
+                        <span>📅</span><span>Daily menu planning</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div style="margin-top: 20px; padding-top: 12px; border-top: 1px solid var(--color-neutral-100); display: flex; align-items: center; font-size: 12px; color: var(--color-neutral-500); font-weight: 500;">
+                  <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #f59e0b; margin-right: 8px;"></span>
+                  Time consumed: ~45–60 minutes every single day.
+                </div>
+              </div>
+
+              <!-- RIGHT CARD: PRIMEPLATE -->
+              <div class="why-card-primeplate why-prime-glow">
+                <div class="why-card-tag-brand">The Smart Way</div>
+
+                <div>
+                  <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 20px;">
+                    <div style="width: 44px; height: 44px; border-radius: 14px; background: rgba(255,255,255,0.12); color: var(--color-primary-200); display: flex; align-items: center; justify-content: center; font-size: 20px; border: 1px solid rgba(255,255,255,0.2);">
+                      🍱
+                    </div>
+                    <div>
+                      <h3 class="font-display" style="font-size: 18px; font-weight: 700; color: #ffffff;">PrimePlate</h3>
+                      <p style="font-size: 12px; color: var(--color-primary-100);">One simple meal subscription experience</p>
+                    </div>
+                  </div>
+
+                  <div style="margin-bottom: 20px;">
+                    <div style="font-size: 11px; font-weight: 700; color: var(--color-primary-200); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">Estimated Monthly Spending</div>
+                    
+                    <div style="font-size: 13px;">
+                      <div class="why-cost-row-dark">
+                        <span style="color: rgba(255,255,255,0.85); font-weight: 500;">Mess Subscription (Local Providers)</span>
+                        <span style="font-weight: 700; color: #ffffff;">₹3,000 – ₹4,500</span>
+                      </div>
+                      <div class="why-cost-row-dark">
+                        <span style="color: rgba(255,255,255,0.85); font-weight: 500;">Gas / Electricity / Spices</span>
+                        <span style="font-weight: 700; color: var(--color-primary-200);">₹0 (Included)</span>
+                      </div>
+                      <div class="why-cost-row-dark">
+                        <span style="color: rgba(255,255,255,0.85); font-weight: 500;">Wastage / Miscellaneous</span>
+                        <span style="font-weight: 700; color: var(--color-primary-200);">₹0 (Zero waste)</span>
+                      </div>
+                    </div>
+
+                    <div class="why-total-box-dark">
+                      <div>
+                        <span style="font-size: 11px; font-weight: 700; color: var(--color-primary-200); display: block; text-transform: uppercase;">Estimated Total Spend</span>
+                        <span style="font-size: 10px; color: rgba(255,255,255,0.7);">*Varies by local provider plan</span>
+                      </div>
+                      <div class="font-display" style="font-size: 18px; font-weight: 800; color: #ffffff;">
+                        ₹3,000 – ₹4,500 <span style="font-size: 12px; font-weight: 400; color: rgba(255,255,255,0.7);">/mo</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style="padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.15);">
+                    <div style="font-size: 11px; font-weight: 700; color: var(--color-primary-200); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">What You Never Do Again</div>
+                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px;">
+                      <div class="why-effort-pill-dark">
+                        <span style="color: var(--color-primary-300); font-weight: 700;">✓</span><span>No grocery shopping</span>
+                      </div>
+                      <div class="why-effort-pill-dark">
+                        <span style="color: var(--color-primary-300); font-weight: 700;">✓</span><span>No daily cooking</span>
+                      </div>
+                      <div class="why-effort-pill-dark">
+                        <span style="color: var(--color-primary-300); font-weight: 700;">✓</span><span>No utensil cleaning</span>
+                      </div>
+                      <div class="why-effort-pill-dark">
+                        <span style="color: var(--color-primary-300); font-weight: 700;">✓</span><span>Digital meal pass</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div style="margin-top: 20px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.15); display: flex; items-center: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
+                  <span style="font-size: 12px; color: var(--color-primary-100); font-weight: 500;">Zero stress, transparent local pricing</span>
+                  <button id="whyViewPlansBtn" class="btn-primary-action" style="padding: 8px 16px; font-size: 13px; background: var(--color-primary-500); border-radius: 10px;">
+                    View Plans →
+                  </button>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+          <!-- Equation Box -->
+          <div style="max-width: 768px; margin: 32px auto 0; text-align: center;">
+            <div style="background: #ffffff; border: 1px solid var(--color-neutral-200); border-radius: 20px; padding: 20px;" class="why-card-shadow">
+              <div style="display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: var(--color-neutral-600); margin-bottom: 12px;">
+                <span style="background: var(--color-neutral-100); padding: 6px 12px; border-radius: 8px; color: var(--color-neutral-800);">₹₹₹ Money</span>
+                <span style="color: var(--color-neutral-400);">+</span>
+                <span style="background: var(--color-neutral-100); padding: 6px 12px; border-radius: 8px; color: var(--color-neutral-800);">⏱ Time</span>
+                <span style="color: var(--color-neutral-400);">+</span>
+                <span style="background: var(--color-neutral-100); padding: 6px 12px; border-radius: 8px; color: var(--color-neutral-800);">🛒 Groceries</span>
+                <span style="color: var(--color-neutral-400);">+</span>
+                <span style="background: var(--color-neutral-100); padding: 6px 12px; border-radius: 8px; color: var(--color-neutral-800);">🍳 Cooking</span>
+                <span style="color: var(--color-neutral-400);">+</span>
+                <span style="background: var(--color-neutral-100); padding: 6px 12px; border-radius: 8px; color: var(--color-neutral-800);">🍽 Cleaning</span>
+              </div>
+              
+              <div style="color: var(--color-primary-600); font-weight: 900; font-size: 22px; margin: 6px 0;">↓</div>
+
+              <div style="display: inline-block; background: var(--color-primary-50); color: var(--color-primary-800); font-weight: 800; font-size: 13px; padding: 8px 20px; border-radius: 12px; border: 1px solid var(--color-primary-200);">
+                PRIMEPLATE — One Simple Meal Subscription
+              </div>
+            </div>
+          </div>
+
+          <!-- Value Stack Section -->
+          <div id="value-stack" style="max-width: 1150px; margin: 56px auto 0;">
+            <div style="text-align: center; max-width: 640px; margin: 0 auto 36px;">
+              <span style="color: var(--color-primary-600); font-weight: 700; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 4px;">Complete Control</span>
+              <h2 class="font-display" style="font-size: clamp(1.5rem, 3.5vw, 2.125rem); font-weight: 800; color: var(--color-neutral-900);">
+                With PrimePlate You Get
+              </h2>
+              <p style="color: var(--color-neutral-600); font-size: 14px; margin-top: 6px;">Everything you need to manage your mess subscription seamlessly in one place.</p>
+            </div>
+
+            <div class="why-value-grid">
+              
+              <div class="why-value-card">
+                <div class="why-value-icon">🍱</div>
+                <h3 class="why-value-title">Meal Subscription</h3>
+                <p class="why-value-desc">Know exactly what you're subscribed to, plan duration, and active status.</p>
+              </div>
+
+              <div class="why-value-card">
+                <div class="why-value-icon">📋</div>
+                <h3 class="why-value-title">Menu Visibility</h3>
+                <p class="why-value-desc">Know what's being served today and tomorrow before you step out.</p>
+              </div>
+
+              <div class="why-value-card">
+                <div class="why-value-icon">💳</div>
+                <h3 class="why-value-title">Payment History</h3>
+                <p class="why-value-desc">Know exactly what you paid, download receipts, and track renewals securely.</p>
+              </div>
+
+              <div class="why-value-card">
+                <div class="why-value-icon">🎫</div>
+                <h3 class="why-value-title">Digital Meal Pass</h3>
+                <p class="why-value-desc">Keep your subscription verification details instantly accessible on your phone.</p>
+              </div>
+
+              <div class="why-value-card">
+                <div class="why-value-icon">🔎</div>
+                <h3 class="why-value-title">Discover Other Messes</h3>
+                <p class="why-value-desc">Easily compare and switch options when you move locations or change providers.</p>
+              </div>
+
+              <div class="why-value-card">
+                <div class="why-value-icon">🔄</div>
+                <h3 class="why-value-title">Meal Credits <span style="font-size: 10px; font-weight: 500; color: var(--color-neutral-400); font-style: italic; display: block; sm:inline;">(Provider specific)</span></h3>
+                <p class="why-value-desc">If supported by your provider, eligible skipped days can become meal credits per their rules.</p>
+              </div>
+
+            </div>
+
+            <div style="margin-top: 24px; background: var(--color-neutral-100); border-radius: 16px; padding: 16px; text-align: center; border: 1px solid var(--color-neutral-200); max-width: 600px; margin: 24px auto 0;">
+              <p style="font-size: 12px; color: var(--color-neutral-600); font-weight: 500;">
+                No complicated setup. No daily cooking. Just choose a plan and manage your meals in one place.
+              </p>
+            </div>
+          </div>
+
+          <!-- Section CTA -->
+          <div id="cta" style="max-width: 900px; margin: 60px auto 0;" class="why-cta-banner">
+            <h2 class="font-display" style="font-size: clamp(1.5rem, 3.5vw, 2.125rem); font-weight: 800; margin-bottom: 12px; color: #ffffff;">
+              Ready to reclaim your time and meals?
+            </h2>
+            <p style="color: var(--color-primary-100); font-size: 14px; max-width: 560px; margin: 0 auto 24px; line-height: 1.5;">
+              Find a plan that fits your budget, location, and food needs without the daily hassle of cooking.
+            </p>
+
+            <div style="display: flex; flex-wrap: wrap; items-center: center; justify-content: center; gap: 12px; margin-bottom: 24px;">
+              <button id="whyCtaFindPlanBtn" class="btn-primary-action" style="background: #ffffff; color: var(--color-primary-700); font-weight: 700; padding: 12px 24px; font-size: 14px; border-radius: 12px;">
+                Find Your Meal Plan <i class="fa-solid fa-arrow-right"></i>
+              </button>
+              <button id="whyCtaExploreOptionsBtn" class="btn-outline-action" style="background: rgba(255,255,255,0.1); color: #ffffff; border: 1px solid rgba(255,255,255,0.3); font-weight: 700; padding: 12px 24px; font-size: 14px; border-radius: 12px;">
+                Explore Mess Options
+              </button>
+            </div>
+
+            <p style="font-size: 11px; color: rgba(255,255,255,0.65); max-width: 540px; margin: 0 auto; line-height: 1.5;">
+              *Illustrative comparison. Actual costs vary by location, food habits, provider, and plan. Meal-credit and pricing details depend on participating local providers.
+            </p>
+          </div>
+
+        </div>
+      </section>
+
       <!-- Top Rated Mess Grid -->
       <section style="padding: 60px 16px; background: #fff;">
         <div style="max-width: 1280px; margin: 0 auto;">
@@ -250,4 +527,13 @@ export async function renderHome() {
   document.getElementById('heroSignUpBtn')?.addEventListener('click', () => navigate('#/login'));
   document.getElementById('viewAllBtn')?.addEventListener('click', () => navigate('#/providers'));
   document.getElementById('ctaFindMessBtn')?.addEventListener('click', () => navigate('#/providers'));
+  document.getElementById('whyViewPlansBtn')?.addEventListener('click', () => navigate('#/providers'));
+  document.getElementById('whyCtaFindPlanBtn')?.addEventListener('click', () => navigate('#/providers'));
+  document.getElementById('whyCtaExploreOptionsBtn')?.addEventListener('click', () => navigate('#/providers'));
+
+  if (window.location.hash.includes('why-primeplate')) {
+    setTimeout(() => {
+      document.getElementById('why-primeplate')?.scrollIntoView({ behavior: 'smooth' });
+    }, 100);
+  }
 }

@@ -23,17 +23,19 @@ export function navigate(path: string) {
 
 function onHashChange() {
   const fullHash = window.location.hash || '#/home';
-  const baseHash = fullHash.split('?')[0];
+  const cleanHash = fullHash.split('?')[0];
+  const parts = cleanHash.split('#').filter(Boolean);
+  const routeCandidate = parts.length > 0 && parts[0].startsWith('/') ? '#' + parts[0] : '#/home';
 
-  // 1. Exact match first (using baseHash to support query parameters like ?token=...)
-  const exact = routes.find((r) => !r.isDynamic && r.pattern === baseHash);
+  // 1. Exact match first
+  const exact = routes.find((r) => !r.isDynamic && r.pattern === routeCandidate);
   if (exact) {
     exact.handler();
     return;
   }
 
   // 2. Dynamic route match (e.g. #/providers/:id or #/checkout/:planId)
-  const dynamic = routes.find((r) => r.isDynamic && baseHash.startsWith(r.pattern));
+  const dynamic = routes.find((r) => r.isDynamic && routeCandidate.startsWith(r.pattern));
   if (dynamic) {
     dynamic.handler();
     return;

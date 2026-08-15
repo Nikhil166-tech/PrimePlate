@@ -9,9 +9,15 @@ export function renderNavbar(): string {
   const isProvider = role === 'PROVIDER' || role === 'MEAL_PROVIDER';
   const isAdmin = role === 'ADMIN';
 
+  const isWhyActive = currentHash.includes('why-primeplate');
+  const isHomeActive = (currentHash === '#/home' || currentHash === '' || currentHash === '#/') && !isWhyActive;
+
   const navLinksHtml = `
-    <a href="#/home" class="nav-item-btn ${currentHash === '#/home' || currentHash === '' ? 'active' : ''}">
+    <a href="#/home" class="nav-item-btn ${isHomeActive ? 'active' : ''}">
       <i class="fa-solid fa-house"></i> Home
+    </a>
+    <a href="#/home#why-primeplate" class="nav-item-btn ${isWhyActive ? 'active' : ''}">
+      <i class="fa-solid fa-circle-question"></i> Why Choose Us?
     </a>
     <a href="#/providers" class="nav-item-btn ${currentHash.startsWith('#/providers') ? 'active' : ''}">
       <i class="fa-solid fa-store"></i> Browse Mess
@@ -96,6 +102,17 @@ export function attachNavbarEvents() {
 
   document.querySelectorAll('.logoutBtnAction').forEach((btn) => {
     btn.addEventListener('click', handleLogout);
+  });
+
+  document.querySelectorAll('a[href*="why-primeplate"]').forEach((link) => {
+    link.addEventListener('click', () => {
+      const el = document.getElementById('why-primeplate');
+      if (el) {
+        setTimeout(() => {
+          el.scrollIntoView({ behavior: 'smooth' });
+        }, 50);
+      }
+    });
   });
 
   const toggleBtn = document.getElementById('mobileNavToggleBtn');

@@ -46,13 +46,8 @@ export class ProvidersService {
       acceptingSubscriptions: dto.acceptingSubscriptions ?? true,
       amenities: dto.amenities || [],
       contactPhone: dto.contactPhone || user.phone || '',
-<<<<<<< HEAD
-      latitude: dto.latitude,
-      longitude: dto.longitude,
-=======
       latitude: dto.latitude ?? null,
       longitude: dto.longitude ?? null,
->>>>>>> 4b7ac3f (feat: implement live location for PG owners & students, student review system, and mobile UI refinement)
       approvalStatus: ProviderApprovalStatus.PENDING,
       verified: false,
     } as Partial<MealProvider>);

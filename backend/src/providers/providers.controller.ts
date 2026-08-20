@@ -57,6 +57,18 @@ export class ProvidersController {
     return this.providersService.search({ name, city, category });
   }
 
+  @Get('nearby')
+  async findNearby(
+    @Query('lat') lat: string,
+    @Query('lng') lng: string,
+    @Query('radius') radius?: string,
+  ) {
+    const parsedLat = parseFloat(lat);
+    const parsedLng = parseFloat(lng);
+    const parsedRadius = radius ? parseFloat(radius) : 5;
+    return this.providersService.findNearby(parsedLat, parsedLng, parsedRadius);
+  }
+
   @Get('pending')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN)

@@ -21,8 +21,16 @@ export async function renderOwnerPortal() {
   let selectedHostel: any = null;
   let showModal = false;
   let showEditPriceModal = false;
+  let showEditLocationModal = false;
+  let showManagePanel = false;
   let editingMenu: { dayIdx: number; mealType: string } | null = null;
   let editingMenuValue = '';
+  let capturedCenterLat: number | null = null;
+  let capturedCenterLng: number | null = null;
+  let capturedAddLat: number | null = null;
+  let capturedAddLng: number | null = null;
+  let modalEditLat: number | null = null;
+  let modalEditLng: number | null = null;
 
   const fetchHostels = async () => {
     try {
@@ -77,8 +85,23 @@ export async function renderOwnerPortal() {
     }
   };
 
+  let providerReviews: any[] = [];
+  const fetchProviderReviews = async () => {
+    if (!selectedHostel || selectedHostel.approvalStatus !== 'APPROVED') {
+      providerReviews = [];
+      return;
+    }
+    try {
+      const data: any = await api.get(`/reviews/provider/${selectedHostel.id}`);
+      providerReviews = Array.isArray(data) ? data : [];
+    } catch (_) {
+      providerReviews = [];
+    }
+  };
+
   await fetchLiveSubs();
   await fetchWeeklyMenus();
+  await fetchProviderReviews();
 
   const render = () => {
     const totalSubscribersCount = liveSubs.length;
@@ -211,6 +234,21 @@ export async function renderOwnerPortal() {
                       <option value="South Indian">South Indian</option>
                       <option value="North Indian">North Indian</option>
                     </select>
+                  </div>
+                </div>
+
+                <div style="background: var(--color-neutral-50); border: 1px solid var(--color-neutral-200); border-radius: 16px; padding: 16px;">
+                  <label style="font-size: 13px; font-weight: 700; color: var(--color-neutral-800); display: block; margin-bottom: 4px;">📍 Exact PG/Hostel Location (GPS)</label>
+                  <p style="font-size: 11px; color: var(--color-neutral-500); margin-bottom: 10px; line-height: 1.4;">
+                    <i class="fa-solid fa-circle-info" style="color: var(--color-primary-600);"></i> Please make sure you are at or near your PG/hostel location when capturing GPS coordinates.
+                  </p>
+                  <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                    <button type="button" id="cLocationBtn" class="btn-outline-action" style="padding: 9px 16px; font-size: 13px; font-weight: 700; background: #fff; display: inline-flex; align-items: center; gap: 6px;">
+                      <i class="fa-solid fa-crosshairs" style="color: var(--color-primary-600);"></i> 📍 Use My Current Location
+                    </button>
+                    <span id="cLocationStatus" style="font-size: 12px; color: var(--color-neutral-500); font-weight: 500;">
+                      Location coordinates not captured yet
+                    </span>
                   </div>
                 </div>
 
@@ -353,50 +391,118 @@ export async function renderOwnerPortal() {
               <button class="quick-nav-btn btn-outline-action" data-target="subscribersSection" style="font-size: 13px; font-weight: 700; padding: 8px 16px; border-radius: 999px; background: #fff; cursor: pointer;">
                 <i class="fa-solid fa-users" style="color: #22c55e;"></i> Subscribers
               </button>
+              <button class="quick-nav-btn btn-outline-action" data-target="providerReviewsSection" style="font-size: 13px; font-weight: 700; padding: 8px 16px; border-radius: 999px; background: #fff; cursor: pointer;">
+                <i class="fa-solid fa-star" style="color: #f59e0b;"></i> Reviews (${providerReviews.length})
+              </button>
             </div>
 
-            <!-- SECTION 1: Hostel / Mess Profile Section (Clean Responsive System) -->
+            <!-- SECTION 1: Provider / Mess Profile Management Card (Refined Hierarchy) -->
             <div id="messProfileSection" class="owner-section-card" style="background: #fff; border: 1px solid var(--color-neutral-200); border-radius: 20px; padding: 20px; margin-bottom: 24px; box-shadow: 0 4px 12px rgba(0,0,0,0.03);">
-              <div style="display: flex; align-items: flex-start; gap: 14px; flex-wrap: wrap;">
+              
+              <!-- 1. Header: PG Image + PG Name + Location + Phone -->
+              <div style="display: flex; align-items: flex-start; gap: 14px; margin-bottom: 16px;">
                 <img src="${getSafeImageUrl(selectedHostel.imageUrl)}" alt="${escapeHtml(selectedHostel.name)}" style="width: 80px; height: 80px; border-radius: 14px; object-fit: cover; flex-shrink: 0; border: 1px solid var(--color-neutral-200);" />
                 
-                <div style="flex: 1; min-width: 200px;">
-                  <h2 class="font-display" style="font-size: 20px; font-weight: 800; color: var(--color-neutral-900); margin: 0 0 6px 0;">${escapeHtml(selectedHostel.name)}</h2>
+                <div style="flex: 1; min-width: 0;">
+                  <h2 class="font-display" style="font-size: 20px; font-weight: 800; color: var(--color-neutral-900); margin: 0 0 4px 0; word-break: break-word;">${escapeHtml(selectedHostel.name)}</h2>
                   
-                  <p style="font-size: 13px; color: var(--color-neutral-600); display: flex; align-items: center; gap: 6px; margin: 0 0 4px 0;">
-                    <i class="fa-solid fa-location-dot" style="font-size: 12px; color: var(--color-neutral-400);"></i> ${escapeHtml(selectedHostel.address || selectedHostel.city || 'Location not specified')}
+                  <p style="font-size: 13px; color: var(--color-neutral-700); margin: 0 0 4px 0; display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                    <i class="fa-solid fa-location-dot" style="font-size: 13px; color: var(--color-primary-600);"></i>
+                    <span>${escapeHtml(selectedHostel.address || selectedHostel.city || 'Location not specified')}</span>
                   </p>
-                  
-                  <p style="font-size: 13px; color: var(--color-neutral-600); display: flex; align-items: center; gap: 6px; margin: 0 0 10px 0;">
-                    <i class="fa-solid fa-phone" style="font-size: 12px; color: var(--color-neutral-400);"></i> ${escapeHtml(selectedHostel.contactPhone || 'No phone recorded')}
+
+                  <p style="font-size: 13px; color: var(--color-neutral-600); margin: 0; display: flex; align-items: center; gap: 6px;">
+                    <i class="fa-solid fa-phone" style="font-size: 12px; color: var(--color-neutral-400);"></i>
+                    <span>${escapeHtml(selectedHostel.contactPhone || 'No phone recorded')}</span>
                   </p>
-                  
-                  <div style="display: flex; flex-wrap: wrap; gap: 6px;">
-                    <span style="font-size: 12px; font-weight: 700; background: var(--color-primary-50); color: var(--color-primary-700); padding: 4px 10px; border-radius: 8px;">
-                      ${escapeHtml(selectedHostel.category || 'Veg & Non-Veg')}
-                    </span>
-                    <span style="font-size: 12px; font-weight: 600; background: var(--color-neutral-100); color: var(--color-neutral-700); padding: 4px 10px; border-radius: 8px;">
-                      ₹${monthlyPriceNum.toLocaleString('en-IN')}/month
-                    </span>
-                    <span style="font-size: 12px; font-weight: 600; background: var(--color-neutral-100); color: var(--color-neutral-700); padding: 4px 10px; border-radius: 8px;">
-                      ${totalSubscribersCount}/${selectedHostel.totalCapacity ?? 50} filled
-                    </span>
+                </div>
+              </div>
+
+              <!-- 2. Primary Status Row: Price, Kitchen Status, Category, Capacity -->
+              <div style="background: var(--color-neutral-50); border: 1px solid var(--color-neutral-200); border-radius: 16px; padding: 14px; margin-bottom: 16px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 10px; flex-wrap: wrap;">
+                  <div>
+                    <span style="font-size: 18px; font-weight: 800; color: var(--color-neutral-900);">₹${monthlyPriceNum.toLocaleString('en-IN')}</span>
+                    <span style="font-size: 13px; color: var(--color-neutral-500); font-weight: 600;">/ month</span>
+                  </div>
+
+                  <div style="display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: 999px; font-size: 12px; font-weight: 700; background: ${selectedHostel.acceptingSubscriptions !== false ? '#d1fae5' : '#fee2e2'}; color: ${selectedHostel.acceptingSubscriptions !== false ? '#047857' : '#b91c1c'}; border: 1px solid ${selectedHostel.acceptingSubscriptions !== false ? '#a7f3d0' : '#fca5a5'};">
+                    <i class="fa-solid fa-circle" style="font-size: 8px; color: ${selectedHostel.acceptingSubscriptions !== false ? '#10b981' : '#ef4444'};"></i>
+                    <span>${selectedHostel.acceptingSubscriptions !== false ? 'Kitchen OPEN' : 'Kitchen CLOSED'}</span>
+                  </div>
+                </div>
+
+                <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap;">
+                  <span style="font-size: 12px; font-weight: 700; background: var(--color-primary-50); color: var(--color-primary-700); padding: 4px 10px; border-radius: 8px;">
+                    ${escapeHtml(selectedHostel.category || 'Veg & Non-Veg')}
+                  </span>
+
+                  <div style="display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; color: var(--color-neutral-700);">
+                    <span>👥 ${totalSubscribersCount} / ${selectedHostel.totalCapacity ?? 50} students</span>
+                    <div style="height: 6px; background: var(--color-neutral-200); border-radius: 999px; overflow: hidden; width: 60px; display: inline-block;" title="${Math.min(100, Math.round((totalSubscribersCount / (selectedHostel.totalCapacity ?? 50)) * 100))}% Capacity">
+                      <div style="width: ${Math.min(100, Math.round((totalSubscribersCount / (selectedHostel.totalCapacity ?? 50)) * 100))}%; height: 100%; background: var(--color-primary-600); border-radius: 999px;"></div>
+                    </div>
                   </div>
                 </div>
               </div>
 
-              <!-- Hostel Actions Bar -->
-              <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--color-neutral-100); align-items: center;">
-                <button class="open-edit-price-btn btn-primary-action" style="font-size: 13px; padding: 8px 16px; border-radius: 10px; font-weight: 700;">
-                  <i class="fa-solid fa-pen-to-square"></i> Change Price
-                </button>
-                <button id="toggleOpenBtn" class="btn-outline-action" style="font-size: 13px; padding: 8px 14px; border-radius: 10px; background: ${selectedHostel.acceptingSubscriptions !== false ? '#d1fae5' : '#fee2e2'}; color: ${selectedHostel.acceptingSubscriptions !== false ? '#059669' : '#dc2626'}; border: 1px solid ${selectedHostel.acceptingSubscriptions !== false ? '#a7f3d0' : '#fca5a5'}; font-weight: 700;">
-                  <i class="fa-solid ${selectedHostel.acceptingSubscriptions !== false ? 'fa-door-open' : 'fa-door-closed'}"></i> ${selectedHostel.acceptingSubscriptions !== false ? 'Kitchen: OPEN' : 'Kitchen: CLOSED'}
-                </button>
-                <button id="editCapacityBtn" class="btn-outline-action" style="font-size: 13px; padding: 8px 14px; border-radius: 10px; font-weight: 600;">
-                  <i class="fa-solid fa-users-gear"></i> Set Capacity (${selectedHostel.totalCapacity ?? 'Not set'})
-                </button>
+              <!-- 3. Primary Action Button -->
+              <button id="toggleManagePgBtn" class="btn-primary-action" style="width: 100%; justify-content: center; padding: 12px 16px; font-size: 14px; font-weight: 700; border-radius: 12px; min-height: 44px; touch-action: manipulation; cursor: pointer;">
+                <i class="fa-solid ${showManagePanel ? 'fa-chevron-up' : 'fa-sliders'}"></i> ${showManagePanel ? 'Close Management Panel' : 'Manage PG'}
+              </button>
+
+              <!-- 4. Secondary Management Panel (Revealed when Manage PG is clicked) -->
+              <div id="secondaryManagePanel" style="display: ${showManagePanel ? 'flex' : 'none'}; flex-direction: column; gap: 12px; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--color-neutral-200);">
+                
+                <!-- Row 1: Location -->
+                <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 10px 14px; background: var(--color-neutral-50); border: 1px solid var(--color-neutral-200); border-radius: 12px; flex-wrap: wrap;">
+                  <div>
+                    <span style="font-size: 11px; font-weight: 700; color: var(--color-neutral-500); text-transform: uppercase; display: block; margin-bottom: 2px;">Location</span>
+                    <span style="font-size: 13px; font-weight: 600; color: #059669; display: inline-flex; align-items: center; gap: 4px;">
+                      <i class="fa-solid fa-circle-check"></i> ${selectedHostel.latitude && selectedHostel.longitude ? 'Location saved' : 'Location not set'}
+                    </span>
+                  </div>
+                  <button type="button" id="openEditLocationModalBtn" class="btn-outline-action" style="padding: 8px 14px; font-size: 12px; font-weight: 700; background: #fff; border-radius: 8px; min-height: 38px; cursor: pointer;">
+                    <i class="fa-solid fa-location-crosshairs"></i> Update Location
+                  </button>
+                </div>
+
+                <!-- Row 2: Subscription Price -->
+                <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 10px 14px; background: var(--color-neutral-50); border: 1px solid var(--color-neutral-200); border-radius: 12px; flex-wrap: wrap;">
+                  <div>
+                    <span style="font-size: 11px; font-weight: 700; color: var(--color-neutral-500); text-transform: uppercase; display: block; margin-bottom: 2px;">Subscription Price</span>
+                    <span style="font-size: 14px; font-weight: 800; color: var(--color-neutral-900);">₹${monthlyPriceNum.toLocaleString('en-IN')} / month</span>
+                  </div>
+                  <button type="button" class="open-edit-price-btn btn-outline-action" style="padding: 8px 14px; font-size: 12px; font-weight: 700; background: #fff; border-radius: 8px; min-height: 38px; cursor: pointer;">
+                    <i class="fa-solid fa-pen-to-square"></i> Change Price
+                  </button>
+                </div>
+
+                <!-- Row 3: Capacity -->
+                <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 10px 14px; background: var(--color-neutral-50); border: 1px solid var(--color-neutral-200); border-radius: 12px; flex-wrap: wrap;">
+                  <div>
+                    <span style="font-size: 11px; font-weight: 700; color: var(--color-neutral-500); text-transform: uppercase; display: block; margin-bottom: 2px;">Capacity</span>
+                    <span style="font-size: 13px; font-weight: 600; color: var(--color-neutral-800);">👥 ${totalSubscribersCount} / ${selectedHostel.totalCapacity ?? 50} students</span>
+                  </div>
+                  <button type="button" id="editCapacityBtn" class="btn-outline-action" style="padding: 8px 14px; font-size: 12px; font-weight: 700; background: #fff; border-radius: 8px; min-height: 38px; cursor: pointer;">
+                    <i class="fa-solid fa-users-gear"></i> Manage Capacity
+                  </button>
+                </div>
+
+                <!-- Row 4: Kitchen Status -->
+                <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 10px 14px; background: var(--color-neutral-50); border: 1px solid var(--color-neutral-200); border-radius: 12px; flex-wrap: wrap;">
+                  <div>
+                    <span style="font-size: 11px; font-weight: 700; color: var(--color-neutral-500); text-transform: uppercase; display: block; margin-bottom: 2px;">Kitchen</span>
+                    <span style="font-size: 13px; font-weight: 700; color: ${selectedHostel.acceptingSubscriptions !== false ? '#059669' : '#dc2626'};">
+                      ${selectedHostel.acceptingSubscriptions !== false ? '🟢 Open' : '🔴 Closed'}
+                    </span>
+                  </div>
+                  <button type="button" id="toggleOpenBtn" class="btn-outline-action" style="padding: 8px 14px; font-size: 12px; font-weight: 700; background: #fff; border-radius: 8px; min-height: 38px; cursor: pointer;">
+                    <i class="fa-solid ${selectedHostel.acceptingSubscriptions !== false ? 'fa-door-closed' : 'fa-door-open'}"></i> ${selectedHostel.acceptingSubscriptions !== false ? 'Close Kitchen' : 'Open Kitchen'}
+                  </button>
+                </div>
               </div>
+
             </div>
 
             <!-- Today's Menu Summary Highlight Card -->
@@ -583,6 +689,71 @@ export async function renderOwnerPortal() {
               </div>
 
             </div>
+
+            <!-- SECTION: Provider Customer Reviews & Ratings (View Only) -->
+            <div id="providerReviewsSection" style="background: #fff; border: 1px solid var(--color-neutral-200); border-radius: 24px; padding: 24px; margin-top: 24px; box-shadow: 0 4px 12px rgba(0,0,0,0.03);">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                  <i class="fa-solid fa-star" style="color: #f59e0b; font-size: 22px;"></i>
+                  <div>
+                    <h3 class="font-display" style="font-size: 18px; font-weight: 800; color: var(--color-neutral-900); margin: 0;">Reviews</h3>
+                    <span style="font-size: 12px; color: var(--color-neutral-500);">Reviews written by subscribed students</span>
+                  </div>
+                </div>
+                <div style="display: flex; align-items: center; gap: 16px;">
+                  <div style="text-align: right;">
+                    <span style="font-size: 12px; color: var(--color-neutral-500); display: block;">Average Rating</span>
+                    <strong style="font-size: 16px; color: #f59e0b; font-weight: 800;">
+                      <i class="fa-solid fa-star"></i> ${providerReviews.length > 0 ? (providerReviews.reduce((sum, r) => sum + Number(r.rating || 0), 0) / providerReviews.length).toFixed(1) : (selectedHostel?.rating && Number(selectedHostel.rating) > 0 ? Number(selectedHostel.rating).toFixed(1) : '0.0')}
+                    </strong>
+                  </div>
+                  <div style="text-align: right; border-left: 1px solid var(--color-neutral-200); padding-left: 16px;">
+                    <span style="font-size: 12px; color: var(--color-neutral-500); display: block;">Total Reviews</span>
+                    <strong style="font-size: 16px; color: var(--color-neutral-900); font-weight: 800;">${providerReviews.length}</strong>
+                  </div>
+                </div>
+              </div>
+
+              ${
+                providerReviews.length === 0
+                  ? `
+                    <div style="text-align: center; padding: 40px 16px; background: var(--color-neutral-50); border: 1px dashed var(--color-neutral-300); border-radius: 16px;">
+                      <div style="width: 48px; height: 48px; border-radius: 50%; background: var(--color-neutral-100); display: flex; align-items: center; justify-content: center; margin: 0 auto 12px; color: var(--color-neutral-400); font-size: 20px;">
+                        <i class="fa-solid fa-star"></i>
+                      </div>
+                      <p style="font-size: 14px; font-weight: 600; color: var(--color-neutral-600); margin: 0;">No reviews yet.</p>
+                    </div>
+                  `
+                  : `
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px;">
+                      ${providerReviews
+                        .map((r: any) => {
+                          const studentName = escapeHtml(r.student?.name || 'Student Customer');
+                          const dateStr = r.createdAt
+                            ? new Date(r.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+                            : '';
+                          const starStr = '★'.repeat(r.rating) + '☆'.repeat(5 - r.rating);
+
+                          return `
+                            <div style="background: var(--color-neutral-50); border: 1px solid var(--color-neutral-200); border-radius: 16px; padding: 18px; display: flex; flex-direction: column; gap: 8px; overflow-wrap: anywhere; word-break: break-word;">
+                              <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px;">
+                                <div>
+                                  <strong style="font-size: 14px; font-weight: 700; color: var(--color-neutral-900); display: block;">${studentName}</strong>
+                                  <span style="font-size: 12px; color: var(--color-neutral-500);">${escapeHtml(dateStr)}</span>
+                                </div>
+                                <span style="color: #f59e0b; font-size: 14px; font-weight: 700; letter-spacing: 1px;">
+                                  ${starStr}
+                                </span>
+                              </div>
+                              <p style="font-size: 14px; color: var(--color-neutral-700); line-height: 1.5; margin: 0;">${escapeHtml(r.comment)}</p>
+                            </div>
+                          `;
+                        })
+                        .join('')}
+                    </div>
+                  `
+              }
+            </div>
           `
       }
         </div>
@@ -634,6 +805,21 @@ export async function renderOwnerPortal() {
               <input type="text" id="hPhone" class="btn-outline-action" style="width: 100%; background: #fff;" placeholder="Phone" required />
             </div>
 
+            <div style="background: var(--color-neutral-50); border: 1px solid var(--color-neutral-200); border-radius: 14px; padding: 14px;">
+              <label style="font-size: 12px; font-weight: 700; display: block; margin-bottom: 4px; color: var(--color-neutral-800);">📍 Exact PG/Hostel Location (GPS)</label>
+              <p style="font-size: 11px; color: var(--color-neutral-500); margin-bottom: 10px; line-height: 1.4;">
+                <i class="fa-solid fa-circle-info" style="color: var(--color-primary-600);"></i> Please make sure you are at or near your PG/hostel location when capturing GPS coordinates.
+              </p>
+              <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                <button type="button" id="hLocationBtn" class="btn-outline-action" style="padding: 8px 14px; font-size: 13px; font-weight: 700; background: #fff; display: inline-flex; align-items: center; gap: 6px;">
+                  <i class="fa-solid fa-crosshairs" style="color: var(--color-primary-600);"></i> 📍 Use My Current Location
+                </button>
+                <span id="hLocationStatus" style="font-size: 12px; color: var(--color-neutral-500); font-weight: 500;">
+                  Location coordinates not captured yet
+                </span>
+              </div>
+            </div>
+
             <button type="submit" class="btn-primary-action" style="width: 100%; justify-content: center; padding: 12px; font-size: 15px; margin-top: 8px;">
               Submit for Admin Approval
             </button>
@@ -664,12 +850,257 @@ export async function renderOwnerPortal() {
         </div>
       </div>
 
+      <!-- Modal: Update PG/Hostel Location & GPS -->
+      <div id="editLocationModal" style="display: ${showEditLocationModal ? 'flex' : 'none'}; position: fixed; inset: 0; background: rgba(0,0,0,0.55); align-items: center; justify-content: center; z-index: 1000; padding: 16px;">
+        <div style="background: #fff; border-radius: 24px; max-width: 480px; width: 100%; padding: 24px; box-shadow: 0 20px 40px rgba(0,0,0,0.25); max-height: 90vh; overflow-y: auto;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+            <h3 class="font-display" style="font-size: 18px; font-weight: 800; color: var(--color-neutral-900); margin: 0;">
+              📍 Update PG Location & GPS
+            </h3>
+            <button id="closeEditLocationModalBtn" style="background: none; border: none; font-size: 24px; cursor: pointer; color: var(--color-neutral-500); padding: 4px; min-width: 32px;">&times;</button>
+          </div>
+
+          <form id="editLocationForm" style="display: flex; flex-direction: column; gap: 16px;">
+            <div style="background: var(--color-neutral-50); border: 1px solid var(--color-neutral-200); border-radius: 16px; padding: 14px;">
+              <label style="font-size: 12px; font-weight: 700; color: var(--color-neutral-800); display: block; margin-bottom: 4px;">GPS Coordinates</label>
+              <p style="font-size: 11px; color: var(--color-neutral-500); margin-bottom: 10px; line-height: 1.4;">
+                <i class="fa-solid fa-circle-info" style="color: var(--color-primary-600);"></i> Click while standing at or near your PG for maximum accuracy.
+              </p>
+              <div style="display: flex; flex-direction: column; gap: 8px;">
+                <button type="button" id="editGpsDetectBtn" class="btn-outline-action" style="padding: 10px 14px; font-size: 13px; font-weight: 700; background: #fff; display: inline-flex; align-items: center; justify-content: center; gap: 6px; width: 100%; min-height: 44px; touch-action: manipulation;">
+                  <i class="fa-solid fa-crosshairs" style="color: var(--color-primary-600);"></i> 📍 Detect My Current GPS Location
+                </button>
+                <span id="editGpsStatus" style="font-size: 12px; color: var(--color-neutral-600); font-weight: 600; text-align: center; display: block; margin-top: 2px;">
+                  ${selectedHostel?.latitude && selectedHostel?.longitude ? `✓ Current GPS: ${Number(selectedHostel.latitude).toFixed(4)}, ${Number(selectedHostel.longitude).toFixed(4)}` : 'GPS coordinates not set yet'}
+                </span>
+              </div>
+            </div>
+
+            <div>
+              <label style="font-size: 12px; font-weight: 700; color: var(--color-neutral-800); display: block; margin-bottom: 4px;">City *</label>
+              <input type="text" id="editCityInput" class="btn-outline-action" style="width: 100%; background: #fff; padding: 12px 14px; font-size: 14px; min-height: 44px;" value="${escapeHtml(selectedHostel?.city || '')}" required />
+            </div>
+
+            <div>
+              <label style="font-size: 12px; font-weight: 700; color: var(--color-neutral-800); display: block; margin-bottom: 4px;">Full Address / Locality *</label>
+              <input type="text" id="editAddressInput" class="btn-outline-action" style="width: 100%; background: #fff; padding: 12px 14px; font-size: 14px; min-height: 44px;" value="${escapeHtml(selectedHostel?.address || '')}" required />
+            </div>
+
+            <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 8px; flex-wrap: wrap;">
+              <button type="button" id="cancelEditLocationBtn" class="btn-outline-action" style="padding: 12px 16px; font-size: 14px; min-height: 44px; flex: 1;">Cancel</button>
+              <button type="submit" class="btn-primary-action" style="padding: 12px 20px; font-size: 14px; min-height: 44px; flex: 1; justify-content: center;">Save Location</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
       <footer class="footer">
         © ${new Date().getFullYear()} PrimePlate. Premium Meal Subscription Platform.
       </footer>
     `;
 
     attachNavbarEvents();
+
+    const setupLocationBtn = (btnId: string, statusId: string, onCaptured: (lat: number, lng: number) => void) => {
+      const btn = document.getElementById(btnId) as HTMLButtonElement;
+      const status = document.getElementById(statusId);
+      if (!btn || !status) return;
+
+      btn.addEventListener('click', () => {
+        if (!navigator.geolocation) {
+          status.innerHTML = `<span style="color: #dc2626;"><i class="fa-solid fa-circle-exclamation"></i> Location services are not supported by this browser.</span>`;
+          showToast('Location services are not supported by this browser.', 'error');
+          return;
+        }
+
+        btn.disabled = true;
+        btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Detecting GPS...`;
+        status.innerHTML = `<span style="color: var(--color-primary-600);">Accessing GPS location...</span>`;
+
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            btn.disabled = false;
+            btn.innerHTML = `<i class="fa-solid fa-check" style="color: #059669;"></i> Location Captured`;
+            const lat = Math.round(pos.coords.latitude * 10000) / 10000;
+            const lng = Math.round(pos.coords.longitude * 10000) / 10000;
+            onCaptured(pos.coords.latitude, pos.coords.longitude);
+            status.innerHTML = `<span style="color: #059669; font-weight: 700;"><i class="fa-solid fa-circle-check"></i> Location captured (${lat}, ${lng})</span>`;
+            showToast('✓ Location captured successfully', 'success');
+          },
+          (err) => {
+            btn.disabled = false;
+            btn.innerHTML = `<i class="fa-solid fa-crosshairs"></i> Try Again`;
+            let userMsg = "We couldn't access your location. Please enter your address details manually below.";
+            if (err.code === err.PERMISSION_DENIED) {
+              userMsg = "Location permission denied. Please enter your location details manually below.";
+            } else if (err.code === err.POSITION_UNAVAILABLE) {
+              userMsg = "Location information is unavailable. Please enter your address details manually.";
+            } else if (err.code === err.TIMEOUT) {
+              userMsg = "Location request timed out. Please try again or enter address manually.";
+            }
+            status.innerHTML = `<span style="color: var(--color-neutral-600);"><i class="fa-solid fa-circle-info"></i> ${userMsg}</span>`;
+            showToast(userMsg, 'error');
+          },
+          { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+        );
+      });
+    };
+
+    setupLocationBtn('cLocationBtn', 'cLocationStatus', (lat, lng) => {
+      capturedCenterLat = lat;
+      capturedCenterLng = lng;
+    });
+
+    setupLocationBtn('hLocationBtn', 'hLocationStatus', (lat, lng) => {
+      capturedAddLat = lat;
+      capturedAddLng = lng;
+    });
+
+    document.getElementById('toggleManagePgBtn')?.addEventListener('click', () => {
+      showManagePanel = !showManagePanel;
+      render();
+    });
+
+    document.getElementById('openEditLocationModalBtn')?.addEventListener('click', () => {
+      showEditLocationModal = true;
+      modalEditLat = selectedHostel?.latitude ?? null;
+      modalEditLng = selectedHostel?.longitude ?? null;
+      render();
+    });
+
+    const closeLocationModal = () => {
+      showEditLocationModal = false;
+      modalEditLat = null;
+      modalEditLng = null;
+      render();
+    };
+
+    document.getElementById('closeEditLocationModalBtn')?.addEventListener('click', closeLocationModal);
+    document.getElementById('cancelEditLocationBtn')?.addEventListener('click', closeLocationModal);
+
+    document.getElementById('editGpsDetectBtn')?.addEventListener('click', () => {
+      if (!navigator.geolocation) {
+        showToast('Location services are not supported by this browser.', 'error');
+        return;
+      }
+      const btn = document.getElementById('editGpsDetectBtn') as HTMLButtonElement;
+      const status = document.getElementById('editGpsStatus');
+      if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Detecting GPS...`;
+      }
+      if (status) {
+        status.innerHTML = `<span style="color: var(--color-primary-600);">Accessing GPS location...</span>`;
+      }
+
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          modalEditLat = pos.coords.latitude;
+          modalEditLng = pos.coords.longitude;
+          if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = `<i class="fa-solid fa-check" style="color: #059669;"></i> GPS Location Captured`;
+          }
+          if (status) {
+            const lat = Math.round(pos.coords.latitude * 10000) / 10000;
+            const lng = Math.round(pos.coords.longitude * 10000) / 10000;
+            status.innerHTML = `<span style="color: #059669; font-weight: 700;"><i class="fa-solid fa-circle-check"></i> GPS Captured: ${lat}, ${lng}</span>`;
+          }
+          showToast('✓ GPS location captured', 'success');
+        },
+        (err) => {
+          if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = `<i class="fa-solid fa-crosshairs"></i> Try Again`;
+          }
+          let userMsg = "We couldn't access your location.";
+          if (err.code === err.PERMISSION_DENIED) userMsg = "Location permission denied.";
+          if (status) {
+            status.innerHTML = `<span style="color: var(--color-neutral-600);">${userMsg}</span>`;
+          }
+          showToast(userMsg, 'error');
+        },
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+      );
+    });
+
+    const editLocationForm = document.getElementById('editLocationForm') as HTMLFormElement;
+    if (editLocationForm) {
+      editLocationForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        if (!selectedHostel) return;
+        const city = (editLocationForm.querySelector('#editCityInput') as HTMLInputElement).value;
+        const address = (editLocationForm.querySelector('#editAddressInput') as HTMLInputElement).value;
+
+        try {
+          const payload: any = {
+            name: selectedHostel.name,
+            city,
+            address,
+          };
+          if (modalEditLat !== null && modalEditLng !== null) {
+            payload.latitude = modalEditLat;
+            payload.longitude = modalEditLng;
+          }
+
+          await api.put(`/providers/${selectedHostel.id}`, payload);
+          selectedHostel.city = city;
+          selectedHostel.address = address;
+          if (modalEditLat !== null && modalEditLng !== null) {
+            selectedHostel.latitude = modalEditLat;
+            selectedHostel.longitude = modalEditLng;
+          }
+          showToast('✓ Location details updated successfully', 'success');
+          closeLocationModal();
+        } catch (err: any) {
+          showToast(err.message || 'Failed to update location details', 'error');
+        }
+      });
+    }
+
+    document.getElementById('updateOwnerGpsBtn')?.addEventListener('click', () => {
+      if (!selectedHostel) return;
+      if (!navigator.geolocation) {
+        showToast('Location services are not supported by this browser.', 'error');
+        return;
+      }
+      const btn = document.getElementById('updateOwnerGpsBtn') as HTMLButtonElement;
+      if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Detecting GPS...`;
+      }
+      navigator.geolocation.getCurrentPosition(
+        async (pos) => {
+          try {
+            await api.put(`/providers/${selectedHostel.id}`, {
+              name: selectedHostel.name,
+              latitude: pos.coords.latitude,
+              longitude: pos.coords.longitude,
+            });
+            selectedHostel.latitude = pos.coords.latitude;
+            selectedHostel.longitude = pos.coords.longitude;
+            showToast('✓ GPS location updated successfully', 'success');
+            render();
+          } catch (err: any) {
+            showToast(err.message || 'Failed to update GPS location', 'error');
+            if (btn) {
+              btn.disabled = false;
+              btn.innerHTML = `<i class="fa-solid fa-location-crosshairs"></i> Try Again`;
+            }
+          }
+        },
+        (err) => {
+          if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = `<i class="fa-solid fa-location-crosshairs"></i> Try Again`;
+          }
+          let userMsg = "We couldn't access your location.";
+          if (err.code === err.PERMISSION_DENIED) userMsg = "Location permission denied.";
+          showToast(userMsg, 'error');
+        },
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+      );
+    });
 
     // STATE 1 Form Listener: Centered Inline Registration
     const centerForm = document.getElementById('centerHostelForm') as HTMLFormElement;
@@ -695,6 +1126,8 @@ export async function renderOwnerPortal() {
             contactPhone: phone,
             category,
             description: '',
+            latitude: capturedCenterLat ?? undefined,
+            longitude: capturedCenterLng ?? undefined,
           });
           showToast('Registration submitted! Pending Admin approval.', 'success');
           renderOwnerPortal();
@@ -865,6 +1298,7 @@ export async function renderOwnerPortal() {
         selectedHostel = hostels.find((h) => h.id === id) || selectedHostel;
         await fetchLiveSubs();
         await fetchWeeklyMenus();
+        await fetchProviderReviews();
         render();
       });
     });
@@ -922,6 +1356,8 @@ export async function renderOwnerPortal() {
             monthlyPrice: price,
             totalCapacity: capacity,
             contactPhone: phone,
+            latitude: capturedAddLat ?? undefined,
+            longitude: capturedAddLng ?? undefined,
           });
           showToast('New hostel listing submitted for Admin approval.', 'success');
           showModal = false;

@@ -4,6 +4,17 @@ import { showToast } from '../components/toast';
 import { renderNavbar, attachNavbarEvents } from '../components/navbar';
 import { escapeHtml, getSafeImageUrl } from '../utils/sanitize';
 
+function getCurrentUserId(): string | null {
+  const token = localStorage.getItem('accessToken');
+  if (!token) return null;
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    return payload.userId || payload.sub || payload.id || null;
+  } catch (_) {
+    return null;
+  }
+}
+
 export async function renderProviderDetail(providerId: string) {
   const container = document.getElementById('app')!;
 
@@ -48,11 +59,16 @@ export async function renderProviderDetail(providerId: string) {
   };
 
   try {
-    const [providerRes, plansRes, menuRes, revRes] = await Promise.allSettled([
+    const token = localStorage.getItem('accessToken');
+    const userRole = (localStorage.getItem('userRole') || '').toUpperCase();
+    const currentUserId = getCurrentUserId();
+
+    const [providerRes, plansRes, menuRes, revRes, subRes] = await Promise.allSettled([
       api.get(`/providers/${providerId}`),
       api.get(`/meal-plans/provider/${providerId}`),
       api.get(`/weekly-menus/provider/${providerId}`),
       api.get(`/reviews/provider/${providerId}`),
+      token && userRole === 'STUDENT' ? api.get('/subscriptions') : Promise.resolve([]),
     ]);
 
     const provider: any = providerRes.status === 'fulfilled' ? providerRes.value : null;
@@ -64,6 +80,10 @@ export async function renderProviderDetail(providerId: string) {
     const mealPlans: any[] = plansRes.status === 'fulfilled' && Array.isArray(plansRes.value) ? plansRes.value : [];
     const weeklyMenus: any[] = menuRes.status === 'fulfilled' && Array.isArray(menuRes.value) ? menuRes.value : [];
     const reviews: any[] = revRes.status === 'fulfilled' && Array.isArray(revRes.value) ? revRes.value : [];
+    const userSubs: any[] = subRes.status === 'fulfilled' && Array.isArray(subRes.value) ? subRes.value : [];
+
+    const isSubscribed = userSubs.some((s: any) => s.mealPlan?.provider?.id === providerId);
+    const myReview = currentUserId ? reviews.find((r: any) => r.student?.id === currentUserId) : null;
 
     const amenitiesList = Array.isArray(provider.amenities) ? provider.amenities : [];
     const totalCap = provider.totalCapacity !== undefined && provider.totalCapacity !== null ? Number(provider.totalCapacity) : null;
@@ -168,30 +188,48 @@ export async function renderProviderDetail(providerId: string) {
         </div>
       `;
 
-    const ratingDisplay = (provider.rating ?? 0) > 0 ? Number(provider.rating).toFixed(1) : 'New';
+    const avgRatingVal = reviews.length > 0
+      ? (reviews.reduce((sum: number, r: any) => sum + Number(r.rating || 0), 0) / reviews.length).toFixed(1)
+      : (provider.rating && Number(provider.rating) > 0 ? Number(provider.rating).toFixed(1) : 'New');
 
     const reviewCards = reviews.length > 0
       ? reviews
-        .map(
-          (r: any) => `
-            <div style="background: #fff; border: 1px solid var(--color-neutral-200); border-radius: 16px; padding: 20px; margin-bottom: 16px;">
-              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                <span style="font-weight: 700; font-size: 15px; color: var(--color-neutral-900);">${escapeHtml(r.student?.name || 'Student Customer')}</span>
-                <span style="color: var(--color-accent-500); font-size: 14px; font-weight: 700;">
-                  <i class="fa-solid fa-star"></i> ${r.rating}.0
-                </span>
+        .map((r: any) => {
+          const isOwner = currentUserId && r.student?.id === currentUserId;
+          const formattedDate = r.createdAt
+            ? new Date(r.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+            : '';
+          const starStr = '★'.repeat(r.rating) + '☆'.repeat(5 - r.rating);
+
+          return `
+            <div style="background: #fff; border: 1px solid var(--color-neutral-200); border-radius: 16px; padding: 20px; margin-bottom: 16px; overflow-wrap: anywhere; word-break: break-word;">
+              <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; flex-wrap: wrap; gap: 8px;">
+                <div>
+                  <span style="font-weight: 700; font-size: 15px; color: var(--color-neutral-900); display: block;">${escapeHtml(r.student?.name || 'Student Customer')}</span>
+                  <span style="font-size: 12px; color: var(--color-neutral-500);">${escapeHtml(formattedDate)}</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 12px;">
+                  <span style="color: #f59e0b; font-size: 15px; font-weight: 700; letter-spacing: 2px;">
+                    ${starStr}
+                  </span>
+                  ${
+                    isOwner
+                      ? `<div style="display: flex; gap: 6px;">
+                          <button class="editReviewBtn btn-outline-action" data-id="${r.id}" style="padding: 4px 10px; font-size: 12px; font-weight: 700;">
+                            <i class="fa-solid fa-pen"></i> Edit
+                          </button>
+                          <button class="deleteReviewBtn btn-outline-action" data-id="${r.id}" style="padding: 4px 10px; font-size: 12px; font-weight: 700; color: #dc2626; border-color: #fca5a5;">
+                            <i class="fa-solid fa-trash"></i> Delete
+                          </button>
+                         </div>`
+                      : ''
+                  }
+                </div>
               </div>
-              <p style="color: var(--color-neutral-600); font-size: 14px; line-height: 1.5; margin-bottom: 12px;">${escapeHtml(r.comment)}</p>
-              ${r.providerReply
-              ? `<div style="background: var(--color-primary-50); border-left: 3px solid var(--color-primary-600); padding: 12px 16px; border-radius: 8px; font-size: 13px;">
-                      <strong style="color: var(--color-primary-700); display: block; margin-bottom: 4px;">Kitchen Owner Reply:</strong>
-                      <span style="color: var(--color-neutral-700);">${escapeHtml(r.providerReply)}</span>
-                     </div>`
-              : ''
-            }
+              <p style="color: var(--color-neutral-700); font-size: 14px; line-height: 1.5; margin: 8px 0 0 0;">${escapeHtml(r.comment)}</p>
             </div>
-          `,
-        )
+          `;
+        })
         .join('')
       : `<p style="color: var(--color-neutral-500); font-size: 14px;">No customer reviews written yet for this provider.</p>`;
 
@@ -220,6 +258,63 @@ export async function renderProviderDetail(providerId: string) {
         </div>
       `;
 
+    let reviewActionAreaHtml = '';
+    if (userRole === 'STUDENT') {
+      if (isSubscribed) {
+        if (myReview) {
+          reviewActionAreaHtml = `
+            <div style="background: var(--color-primary-50); border: 1px solid var(--color-primary-200); border-radius: 16px; padding: 16px 20px; margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+              <div>
+                <strong style="font-size: 14px; color: var(--color-primary-800); display: block; margin-bottom: 2px;">You reviewed this mess</strong>
+                <span style="font-size: 13px; color: var(--color-primary-700);">Rating: ${'★'.repeat(myReview.rating)} • "${escapeHtml(myReview.comment)}"</span>
+              </div>
+              <div style="display: flex; gap: 8px;">
+                <button id="openEditMyReviewBtn" class="btn-outline-action" style="padding: 8px 16px; font-size: 13px; font-weight: 700; background: #fff;">
+                  <i class="fa-solid fa-pen-to-square"></i> Edit Review
+                </button>
+                <button id="deleteMyReviewBtn" class="btn-outline-action" style="padding: 8px 16px; font-size: 13px; font-weight: 700; background: #fff; color: #dc2626; border-color: #fca5a5;">
+                  <i class="fa-solid fa-trash"></i> Delete
+                </button>
+              </div>
+            </div>
+          `;
+        } else {
+          reviewActionAreaHtml = `
+            <div style="background: var(--color-neutral-50); border: 1px solid var(--color-neutral-200); border-radius: 16px; padding: 20px; margin-bottom: 24px;">
+              <p style="font-size: 14px; font-weight: 600; color: var(--color-neutral-700); margin: 0 0 12px 0;">You haven't reviewed this mess yet.</p>
+              <form id="createReviewForm">
+                <div style="display: flex; gap: 16px; margin-bottom: 12px; flex-wrap: wrap;">
+                  <div>
+                    <label style="font-size: 12px; font-weight: 700; display: block; margin-bottom: 4px; color: var(--color-neutral-800);">Rating *</label>
+                    <select id="reviewRatingSelect" class="btn-outline-action" style="background: #fff; padding: 8px 12px;" required>
+                      <option value="5">⭐⭐⭐⭐⭐ 5 Stars</option>
+                      <option value="4">⭐⭐⭐⭐ 4 Stars</option>
+                      <option value="3">⭐⭐⭐ 3 Stars</option>
+                      <option value="2">⭐⭐ 2 Stars</option>
+                      <option value="1">⭐ 1 Star</option>
+                    </select>
+                  </div>
+                </div>
+                <div style="margin-bottom: 12px;">
+                  <label style="font-size: 12px; font-weight: 700; display: block; margin-bottom: 4px; color: var(--color-neutral-800);">Comment *</label>
+                  <textarea id="reviewCommentText" class="btn-outline-action" style="width: 100%; background: #fff; height: 80px; padding: 10px; resize: vertical;" placeholder="Write your experience with food quality, menu, hygiene..." required></textarea>
+                </div>
+                <button type="submit" class="btn-primary-action" style="padding: 10px 24px; font-size: 14px;">
+                  <i class="fa-solid fa-paper-plane"></i> Submit Review
+                </button>
+              </form>
+            </div>
+          `;
+        }
+      } else {
+        reviewActionAreaHtml = `
+          <div style="background: var(--color-neutral-50); border: 1px dashed var(--color-neutral-300); border-radius: 16px; padding: 16px; margin-bottom: 24px; text-align: center; color: var(--color-neutral-600); font-size: 13px;">
+            <i class="fa-solid fa-lock" style="margin-right: 6px;"></i> Subscribed students can leave a review for this kitchen.
+          </div>
+        `;
+      }
+    }
+
     detailView.innerHTML = `
       <div>
         <button id="backBtn" class="btn-outline-action" style="margin-bottom: 24px; padding: 8px 16px;">
@@ -239,7 +334,7 @@ export async function renderProviderDetail(providerId: string) {
             <div>
               <div style="display: flex; gap: 8px; margin-bottom: 8px; flex-wrap: wrap;">
                 <span style="background: rgba(255,255,255,0.9); color: #000; padding: 4px 12px; border-radius: 8px; font-size: 12px; font-weight: 700;">
-                  <i class="fa-solid fa-star" style="color: var(--color-accent-500);"></i> ${ratingDisplay}
+                  <i class="fa-solid fa-star" style="color: var(--color-accent-500);"></i> ${avgRatingVal}
                 </span>
                 <span style="background: var(--color-primary-500); color: #fff; padding: 4px 12px; border-radius: 8px; font-size: 12px; font-weight: 700;">
                   ${escapeHtml(provider.category || provider.mealType || 'Veg & Non-Veg')}
@@ -262,7 +357,7 @@ export async function renderProviderDetail(providerId: string) {
         </div>
 
         <div class="provider-detail-grid">
-          <!-- Left Main Column (Order: About -> Mobile Subscription Options -> Mobile See Menu Trigger -> Desktop Weekly Menu -> Reviews) -->
+          <!-- Left Main Column -->
           <div style="display: flex; flex-direction: column; gap: 24px;">
             <!-- 1. About Mess -->
             <div style="background: #fff; border: 1px solid var(--color-neutral-200); border-radius: 20px; padding: 28px; box-shadow: 0 4px 12px rgba(0,0,0,0.03);">
@@ -273,7 +368,7 @@ export async function renderProviderDetail(providerId: string) {
               <div style="display: flex; gap: 10px; flex-wrap: wrap;">${amenitiesHtml}</div>
             </div>
 
-            <!-- 2. Mobile-Only Subscription Section -->
+            <!-- 2. Mobile Subscription Section -->
             <div class="mobile-subscription-section" style="background: #fff; border: 1px solid var(--color-neutral-200); border-radius: 20px; padding: 24px; box-shadow: 0 4px 12px rgba(0,0,0,0.03);">
               <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; flex-wrap: wrap; gap: 8px;">
                 <h3 style="font-size: 18px; font-weight: 700; color: var(--color-neutral-900); margin: 0;">Select Meal Plan</h3>
@@ -309,25 +404,17 @@ export async function renderProviderDetail(providerId: string) {
 
             <!-- 4. Customer Reviews Section -->
             <div style="background: #fff; border: 1px solid var(--color-neutral-200); border-radius: 24px; padding: 28px; box-shadow: 0 4px 12px rgba(0,0,0,0.03);">
-              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                <h2 class="font-display" style="font-size: 22px; font-weight: 700; color: var(--color-neutral-900);">Reviews & Ratings</h2>
-                <span style="font-size: 14px; font-weight: 700; color: var(--color-accent-500);">
-                  <i class="fa-solid fa-star"></i> ${ratingDisplay} / 5.0
-                </span>
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px;">
+                <h2 class="font-display" style="font-size: 22px; font-weight: 700; color: var(--color-neutral-900); margin: 0;">Reviews & Ratings</h2>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <span style="font-size: 14px; font-weight: 700; color: var(--color-accent-500);">
+                    <i class="fa-solid fa-star"></i> ${avgRatingVal} / 5.0
+                  </span>
+                  <span style="font-size: 13px; color: var(--color-neutral-500);">(${reviews.length} ${reviews.length === 1 ? 'review' : 'reviews'})</span>
+                </div>
               </div>
 
-              <form id="reviewForm" style="background: var(--color-neutral-50); border: 1px solid var(--color-neutral-200); border-radius: 16px; padding: 20px; margin-bottom: 24px;">
-                <h3 style="font-size: 15px; font-weight: 700; margin-bottom: 12px;">Write a Review</h3>
-                <div style="display: flex; gap: 16px; margin-bottom: 12px;">
-                  <select id="reviewRating" class="btn-outline-action" style="background: #fff;">
-                    <option value="5">⭐⭐⭐⭐⭐ 5 Stars</option>
-                    <option value="4">⭐⭐⭐⭐ 4 Stars</option>
-                    <option value="3">⭐⭐⭐ 3 Stars</option>
-                  </select>
-                </div>
-                <textarea id="reviewComment" class="btn-outline-action" style="width: 100%; background: #fff; height: 70px; margin-bottom: 12px; resize: vertical;" placeholder="Share your experience..." required></textarea>
-                <button type="submit" class="btn-primary-action" style="padding: 8px 20px; font-size: 13px;">Submit Review</button>
-              </form>
+              ${reviewActionAreaHtml}
 
               <div>${reviewCards}</div>
             </div>
@@ -358,7 +445,53 @@ export async function renderProviderDetail(providerId: string) {
         </div>
       </div>
 
-      <!-- Mobile See Menu Modal Overlay -->
+      <!-- Edit Review Modal Overlay -->
+      <div id="editReviewModal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 9999; align-items: center; justify-content: center; padding: 16px; backdrop-filter: blur(4px);">
+        <div style="background: #fff; border-radius: 24px; max-width: 500px; width: 100%; padding: 28px; box-shadow: 0 20px 50px rgba(0,0,0,0.25);">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+            <h3 class="font-display" style="font-size: 18px; font-weight: 800; color: var(--color-neutral-900); margin: 0;">Edit Your Review</h3>
+            <button id="closeEditReviewModalBtn" style="background: none; border: none; font-size: 20px; cursor: pointer; color: var(--color-neutral-500);">&times;</button>
+          </div>
+          <form id="editReviewForm">
+            <input type="hidden" id="editReviewIdInput" value="${myReview?.id || ''}" />
+            <div style="margin-bottom: 14px;">
+              <label style="font-size: 12px; font-weight: 700; display: block; margin-bottom: 4px; color: var(--color-neutral-800);">Rating *</label>
+              <select id="editReviewRatingSelect" class="btn-outline-action" style="width: 100%; background: #fff; padding: 10px 14px;" required>
+                <option value="5" ${myReview?.rating === 5 ? 'selected' : ''}>⭐⭐⭐⭐⭐ 5 Stars</option>
+                <option value="4" ${myReview?.rating === 4 ? 'selected' : ''}>⭐⭐⭐⭐ 4 Stars</option>
+                <option value="3" ${myReview?.rating === 3 ? 'selected' : ''}>⭐⭐⭐ 3 Stars</option>
+                <option value="2" ${myReview?.rating === 2 ? 'selected' : ''}>⭐⭐ 2 Stars</option>
+                <option value="1" ${myReview?.rating === 1 ? 'selected' : ''}>⭐ 1 Star</option>
+              </select>
+            </div>
+            <div style="margin-bottom: 20px;">
+              <label style="font-size: 12px; font-weight: 700; display: block; margin-bottom: 4px; color: var(--color-neutral-800);">Comment *</label>
+              <textarea id="editReviewCommentText" class="btn-outline-action" style="width: 100%; background: #fff; height: 90px; padding: 10px; resize: vertical;" required>${escapeHtml(myReview?.comment || '')}</textarea>
+            </div>
+            <div style="display: flex; justify-content: flex-end; gap: 12px;">
+              <button type="button" id="cancelEditReviewModalBtn" class="btn-outline-action" style="padding: 8px 18px; font-size: 14px;">Cancel</button>
+              <button type="submit" class="btn-primary-action" style="padding: 8px 22px; font-size: 14px;">Save Changes</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- Delete Confirmation Modal Overlay -->
+      <div id="deleteReviewModal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 9999; align-items: center; justify-content: center; padding: 16px; backdrop-filter: blur(4px);">
+        <div style="background: #fff; border-radius: 24px; max-width: 420px; width: 100%; padding: 28px; box-shadow: 0 20px 50px rgba(0,0,0,0.25); text-align: center;">
+          <div style="width: 56px; height: 56px; border-radius: 50%; background: #fee2e2; color: #dc2626; display: flex; align-items: center; justify-content: center; font-size: 24px; margin: 0 auto 16px;">
+            <i class="fa-solid fa-triangle-exclamation"></i>
+          </div>
+          <h3 class="font-display" style="font-size: 18px; font-weight: 800; color: var(--color-neutral-900); margin: 0 0 8px 0;">Delete this review?</h3>
+          <p style="font-size: 14px; color: var(--color-neutral-600); margin: 0 0 24px 0;">This action cannot be undone. Your rating and comment will be removed permanently.</p>
+          <div style="display: flex; justify-content: center; gap: 12px;">
+            <button id="cancelDeleteReviewModalBtn" class="btn-outline-action" style="padding: 10px 20px; font-size: 14px;">Cancel</button>
+            <button id="confirmDeleteReviewBtn" class="btn-primary-action" style="padding: 10px 22px; font-size: 14px; background: #dc2626; border-color: #dc2626;">Delete</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Weekly Menu Modal -->
       <div id="weeklyMenuModal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 9999; align-items: center; justify-content: center; padding: 16px; backdrop-filter: blur(4px);">
         <div style="background: #fff; border-radius: 24px; max-width: 600px; width: 100%; max-height: 85vh; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 20px 50px rgba(0,0,0,0.25);">
           <div style="padding: 20px 24px; border-bottom: 1px solid var(--color-neutral-200); display: flex; align-items: center; justify-content: space-between; background: var(--color-neutral-50);">
@@ -395,46 +528,6 @@ export async function renderProviderDetail(providerId: string) {
       if (e.target === menuModal) menuModal.style.display = 'none';
     });
 
-    // Desktop Plan Radio Toggle
-    document.querySelectorAll('input[name="durationPlanSelect"]').forEach((radio) => {
-      radio.addEventListener('change', () => {
-        document.querySelectorAll('.duration-plan-card').forEach((card) => {
-          (card as HTMLElement).style.borderColor = '#e5e7eb';
-          (card as HTMLElement).style.borderWidth = '1px';
-          (card as HTMLElement).style.background = '#ffffff';
-        });
-        const checkedRadio = document.querySelector('input[name="durationPlanSelect"]:checked') as HTMLInputElement;
-        if (checkedRadio) {
-          const cardLabel = checkedRadio.closest('.duration-plan-card') as HTMLElement;
-          if (cardLabel) {
-            cardLabel.style.borderColor = '#f97316';
-            cardLabel.style.borderWidth = '2px';
-            cardLabel.style.background = '#fff8f0';
-          }
-        }
-      });
-    });
-
-    // Mobile Plan Radio Toggle
-    document.querySelectorAll('input[name="mobileDurationPlanSelect"]').forEach((radio) => {
-      radio.addEventListener('change', () => {
-        document.querySelectorAll('.mobile-duration-plan-card').forEach((card) => {
-          (card as HTMLElement).style.borderColor = '#e5e7eb';
-          (card as HTMLElement).style.borderWidth = '1px';
-          (card as HTMLElement).style.background = '#ffffff';
-        });
-        const checkedRadio = document.querySelector('input[name="mobileDurationPlanSelect"]:checked') as HTMLInputElement;
-        if (checkedRadio) {
-          const cardLabel = checkedRadio.closest('.mobile-duration-plan-card') as HTMLElement;
-          if (cardLabel) {
-            cardLabel.style.borderColor = '#f97316';
-            cardLabel.style.borderWidth = '2px';
-            cardLabel.style.background = '#fff8f0';
-          }
-        }
-      });
-    });
-
     // Desktop Subscribe Button
     document.getElementById('sidebarSubscribeBtn')?.addEventListener('click', () => {
       const selectedRadio = document.querySelector('input[name="durationPlanSelect"]:checked') as HTMLInputElement;
@@ -451,20 +544,118 @@ export async function renderProviderDetail(providerId: string) {
       navigate(`#/checkout/${targetPlanId}?days=${selectedDays}`);
     });
 
-    const reviewForm = document.getElementById('reviewForm') as HTMLFormElement;
-    reviewForm?.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const rating = parseInt((document.getElementById('reviewRating') as HTMLSelectElement).value);
-      const comment = (document.getElementById('reviewComment') as HTMLTextAreaElement).value;
+    // Create Review Form Listener
+    const createReviewForm = document.getElementById('createReviewForm') as HTMLFormElement;
+    if (createReviewForm) {
+      createReviewForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const rating = parseInt((document.getElementById('reviewRatingSelect') as HTMLSelectElement).value);
+        const comment = (document.getElementById('reviewCommentText') as HTMLTextAreaElement).value.trim();
 
+        if (!comment) {
+          showToast('Please enter a review comment', 'error');
+          return;
+        }
+
+        try {
+          await api.post('/reviews', { providerId, rating, comment });
+          showToast('Review submitted successfully!', 'success');
+          renderProviderDetail(providerId);
+        } catch (err: any) {
+          showToast(err.message || 'Failed to submit review', 'error');
+        }
+      });
+    }
+
+    // Edit Review Modal Handlers
+    const editReviewModal = document.getElementById('editReviewModal');
+    const openEditModal = (revId: string) => {
+      const targetRev = reviews.find((r) => r.id === revId) || myReview;
+      if (!targetRev || !editReviewModal) return;
+      (document.getElementById('editReviewIdInput') as HTMLInputElement).value = targetRev.id;
+      (document.getElementById('editReviewRatingSelect') as HTMLSelectElement).value = String(targetRev.rating);
+      (document.getElementById('editReviewCommentText') as HTMLTextAreaElement).value = targetRev.comment || '';
+      editReviewModal.style.display = 'flex';
+    };
+
+    document.getElementById('openEditMyReviewBtn')?.addEventListener('click', () => {
+      if (myReview) openEditModal(myReview.id);
+    });
+
+    document.querySelectorAll('.editReviewBtn').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        const revId = (e.currentTarget as HTMLElement).getAttribute('data-id');
+        if (revId) openEditModal(revId);
+      });
+    });
+
+    const closeEditModal = () => {
+      if (editReviewModal) editReviewModal.style.display = 'none';
+    };
+    document.getElementById('closeEditReviewModalBtn')?.addEventListener('click', closeEditModal);
+    document.getElementById('cancelEditReviewModalBtn')?.addEventListener('click', closeEditModal);
+
+    const editReviewForm = document.getElementById('editReviewForm') as HTMLFormElement;
+    if (editReviewForm) {
+      editReviewForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const revId = (document.getElementById('editReviewIdInput') as HTMLInputElement).value;
+        const rating = parseInt((document.getElementById('editReviewRatingSelect') as HTMLSelectElement).value);
+        const comment = (document.getElementById('editReviewCommentText') as HTMLTextAreaElement).value.trim();
+
+        if (!comment) {
+          showToast('Please enter a review comment', 'error');
+          return;
+        }
+
+        try {
+          await api.patch(`/reviews/${revId}`, { rating, comment });
+          showToast('Review updated successfully!', 'success');
+          closeEditModal();
+          renderProviderDetail(providerId);
+        } catch (err: any) {
+          showToast(err.message || 'Failed to update review', 'error');
+        }
+      });
+    }
+
+    // Delete Review Modal Handlers
+    let targetDeleteId: string | null = null;
+    const deleteReviewModal = document.getElementById('deleteReviewModal');
+    const openDeleteModal = (revId: string) => {
+      targetDeleteId = revId;
+      if (deleteReviewModal) deleteReviewModal.style.display = 'flex';
+    };
+
+    document.getElementById('deleteMyReviewBtn')?.addEventListener('click', () => {
+      if (myReview) openDeleteModal(myReview.id);
+    });
+
+    document.querySelectorAll('.deleteReviewBtn').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        const revId = (e.currentTarget as HTMLElement).getAttribute('data-id');
+        if (revId) openDeleteModal(revId);
+      });
+    });
+
+    const closeDeleteModal = () => {
+      targetDeleteId = null;
+      if (deleteReviewModal) deleteReviewModal.style.display = 'none';
+    };
+    document.getElementById('cancelDeleteReviewModalBtn')?.addEventListener('click', closeDeleteModal);
+
+    document.getElementById('confirmDeleteReviewBtn')?.addEventListener('click', async () => {
+      if (!targetDeleteId) return;
       try {
-        await api.post('/reviews', { providerId, rating, comment });
-        showToast('Review submitted successfully!', 'success');
+        await api.delete(`/reviews/${targetDeleteId}`);
+        showToast('Review deleted successfully!', 'success');
+        closeDeleteModal();
         renderProviderDetail(providerId);
       } catch (err: any) {
-        showToast(err.message || 'Failed to submit review', 'error');
+        showToast(err.message || 'Failed to delete review', 'error');
       }
     });
+
   } catch (err: any) {
     renderError(err.message || 'Server error while fetching kitchen details.');
   }

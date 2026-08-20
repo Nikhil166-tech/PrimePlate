@@ -2,6 +2,7 @@ import { navigate } from '../router';
 import { renderNavbar, attachNavbarEvents } from '../components/navbar';
 import api from '../api';
 import { escapeHtml, getSafeImageUrl } from '../utils/sanitize';
+import { showToast } from '../components/toast';
 
 export async function renderHome() {
   const container = document.getElementById('app')!;
@@ -25,8 +26,11 @@ export async function renderHome() {
               PrimePlate connects students and IT professionals with hostels and PGs that cook fresh food daily. Get a digital mess card and enjoy home-style meals without cooking.
             </p>
             <div class="hero-btn-group" style="display: flex; gap: 12px; flex-wrap: wrap;">
-              <button id="heroBrowseBtn" class="btn-primary-action" style="padding: 12px 24px; font-size: 15px; border-radius: 12px;">
-                Find a Mess Near You <i class="fa-solid fa-arrow-right"></i>
+              <button id="heroFindNearMeBtn" class="btn-primary-action" style="padding: 12px 24px; font-size: 15px; border-radius: 12px; background: var(--color-primary-600);">
+                <i class="fa-solid fa-crosshairs"></i> 📍 Find Messes Near Me
+              </button>
+              <button id="heroBrowseBtn" class="btn-outline-action" style="padding: 12px 24px; font-size: 15px; border-radius: 12px;">
+                Browse All Messes <i class="fa-solid fa-arrow-right"></i>
               </button>
               <button id="heroSignUpBtn" class="btn-outline-action" style="padding: 12px 24px; font-size: 15px; border-radius: 12px;">
                 <i class="fa-solid fa-qrcode"></i> Sign Up Free
@@ -480,7 +484,10 @@ export async function renderHome() {
               <div class="hostel-badge-tag">${escapeHtml(h.category || h.mealType || 'Veg / Non-Veg')}</div>
               <div class="hostel-card-overlay">
                 <h3 class="font-display" style="font-size: 18px; font-weight: 700; color: #fff;">${escapeHtml(h.name)}</h3>
-                <p style="font-size: 13px; color: rgba(255,255,255,0.85);"><i class="fa-solid fa-location-dot"></i> ${escapeHtml(h.area || h.address || '')}${h.city ? ', ' + escapeHtml(h.city) : ''}</p>
+                <p style="font-size: 13px; color: rgba(255,255,255,0.85);">
+                  <i class="fa-solid fa-location-dot"></i> ${escapeHtml(h.area || h.address || '')}${h.city ? ', ' + escapeHtml(h.city) : ''}
+                  ${h.distanceKm !== undefined && h.distanceKm !== null ? `<span style="background: rgba(255,255,255,0.25); color: #fff; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 700; margin-left: 6px;"><i class="fa-solid fa-location-arrow"></i> 📍 ${Number(h.distanceKm).toFixed(1)} km away</span>` : ''}
+                </p>
               </div>
             </div>
             <div class="hostel-card-body">
@@ -522,6 +529,115 @@ export async function renderHome() {
   };
 
   await loadProviders();
+
+  document.getElementById('heroFindNearMeBtn')?.addEventListener('click', () => {
+    if (!navigator.geolocation) {
+      showToast('Location services are not supported by your browser.', 'error');
+      return;
+    }
+
+    const btn = document.getElementById('heroFindNearMeBtn') as HTMLButtonElement;
+    if (btn) {
+      btn.disabled = true;
+      btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Detecting location...`;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        try {
+          const lat = pos.coords.latitude;
+          const lng = pos.coords.longitude;
+          const data: any = await api.get(`/providers/nearby?lat=${lat}&lng=${lng}&radius=5`);
+          const items = Array.isArray(data) ? data : [];
+          
+          if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = `<i class="fa-solid fa-crosshairs"></i> 📍 Find Messes Near Me`;
+          }
+
+          if (items.length === 0) {
+            showToast('No approved messes found within 5 km of your location.', 'info');
+            grid.innerHTML = `
+              <div style="grid-column: 1 / -1; background: #fff; border: 1px solid var(--color-neutral-200); border-radius: 20px; padding: 48px; text-align: center;">
+                <i class="fa-solid fa-location-dot" style="font-size: 40px; color: var(--color-neutral-400); margin-bottom: 16px;"></i>
+                <h3 class="font-display" style="font-size: 18px; font-weight: 700; color: var(--color-neutral-900); margin-bottom: 8px;">No Approved Messes Found Near You (Within 5 km)</h3>
+                <p style="color: var(--color-neutral-500); font-size: 14px; margin-bottom: 20px;">Try searching by city or area in the marketplace.</p>
+                <button id="browseAllFallBtn" class="btn-primary-action" style="padding: 10px 20px;">
+                  Browse All Messes
+                </button>
+              </div>
+            `;
+            document.getElementById('browseAllFallBtn')?.addEventListener('click', () => navigate('#/providers'));
+          } else {
+            showToast(`Found ${items.length} approved mess provider(s) near your location!`, 'success');
+            grid.innerHTML = items
+              .map(
+                (h) => `
+                <div class="hostel-card" data-id="${h.id}">
+                  <div class="hostel-card-image">
+                    <img src="${getSafeImageUrl(h.imageUrl)}" alt="${escapeHtml(h.name)}" />
+                    <div class="hostel-badge-rating">
+                      <i class="fa-solid fa-star" style="color: var(--color-accent-500);"></i>
+                      <span>${(h.rating ?? 0) > 0 ? Number(h.rating).toFixed(1) : 'New'}</span>
+                    </div>
+                    <div class="hostel-badge-tag">${escapeHtml(h.category || h.mealType || 'Veg / Non-Veg')}</div>
+                    <div class="hostel-card-overlay">
+                      <h3 class="font-display" style="font-size: 18px; font-weight: 700; color: #fff;">${escapeHtml(h.name)}</h3>
+                      <p style="font-size: 13px; color: rgba(255,255,255,0.85);">
+                        <i class="fa-solid fa-location-dot"></i> ${escapeHtml(h.area || h.address || '')}${h.city ? ', ' + escapeHtml(h.city) : ''}
+                        <span style="background: rgba(255,255,255,0.25); color: #fff; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 700; margin-left: 6px;"><i class="fa-solid fa-location-arrow"></i> 📍 ${Number(h.distanceKm).toFixed(1)} km away</span>
+                      </p>
+                    </div>
+                  </div>
+                  <div class="hostel-card-body">
+                    <p style="font-size: 14px; color: var(--color-neutral-600); margin-bottom: 16px; line-height: 1.5;">${escapeHtml(h.description || 'No description available.')}</p>
+                    <div style="display: flex; justify-content: space-between; align-items: flex-end; border-top: 1px solid var(--color-neutral-100); padding-top: 16px;">
+                      <div>
+                        <span class="price-text">${h.monthlyPrice ? '₹' + Number(h.monthlyPrice).toLocaleString('en-IN') : 'Price Unavailable'}</span>
+                        ${h.monthlyPrice ? '<span style="font-size: 13px; color: var(--color-neutral-500);">/month</span>' : ''}
+                      </div>
+                      <button class="btn-primary-action" style="padding: 8px 16px; font-size: 13px;">
+                        View Plan <i class="fa-solid fa-arrow-right"></i>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              `,
+              )
+              .join('');
+
+            grid.querySelectorAll('.hostel-card').forEach((card) => {
+              card.addEventListener('click', (e) => {
+                const id = (e.currentTarget as HTMLElement).getAttribute('data-id');
+                if (id) navigate(`#/providers/${id}`);
+              });
+            });
+          }
+
+          document.getElementById('homeHostelsGrid')?.scrollIntoView({ behavior: 'smooth' });
+        } catch (err: any) {
+          if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = `<i class="fa-solid fa-crosshairs"></i> 📍 Find Messes Near Me`;
+          }
+          showToast('Unable to load nearby messes. Please try searching manually.', 'error');
+        }
+      },
+      (err) => {
+        if (btn) {
+          btn.disabled = false;
+          btn.innerHTML = `<i class="fa-solid fa-crosshairs"></i> 📍 Find Messes Near Me`;
+        }
+        let userMsg = "We couldn't access your location. You can search by city or area below.";
+        if (err.code === err.PERMISSION_DENIED) {
+          userMsg = "Location permission denied. You can search by city or area below.";
+        }
+        showToast(userMsg, 'error');
+        document.getElementById('homeHostelsGrid')?.scrollIntoView({ behavior: 'smooth' });
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+    );
+  });
 
   document.getElementById('heroBrowseBtn')?.addEventListener('click', () => navigate('#/providers'));
   document.getElementById('heroSignUpBtn')?.addEventListener('click', () => navigate('#/login'));

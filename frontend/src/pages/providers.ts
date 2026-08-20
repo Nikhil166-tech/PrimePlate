@@ -2,6 +2,7 @@ import api from '../api';
 import { navigate } from '../router';
 import { renderNavbar, attachNavbarEvents } from '../components/navbar';
 import { escapeHtml, getSafeImageUrl } from '../utils/sanitize';
+import { showToast } from '../components/toast';
 
 export async function renderProviders() {
   const container = document.getElementById('app')!;
@@ -17,10 +18,10 @@ export async function renderProviders() {
 
         <div class="filter-container">
           <div style="display: flex; flex-wrap: wrap; gap: 12px; align-items: center;">
-            <div style="flex: 2 1 240px;">
+            <div style="flex: 2 1 200px;">
               <input type="text" id="searchInput" class="btn-outline-action" style="width: 100%; text-align: left; background: #fff;" placeholder="🔍 Search mess by name, city, or area..." />
             </div>
-            <div style="flex: 1 1 150px;">
+            <div style="flex: 1 1 130px;">
               <select id="citySelect" class="btn-outline-action" style="width: 100%; text-align: left; background: #fff;">
                 <option value="">All Cities</option>
                 <option value="Bangalore">Bangalore</option>
@@ -28,13 +29,24 @@ export async function renderProviders() {
                 <option value="Delhi NCR">Delhi NCR</option>
               </select>
             </div>
-            <div style="flex: 1 1 150px;">
+            <div style="flex: 1 1 130px;">
               <select id="typeSelect" class="btn-outline-action" style="width: 100%; text-align: left; background: #fff;">
                 <option value="">All Food Types</option>
                 <option value="Veg">Veg</option>
                 <option value="Non Veg">Non Veg</option>
                 <option value="South Indian">South Indian</option>
                 <option value="North Indian">North Indian</option>
+              </select>
+            </div>
+            <div style="display: flex; gap: 8px; flex: 1.5 1 220px;">
+              <button id="findNearMeBtn" class="btn-primary-action" style="padding: 10px 14px; font-size: 13px; font-weight: 700; background: var(--color-primary-600); border-radius: 10px; flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 6px; white-space: nowrap;">
+                <i class="fa-solid fa-crosshairs"></i> 📍 Find Near Me
+              </button>
+              <select id="radiusSelect" class="btn-outline-action" style="background: #fff; padding: 10px 8px; font-size: 13px; border-radius: 10px; width: 90px;" title="Search Radius">
+                <option value="5">5 km</option>
+                <option value="10">10 km</option>
+                <option value="15">15 km</option>
+                <option value="25">25 km</option>
               </select>
             </div>
           </div>
@@ -114,7 +126,10 @@ export async function renderProviders() {
             <div class="hostel-badge-tag">${escapeHtml(h.category || h.mealType || 'Veg / Non-Veg')}</div>
             <div class="hostel-card-overlay">
               <h3 class="font-display" style="font-size: 18px; font-weight: 700; color: #fff;">${escapeHtml(h.name)}</h3>
-              <p style="font-size: 13px; color: rgba(255,255,255,0.85);"><i class="fa-solid fa-location-dot"></i> ${escapeHtml(h.address || h.city || '')}</p>
+              <p style="font-size: 13px; color: rgba(255,255,255,0.85);">
+                <i class="fa-solid fa-location-dot"></i> ${escapeHtml(h.address || h.city || '')}
+                ${h.distanceKm !== undefined && h.distanceKm !== null ? `<span style="background: rgba(255,255,255,0.25); color: #fff; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 700; margin-left: 6px;"><i class="fa-solid fa-location-arrow"></i> 📍 ${Number(h.distanceKm).toFixed(1)} km away</span>` : ''}
+              </p>
             </div>
           </div>
           <div class="hostel-card-body">
@@ -200,4 +215,51 @@ export async function renderProviders() {
   searchInput.addEventListener('input', filterAction);
   citySelect.addEventListener('change', filterAction);
   typeSelect.addEventListener('change', filterAction);
+
+  const findNearMeBtn = document.getElementById('findNearMeBtn') as HTMLButtonElement;
+  const radiusSelect = document.getElementById('radiusSelect') as HTMLSelectElement;
+
+  if (findNearMeBtn) {
+    findNearMeBtn.addEventListener('click', () => {
+      if (!navigator.geolocation) {
+        showToast('Location services are not supported by your browser.', 'error');
+        return;
+      }
+
+      const radVal = radiusSelect ? parseFloat(radiusSelect.value) || 5 : 5;
+      findNearMeBtn.disabled = true;
+      findNearMeBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Locating...`;
+
+      navigator.geolocation.getCurrentPosition(
+        async (pos) => {
+          try {
+            const lat = pos.coords.latitude;
+            const lng = pos.coords.longitude;
+            const data: any = await api.get(`/providers/nearby?lat=${lat}&lng=${lng}&radius=${radVal}`);
+            const items = Array.isArray(data) ? data : [];
+            findNearMeBtn.disabled = false;
+            findNearMeBtn.innerHTML = `<i class="fa-solid fa-crosshairs"></i> 📍 Find Near Me`;
+
+            hostels = items;
+            renderCards(hostels);
+            showToast(`Found ${items.length} approved mess provider(s) within ${radVal} km`, 'success');
+          } catch (err: any) {
+            findNearMeBtn.disabled = false;
+            findNearMeBtn.innerHTML = `<i class="fa-solid fa-crosshairs"></i> 📍 Find Near Me`;
+            showToast('Unable to fetch nearby messes. Please try manual search.', 'error');
+          }
+        },
+        (err) => {
+          findNearMeBtn.disabled = false;
+          findNearMeBtn.innerHTML = `<i class="fa-solid fa-crosshairs"></i> 📍 Find Near Me`;
+          let userMsg = "We couldn't access your location. You can search by city or area below.";
+          if (err.code === err.PERMISSION_DENIED) {
+            userMsg = "Location permission denied. You can search by city or area below.";
+          }
+          showToast(userMsg, 'error');
+        },
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+      );
+    });
+  }
 }

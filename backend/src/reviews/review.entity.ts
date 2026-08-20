@@ -5,11 +5,13 @@ import {
   ManyToOne,
   CreateDateColumn,
   UpdateDateColumn,
+  Index,
 } from 'typeorm';
 import { User } from '../users/user.entity';
 import { MealProvider } from '../providers/meal-provider.entity';
 
 @Entity({ name: 'reviews' })
+@Index(['student', 'provider'], { unique: true })
 export class Review {
   @PrimaryGeneratedColumn('uuid')
   id: string;

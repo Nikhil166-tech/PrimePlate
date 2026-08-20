@@ -34,7 +34,19 @@ async function bootstrap() {
   // Production CORS Configuration
   if (isProduction) {
     app.enableCors({
-      origin: frontendUrl,
+      origin: (origin, callback) => {
+        if (!origin) return callback(null, true);
+        const cleanOrigin = origin.replace(/\/$/, '');
+        const targetFrontend = frontendUrl ? frontendUrl.replace(/\/$/, '') : '';
+        if (
+          !targetFrontend ||
+          cleanOrigin === targetFrontend ||
+          cleanOrigin.endsWith('.vercel.app')
+        ) {
+          return callback(null, true);
+        }
+        return callback(null, true);
+      },
       credentials: true,
     });
   } else {

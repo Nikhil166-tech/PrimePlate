@@ -13,7 +13,7 @@ const apiBaseUrl = rawApiUrl || 'http://127.0.0.1:5000/api/v1';
 
 const api: AxiosInstance = axios.create({
   baseURL: apiBaseUrl,
-  timeout: 15000,
+  timeout: 60000,
 });
 
 // Attach JWT access token if present

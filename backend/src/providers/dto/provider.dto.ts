@@ -1,9 +1,10 @@
-import { IsString, IsOptional, IsUrl, IsEnum } from 'class-validator';
+import { IsString, IsOptional, IsUrl, IsEnum, IsNumber, Min, Max } from 'class-validator';
 import { Category } from '../../common/enums/category.enum';
 
 export class ProviderDto {
+  @IsOptional()
   @IsString()
-  name: string;
+  name?: string;
 
   @IsOptional()
   @IsString()
@@ -40,4 +41,16 @@ export class ProviderDto {
 
   @IsOptional()
   acceptingSubscriptions?: boolean;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(-90)
+  @Max(90)
+  latitude?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(-180)
+  @Max(180)
+  longitude?: number;
 }

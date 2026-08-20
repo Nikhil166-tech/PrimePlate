@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   ForbiddenException,
+  BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, FindOptionsWhere, ILike } from 'typeorm';
@@ -45,6 +46,8 @@ export class ProvidersService {
       acceptingSubscriptions: dto.acceptingSubscriptions ?? true,
       amenities: dto.amenities || [],
       contactPhone: dto.contactPhone || user.phone || '',
+      latitude: dto.latitude,
+      longitude: dto.longitude,
       approvalStatus: ProviderApprovalStatus.PENDING,
       verified: false,
     } as Partial<MealProvider>);
@@ -139,6 +142,8 @@ export class ProvidersService {
     if (dto.acceptingSubscriptions !== undefined) provider.acceptingSubscriptions = dto.acceptingSubscriptions;
     if (dto.amenities !== undefined) provider.amenities = dto.amenities;
     if (dto.contactPhone !== undefined) provider.contactPhone = dto.contactPhone;
+    if (dto.latitude !== undefined) provider.latitude = dto.latitude;
+    if (dto.longitude !== undefined) provider.longitude = dto.longitude;
     if (dto.monthlyPrice !== undefined) {
       provider.monthlyPrice = dto.monthlyPrice;
       const plans = await this.providerRepo.manager.find(MealPlan, {
@@ -152,6 +157,44 @@ export class ProvidersService {
 
     const saved = await this.providerRepo.save(provider);
     return this.attachCapacityInfo(saved);
+  }
+
+  async findNearby(lat: number, lng: number, radius: number = 5): Promise<any[]> {
+    if (isNaN(lat) || lat < -90 || lat > 90) {
+      throw new BadRequestException('Invalid latitude parameter. Must be a number between -90 and 90.');
+    }
+    if (isNaN(lng) || lng < -180 || lng > 180) {
+      throw new BadRequestException('Invalid longitude parameter. Must be a number between -180 and 180.');
+    }
+
+    const approvedProviders = await this.providerRepo.find({
+      where: { approvalStatus: ProviderApprovalStatus.APPROVED },
+      relations: { user: true },
+    });
+
+    const results: any[] = [];
+    for (const p of approvedProviders) {
+      if (p.latitude !== null && p.latitude !== undefined && p.longitude !== null && p.longitude !== undefined) {
+        const dLat = (p.latitude - lat) * (Math.PI / 180);
+        const dLng = (p.longitude - lng) * (Math.PI / 180);
+        const a =
+          Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+          Math.cos(lat * (Math.PI / 180)) *
+            Math.cos(p.latitude * (Math.PI / 180)) *
+            Math.sin(dLng / 2) *
+            Math.sin(dLng / 2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        const distKm = Math.round(6371 * c * 10) / 10;
+
+        if (distKm <= radius) {
+          const withCap = await this.attachCapacityInfo(p);
+          results.push({ ...withCap, distanceKm: distKm });
+        }
+      }
+    }
+
+    results.sort((a, b) => a.distanceKm - b.distanceKm);
+    return results;
   }
 
   async approve(id: string): Promise<MealProvider> {

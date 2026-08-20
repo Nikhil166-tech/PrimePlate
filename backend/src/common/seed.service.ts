@@ -37,7 +37,13 @@ export class SeedService implements OnApplicationBootstrap {
     const isProduction = process.env.NODE_ENV === 'production';
     const isSeedEnabled = process.env.ENABLE_SEED === 'true';
 
-    this.logger.log(`Seed enabled: ${isSeedEnabled}`);
+    try {
+      await this.providerRepo.query(
+        `ALTER TABLE "meal_providers" ADD COLUMN IF NOT EXISTS "latitude" double precision, ADD COLUMN IF NOT EXISTS "longitude" double precision;`,
+      );
+    } catch (_) {
+      // Ignore for SQLite or if columns exist
+    }
 
     try {
       await this.seedAdmin();

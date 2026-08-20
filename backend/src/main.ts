@@ -25,36 +25,45 @@ async function bootstrap() {
     app.getHttpAdapter().getInstance().set('trust proxy', 1);
   }
 
+  // Allowed Origins for Production and Local Development
+  const defaultOrigins = [
+    'https://prime-plate-chi.vercel.app',
+    'http://localhost:5173',
+    'http://127.0.0.1:5173',
+  ];
+
+  const allowedOrigins: string[] = [...defaultOrigins];
+
+  if (frontendUrl) {
+    const customOrigins = frontendUrl
+      .split(',')
+      .map((url) => url.trim().replace(/\/$/, ''))
+      .filter((url) => url.length > 0);
+
+    customOrigins.forEach((url) => {
+      if (!allowedOrigins.includes(url)) {
+        allowedOrigins.push(url);
+      }
+    });
+  }
+
+  // Enable CORS prior to middleware, helmet, and route handlers
+  app.enableCors({
+    origin: allowedOrigins,
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
+  });
+
   // Global prefix for versioned API
   app.setGlobalPrefix('api/v1');
 
   // Security Headers
-  app.use(helmet());
-
-  // Production CORS Configuration
-  if (isProduction) {
-    app.enableCors({
-      origin: (origin, callback) => {
-        if (!origin) return callback(null, true);
-        const cleanOrigin = origin.replace(/\/$/, '');
-        const targetFrontend = frontendUrl ? frontendUrl.replace(/\/$/, '') : '';
-        if (
-          !targetFrontend ||
-          cleanOrigin === targetFrontend ||
-          cleanOrigin.endsWith('.vercel.app')
-        ) {
-          return callback(null, true);
-        }
-        return callback(null, true);
-      },
-      credentials: true,
-    });
-  } else {
-    app.enableCors({
-      origin: true,
-      credentials: true,
-    });
-  }
+  app.use(
+    helmet({
+      crossOriginResourcePolicy: { policy: 'cross-origin' },
+    }),
+  );
 
   // Global Rate Limiter (300 requests / 15 minutes)
   app.use(

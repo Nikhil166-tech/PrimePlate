@@ -36,7 +36,8 @@ export class UploadsController {
     schema: { example: { url: 'https://res.cloudinary.com/.../image.jpg' } },
   })
   async upload(@UploadedFile() file: any) {
-    if (!file) throw new BadRequestException('No image file provided in request');
+    if (!file)
+      throw new BadRequestException('No image file provided in request');
     const result = await this.uploadsService.upload(file);
     return { url: result.secure_url };
   }

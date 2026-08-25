@@ -2,6 +2,7 @@ import api from '../api';
 import { navigate } from '../router';
 import { showToast } from '../components/toast';
 import { renderNavbar, attachNavbarEvents } from '../components/navbar';
+import { renderFooter, attachFooterEvents } from '../components/footer';
 import { escapeHtml } from '../utils/sanitize';
 
 export async function renderAdminPortal() {
@@ -77,7 +78,7 @@ export async function renderAdminPortal() {
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
             <div>
               <h2 class="font-display" style="font-size: 20px; font-weight: 700;">Pending Provider Applications</h2>
-              <p style="color: var(--color-neutral-600); font-size: 13px;">Only approved providers appear in student search results.</p>
+              <p style="color: var(--color-neutral-600); font-size: 13px;">Only approved providers appear in public search results.</p>
             </div>
           </div>
           <div id="pendingList" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px;"></div>
@@ -85,12 +86,11 @@ export async function renderAdminPortal() {
       </div>
     </main>
 
-    <footer class="footer">
-      © ${new Date().getFullYear()} PrimePlate. Premium Meal Subscription Platform.
-    </footer>
+    ${renderFooter()}
   `;
 
   attachNavbarEvents();
+  attachFooterEvents();
 
   // Load Pending Providers
   const pendingList = document.getElementById('pendingList')!;

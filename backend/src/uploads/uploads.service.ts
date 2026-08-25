@@ -53,7 +53,11 @@ export class UploadsService {
         { folder },
         (error, result) => {
           if (error)
-            reject(new BadRequestException(error.message || 'Cloudinary upload error'));
+            reject(
+              new BadRequestException(
+                error.message || 'Cloudinary upload error',
+              ),
+            );
           else resolve(result as { secure_url: string });
         },
       );

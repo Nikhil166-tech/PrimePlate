@@ -1,5 +1,6 @@
 import api from '../api';
 import { renderNavbar, attachNavbarEvents } from '../components/navbar';
+import { renderFooter, attachFooterEvents } from '../components/footer';
 
 export function renderForgotPassword() {
   const container = document.getElementById('app')!;
@@ -78,12 +79,11 @@ export function renderForgotPassword() {
         </div>
       </main>
 
-      <footer class="footer">
-        © ${new Date().getFullYear()} PrimePlate. Premium Meal Subscription Platform.
-      </footer>
+      ${renderFooter()}
     `;
 
     attachNavbarEvents();
+    attachFooterEvents();
 
     const form = document.getElementById('forgotPasswordForm') as HTMLFormElement;
     if (form) {

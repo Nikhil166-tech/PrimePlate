@@ -38,10 +38,15 @@ export class ReviewsService {
     });
     if (!provider) throw new NotFoundException('Provider not found');
 
-    if (currentUser && (currentUser.role || '').toUpperCase() === Role.PROVIDER) {
+    if (
+      currentUser &&
+      (currentUser.role || '').toUpperCase() === Role.PROVIDER
+    ) {
       const ownerId = provider.userId || provider.user?.id;
       if (ownerId !== currentUser.userId) {
-        throw new ForbiddenException('You can only view reviews for your own PG');
+        throw new ForbiddenException(
+          'You can only view reviews for your own PG',
+        );
       }
     }
 
@@ -74,17 +79,28 @@ export class ReviewsService {
       throw new BadRequestException('providerId is required');
     }
 
-    if (typeof rating !== 'number' || !Number.isInteger(rating) || rating < 1 || rating > 5) {
-      throw new BadRequestException('Rating must be an integer between 1 and 5');
+    if (
+      typeof rating !== 'number' ||
+      !Number.isInteger(rating) ||
+      rating < 1 ||
+      rating > 5
+    ) {
+      throw new BadRequestException(
+        'Rating must be an integer between 1 and 5',
+      );
     }
 
     if (typeof comment !== 'string' || comment.trim().length === 0) {
-      throw new BadRequestException('Comment is required and cannot be empty or whitespace only');
+      throw new BadRequestException(
+        'Comment is required and cannot be empty or whitespace only',
+      );
     }
 
     const trimmedComment = comment.trim();
     if (trimmedComment.length > 1000) {
-      throw new BadRequestException('Comment exceeds maximum length of 1000 characters');
+      throw new BadRequestException(
+        'Comment exceeds maximum length of 1000 characters',
+      );
     }
 
     const student = await this.userRepo.findOne({ where: { id: studentId } });
@@ -105,7 +121,9 @@ export class ReviewsService {
       .getOne();
 
     if (!sub) {
-      throw new ForbiddenException('You can only review a PG you have or had a subscription with');
+      throw new ForbiddenException(
+        'You can only review a PG you have or had a subscription with',
+      );
     }
 
     const existingReview = await this.reviewRepo
@@ -117,7 +135,9 @@ export class ReviewsService {
       .getOne();
 
     if (existingReview) {
-      throw new ConflictException('You have already reviewed this provider. Please edit your existing review.');
+      throw new ConflictException(
+        'You have already reviewed this provider. Please edit your existing review.',
+      );
     }
 
     const review = this.reviewRepo.create({
@@ -152,19 +172,30 @@ export class ReviewsService {
     }
 
     if (rating !== undefined) {
-      if (typeof rating !== 'number' || !Number.isInteger(rating) || rating < 1 || rating > 5) {
-        throw new BadRequestException('Rating must be an integer between 1 and 5');
+      if (
+        typeof rating !== 'number' ||
+        !Number.isInteger(rating) ||
+        rating < 1 ||
+        rating > 5
+      ) {
+        throw new BadRequestException(
+          'Rating must be an integer between 1 and 5',
+        );
       }
       review.rating = rating;
     }
 
     if (comment !== undefined) {
       if (typeof comment !== 'string' || comment.trim().length === 0) {
-        throw new BadRequestException('Comment cannot be empty or whitespace only');
+        throw new BadRequestException(
+          'Comment cannot be empty or whitespace only',
+        );
       }
       const trimmed = comment.trim();
       if (trimmed.length > 1000) {
-        throw new BadRequestException('Comment exceeds maximum length of 1000 characters');
+        throw new BadRequestException(
+          'Comment exceeds maximum length of 1000 characters',
+        );
       }
       review.comment = trimmed;
     }
@@ -174,7 +205,10 @@ export class ReviewsService {
     return updated;
   }
 
-  async delete(studentId: string, reviewId: string): Promise<{ success: boolean }> {
+  async delete(
+    studentId: string,
+    reviewId: string,
+  ): Promise<{ success: boolean }> {
     const review = await this.reviewRepo
       .createQueryBuilder('review')
       .leftJoinAndSelect('review.student', 'student')
@@ -207,7 +241,8 @@ export class ReviewsService {
 
     if (provider) {
       if (reviews.length > 0) {
-        const avg = reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length;
+        const avg =
+          reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length;
         provider.rating = Math.round(avg * 10) / 10;
       } else {
         provider.rating = 0;

@@ -13,7 +13,10 @@ import { UsersService } from '../users/users.service';
 import { Role } from '../common/roles.enum';
 import { ProviderApprovalStatus } from '../common/enums/provider-approval-status.enum';
 
-import { Subscription, SubscriptionStatus } from '../subscriptions/subscription.entity';
+import {
+  Subscription,
+  SubscriptionStatus,
+} from '../subscriptions/subscription.entity';
 import { MealPlan } from '../meal-plans/meal-plan.entity';
 
 @Injectable()
@@ -72,7 +75,12 @@ export class ProvidersService {
 
     // Sanitize user object to never expose passwordHash
     const safeUser = provider.user
-      ? { id: provider.user.id, email: provider.user.email, name: provider.user.name, role: provider.user.role }
+      ? {
+          id: provider.user.id,
+          email: provider.user.email,
+          name: provider.user.name,
+          role: provider.user.role,
+        }
       : undefined;
 
     return {
@@ -95,21 +103,35 @@ export class ProvidersService {
     return Promise.all(providers.map((p) => this.attachCapacityInfo(p)));
   }
 
-  async findNearby(lat: number, lng: number, radius: number = 5): Promise<any[]> {
+  async findNearby(
+    lat: number,
+    lng: number,
+    radius: number = 5,
+  ): Promise<any[]> {
     if (isNaN(lat) || lat < -90 || lat > 90) {
-      throw new BadRequestException('Invalid latitude parameter. Must be a number between -90 and 90.');
+      throw new BadRequestException(
+        'Invalid latitude parameter. Must be a number between -90 and 90.',
+      );
     }
     if (isNaN(lng) || lng < -180 || lng > 180) {
-      throw new BadRequestException('Invalid longitude parameter. Must be a number between -180 and 180.');
+      throw new BadRequestException(
+        'Invalid longitude parameter. Must be a number between -180 and 180.',
+      );
     }
-    const searchRadius = !isNaN(radius) && radius > 0 ? Math.min(radius, 100) : 5;
+    const searchRadius =
+      !isNaN(radius) && radius > 0 ? Math.min(radius, 100) : 5;
 
     // Fetch ONLY APPROVED providers
     const approvedProviders = await this.providerRepo.find({
       where: { approvalStatus: ProviderApprovalStatus.APPROVED },
     });
 
-    const calculateHaversine = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
+    const calculateHaversine = (
+      lat1: number,
+      lon1: number,
+      lat2: number,
+      lon2: number,
+    ): number => {
       const R = 6371; // Earth radius in km
       const dLat = ((lat2 - lat1) * Math.PI) / 180;
       const dLon = ((lon2 - lon1) * Math.PI) / 180;
@@ -123,7 +145,8 @@ export class ProvidersService {
       return R * c;
     };
 
-    const nearbyWithDistance: { provider: MealProvider; distanceKm: number }[] = [];
+    const nearbyWithDistance: { provider: MealProvider; distanceKm: number }[] =
+      [];
 
     for (const p of approvedProviders) {
       if (
@@ -134,7 +157,12 @@ export class ProvidersService {
         !isNaN(Number(p.latitude)) &&
         !isNaN(Number(p.longitude))
       ) {
-        const dist = calculateHaversine(lat, lng, Number(p.latitude), Number(p.longitude));
+        const dist = calculateHaversine(
+          lat,
+          lng,
+          Number(p.latitude),
+          Number(p.longitude),
+        );
         if (dist <= searchRadius) {
           nearbyWithDistance.push({
             provider: p,
@@ -201,10 +229,13 @@ export class ProvidersService {
     if (dto.address !== undefined) provider.address = dto.address;
     if (dto.imageUrl !== undefined) provider.imageUrl = dto.imageUrl;
     if (dto.category !== undefined) provider.category = dto.category;
-    if (dto.totalCapacity !== undefined) provider.totalCapacity = dto.totalCapacity;
-    if (dto.acceptingSubscriptions !== undefined) provider.acceptingSubscriptions = dto.acceptingSubscriptions;
+    if (dto.totalCapacity !== undefined)
+      provider.totalCapacity = dto.totalCapacity;
+    if (dto.acceptingSubscriptions !== undefined)
+      provider.acceptingSubscriptions = dto.acceptingSubscriptions;
     if (dto.amenities !== undefined) provider.amenities = dto.amenities;
-    if (dto.contactPhone !== undefined) provider.contactPhone = dto.contactPhone;
+    if (dto.contactPhone !== undefined)
+      provider.contactPhone = dto.contactPhone;
     if (dto.latitude !== undefined) provider.latitude = dto.latitude;
     if (dto.longitude !== undefined) provider.longitude = dto.longitude;
     if (dto.monthlyPrice !== undefined) {

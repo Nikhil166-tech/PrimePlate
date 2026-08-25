@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { MealPlan } from './meal-plan.entity';
@@ -15,7 +19,12 @@ export class MealPlansService {
 
   async create(
     userId: string,
-    dto: { title: string; pricePerMonth: number; description?: string; providerId: string },
+    dto: {
+      title: string;
+      pricePerMonth: number;
+      description?: string;
+      providerId: string;
+    },
   ): Promise<MealPlan> {
     const provider = await this.providerRepo.findOne({
       where: { id: dto.providerId },
@@ -23,7 +32,9 @@ export class MealPlansService {
     });
     if (!provider) throw new NotFoundException('Provider kitchen not found');
     if (provider.user && provider.user.id !== userId) {
-      throw new ForbiddenException('Cannot create meal plans for another provider');
+      throw new ForbiddenException(
+        'Cannot create meal plans for another provider',
+      );
     }
 
     const plan = this.planRepo.create({
@@ -43,8 +54,14 @@ export class MealPlansService {
     });
     if (plans.length > 0) return plans;
 
-    const provider = await this.providerRepo.findOne({ where: { id: providerId } });
-    if (provider && provider.monthlyPrice && Number(provider.monthlyPrice) > 0) {
+    const provider = await this.providerRepo.findOne({
+      where: { id: providerId },
+    });
+    if (
+      provider &&
+      provider.monthlyPrice &&
+      Number(provider.monthlyPrice) > 0
+    ) {
       const defaultPlan = this.planRepo.create({
         title: 'Monthly Subscription Plan',
         pricePerMonth: Number(provider.monthlyPrice),
@@ -82,7 +99,11 @@ export class MealPlansService {
     if (plan) return plan;
 
     const provider = await this.providerRepo.findOne({ where: { id } });
-    if (provider && provider.monthlyPrice && Number(provider.monthlyPrice) > 0) {
+    if (
+      provider &&
+      provider.monthlyPrice &&
+      Number(provider.monthlyPrice) > 0
+    ) {
       return {
         id: provider.id,
         title: 'Monthly Subscription Plan',

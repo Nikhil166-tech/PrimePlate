@@ -1,4 +1,12 @@
-import { IsString, IsOptional, IsUrl, IsEnum, IsNumber, Min, Max } from 'class-validator';
+import {
+  IsString,
+  IsOptional,
+  IsUrl,
+  IsEnum,
+  IsNumber,
+  Min,
+  Max,
+} from 'class-validator';
 import { Category } from '../../common/enums/category.enum';
 
 export class ProviderDto {

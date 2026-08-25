@@ -22,6 +22,9 @@ export function renderNavbar(): string {
     <a href="#/providers" class="nav-item-btn ${currentHash.startsWith('#/providers') ? 'active' : ''}">
       <i class="fa-solid fa-store"></i> Browse Mess
     </a>
+    <a href="#footer" class="nav-item-btn nav-contact-btn">
+      <i class="fa-solid fa-headset"></i> Contact Us
+    </a>
     ${
       token && isStudent
         ? `<a href="#/dashboard" class="nav-item-btn ${currentHash === '#/dashboard' ? 'active' : ''}">
@@ -111,6 +114,21 @@ export function attachNavbarEvents() {
         setTimeout(() => {
           el.scrollIntoView({ behavior: 'smooth' });
         }, 50);
+      }
+    });
+  });
+
+  document.querySelectorAll('.nav-contact-btn').forEach((link) => {
+    link.addEventListener('click', (e) => {
+      e.preventDefault();
+      const footerEl = document.querySelector('.footer');
+      if (footerEl) {
+        footerEl.scrollIntoView({ behavior: 'smooth' });
+      } else {
+        navigate('#/home');
+        setTimeout(() => {
+          document.querySelector('.footer')?.scrollIntoView({ behavior: 'smooth' });
+        }, 150);
       }
     });
   });

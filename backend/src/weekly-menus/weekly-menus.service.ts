@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { WeeklyMenu } from './weekly-menu.entity';
@@ -23,7 +27,12 @@ export class WeeklyMenusService {
   async saveWeeklyMenu(
     userId: string,
     providerId: string,
-    items: Array<{ dayOfWeek: number; mealType: string; menuItems: string; description?: string }>,
+    items: Array<{
+      dayOfWeek: number;
+      mealType: string;
+      menuItems: string;
+      description?: string;
+    }>,
   ): Promise<WeeklyMenu[]> {
     const provider = await this.providerRepo.findOne({
       where: { id: providerId },
@@ -35,13 +44,15 @@ export class WeeklyMenusService {
     }
 
     if (provider.user?.id !== userId && provider.userId !== userId) {
-      throw new UnauthorizedException('Not authorized to modify menu for this mess');
+      throw new UnauthorizedException(
+        'Not authorized to modify menu for this mess',
+      );
     }
 
     // Upsert menu items per dayOfWeek & mealType
     const savedMenus: WeeklyMenu[] = [];
     for (const item of items) {
-      let existing = await this.menuRepo.findOne({
+      const existing = await this.menuRepo.findOne({
         where: {
           provider: { id: providerId },
           dayOfWeek: item.dayOfWeek,

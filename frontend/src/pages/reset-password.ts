@@ -1,5 +1,6 @@
 import api from '../api';
 import { renderNavbar, attachNavbarEvents } from '../components/navbar';
+import { renderFooter, attachFooterEvents } from '../components/footer';
 
 function getResetTokenFromUrl(): string {
   // 1. Check window.location.search (e.g. http://localhost:5173/?token=XYZ#/reset-password)
@@ -143,12 +144,11 @@ export function renderResetPassword() {
         </div>
       </main>
 
-      <footer class="footer">
-        © ${new Date().getFullYear()} PrimePlate. Premium Meal Subscription Platform.
-      </footer>
+      ${renderFooter()}
     `;
 
     attachNavbarEvents();
+    attachFooterEvents();
 
     const toggleNewPasswordBtn = document.getElementById('toggleNewPasswordBtn');
     const newPasswordInput = document.getElementById('newPassword') as HTMLInputElement;

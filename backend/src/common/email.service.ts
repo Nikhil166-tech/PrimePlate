@@ -7,14 +7,18 @@ export class EmailService {
 
   constructor(private readonly configService: ConfigService) {}
 
-  async sendPasswordResetEmail(toEmail: string, rawToken: string): Promise<void> {
+  async sendPasswordResetEmail(
+    toEmail: string,
+    rawToken: string,
+  ): Promise<void> {
     const frontendUrl =
       this.configService.get<string>('FRONTEND_URL') || 'http://localhost:5173';
     const cleanFrontendUrl = frontendUrl.replace(/\/+$/, '');
     const resetUrl = `${cleanFrontendUrl}/#/reset-password?token=${encodeURIComponent(rawToken)}`;
 
     const apiKey = this.configService.get<string>('EMAIL_PROVIDER_API_KEY');
-    const fromEmail = this.configService.get<string>('EMAIL_FROM') || 'noreply@primeplate.com';
+    const fromEmail =
+      this.configService.get<string>('EMAIL_FROM') || 'noreply@primeplate.com';
 
     const subject = 'PrimePlate Password Reset';
     const textContent = `Someone requested a password reset for your PrimePlate account.
@@ -57,9 +61,13 @@ If you did not request this, you can ignore this email.`;
         });
 
         if (!response.ok) {
-          this.logger.error(`Transactional email delivery failed with status ${response.status}`);
+          this.logger.error(
+            `Transactional email delivery failed with status ${response.status}`,
+          );
         } else {
-          this.logger.log(`Password reset email successfully dispatched to subscriber.`);
+          this.logger.log(
+            `Password reset email successfully dispatched to subscriber.`,
+          );
         }
       } catch (err: any) {
         this.logger.error(`Error sending password reset email: ${err.message}`);

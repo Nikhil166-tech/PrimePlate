@@ -1,4 +1,13 @@
-import { Controller, Get, Post, Param, Body, UseGuards, Req, BadRequestException } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Param,
+  Body,
+  UseGuards,
+  Req,
+  BadRequestException,
+} from '@nestjs/common';
 import { MealPlansService } from './meal-plans.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
@@ -15,10 +24,18 @@ export class MealPlansController {
   @Roles(Role.PROVIDER)
   async create(
     @Req() req: AuthenticatedRequest,
-    @Body() body: { title: string; pricePerMonth: number; description?: string; providerId: string },
+    @Body()
+    body: {
+      title: string;
+      pricePerMonth: number;
+      description?: string;
+      providerId: string;
+    },
   ) {
     if (!body.title || !body.pricePerMonth || !body.providerId) {
-      throw new BadRequestException('title, pricePerMonth, and providerId are required');
+      throw new BadRequestException(
+        'title, pricePerMonth, and providerId are required',
+      );
     }
     return this.mealPlansService.create(req.user.userId, body);
   }

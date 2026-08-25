@@ -52,7 +52,12 @@ async function bootstrap() {
     origin: allowedOrigins,
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
+    allowedHeaders: [
+      'Content-Type',
+      'Authorization',
+      'X-Requested-With',
+      'Accept',
+    ],
   });
 
   // Global prefix for versioned API
@@ -79,7 +84,8 @@ async function bootstrap() {
     max: 20, // 20 attempts per 15 minutes
     message: {
       success: false,
-      message: 'Too many authentication attempts. Please try again after 15 minutes.',
+      message:
+        'Too many authentication attempts. Please try again after 15 minutes.',
     },
   });
 
@@ -118,7 +124,11 @@ async function bootstrap() {
 
   const port = process.env.PORT ?? 5000;
   await app.listen(port, '0.0.0.0');
-  console.log(`🚀 PrimePlate NestJS Backend running at http://localhost:${port}/api/v1`);
-  console.log(`📚 OpenAPI Swagger Documentation: http://localhost:${port}/api/v1/docs`);
+  console.log(
+    `🚀 PrimePlate NestJS Backend running at http://localhost:${port}/api/v1`,
+  );
+  console.log(
+    `📚 OpenAPI Swagger Documentation: http://localhost:${port}/api/v1/docs`,
+  );
 }
 bootstrap();

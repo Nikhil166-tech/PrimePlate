@@ -2,6 +2,7 @@ import api from '../api';
 import { navigate } from '../router';
 import { showToast } from '../components/toast';
 import { renderNavbar, attachNavbarEvents } from '../components/navbar';
+import { renderFooter, attachFooterEvents } from '../components/footer';
 import { escapeHtml } from '../utils/sanitize';
 
 function loadRazorpayScript(): Promise<boolean> {
@@ -81,8 +82,10 @@ export async function renderCheckout(planId: string) {
           </div>
         </div>
       </main>
+      ${renderFooter()}
     `;
     attachNavbarEvents();
+    attachFooterEvents();
     document.getElementById('checkoutBackBtn')?.addEventListener('click', () => navigate('#/providers'));
     return;
   }
@@ -154,12 +157,11 @@ export async function renderCheckout(planId: string) {
       </div>
     </main>
 
-    <footer class="footer">
-      © ${new Date().getFullYear()} PrimePlate. Premium Meal Subscription Platform.
-    </footer>
+    ${renderFooter()}
   `;
 
   attachNavbarEvents();
+  attachFooterEvents();
 
   document.querySelectorAll('input[name="coDurationPlan"]').forEach((radio) => {
     radio.addEventListener('change', (e) => {

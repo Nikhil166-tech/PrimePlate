@@ -1,6 +1,7 @@
 import api from '../api';
 import { navigate } from '../router';
 import { renderNavbar, attachNavbarEvents } from '../components/navbar';
+import { renderFooter, attachFooterEvents } from '../components/footer';
 import { escapeHtml } from '../utils/sanitize';
 
 interface SubscriptionRecord {
@@ -41,7 +42,7 @@ interface SubscriptionRecord {
 export async function renderDashboard() {
   const container = document.getElementById('app')!;
   const token = localStorage.getItem('accessToken');
-  const userEmail = localStorage.getItem('userEmail') || 'Student';
+  const userEmail = localStorage.getItem('userEmail') || 'PrimeMate';
   const userName = localStorage.getItem('userName') || userEmail.split('@')[0];
   const userPhone = localStorage.getItem('userPhone') || 'Not available';
 
@@ -63,8 +64,8 @@ export async function renderDashboard() {
           <!-- Header -->
           <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 28px; flex-wrap: wrap; gap: 16px;">
             <div>
-              <h1 class="font-display" style="font-size: clamp(1.75rem, 4vw, 2.25rem); font-weight: 800; color: var(--color-neutral-900); margin-bottom: 4px;">Student Dashboard</h1>
-              <p style="color: var(--color-neutral-600); font-size: clamp(0.875rem, 2vw, 0.95rem);">Welcome back, <strong>${escapeHtml(userName)}</strong> • Phone: <strong>${escapeHtml(userPhone)}</strong> (${escapeHtml(userEmail)})</p>
+              <h1 class="font-display" style="font-size: clamp(1.75rem, 4vw, 2.25rem); font-weight: 800; color: var(--color-neutral-900); margin-bottom: 4px;">PrimeMate Dashboard</h1>
+              <p style="color: var(--color-neutral-600); font-size: clamp(0.875rem, 2vw, 0.95rem);">Welcome back, <strong>${escapeHtml(userName)}</strong> 👋 • Phone: <strong>${escapeHtml(userPhone)}</strong> (${escapeHtml(userEmail)})</p>
             </div>
             <div style="display: flex; gap: 10px; flex-wrap: wrap;">
               <button id="dashNewSubBtn" class="btn-primary-action" style="padding: 10px 20px;">
@@ -195,12 +196,11 @@ export async function renderDashboard() {
         ` : ''}
       </div>
 
-      <footer class="footer">
-        © ${new Date().getFullYear()} PrimePlate. Premium Meal Subscription Platform.
-      </footer>
+      ${renderFooter()}
     `;
 
     attachNavbarEvents();
+    attachFooterEvents();
 
     document.getElementById('dashNewSubBtn')?.addEventListener('click', () => navigate('#/providers'));
 

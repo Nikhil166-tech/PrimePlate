@@ -3,8 +3,13 @@ import { AppModule } from './app.module';
 import { SeedService } from './common/seed.service';
 
 async function bootstrap() {
-  if (process.env.NODE_ENV === 'production' && process.env.FORCE_SEED !== 'true') {
-    console.error('❌ [SEED BLOCKED] Seeding CLI runner is blocked in NODE_ENV=production!');
+  if (
+    process.env.NODE_ENV === 'production' &&
+    process.env.FORCE_SEED !== 'true'
+  ) {
+    console.error(
+      '❌ [SEED BLOCKED] Seeding CLI runner is blocked in NODE_ENV=production!',
+    );
     process.exit(1);
   }
 

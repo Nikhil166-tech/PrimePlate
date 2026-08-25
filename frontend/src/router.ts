@@ -23,6 +23,12 @@ export function navigate(path: string) {
 
 function onHashChange() {
   const fullHash = window.location.hash || '#/home';
+
+  // Automatically scroll to top on page navigation unless targeting an in-page section anchor
+  if (!fullHash.includes('why-primeplate') && !fullHash.includes('faq')) {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+  }
+
   const cleanHash = fullHash.split('?')[0];
   const parts = cleanHash.split('#').filter(Boolean);
   const routeCandidate = parts.length > 0 && parts[0].startsWith('/') ? '#' + parts[0] : '#/home';

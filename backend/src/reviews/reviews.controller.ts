@@ -64,10 +64,7 @@ export class ReviewsController {
   @Delete(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.STUDENT)
-  async delete(
-    @Req() req: AuthenticatedRequest,
-    @Param('id') id: string,
-  ) {
+  async delete(@Req() req: AuthenticatedRequest, @Param('id') id: string) {
     return this.reviewsService.delete(req.user.userId, id);
   }
 }

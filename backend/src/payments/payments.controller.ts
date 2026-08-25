@@ -20,7 +20,7 @@ import type { Request } from 'express';
 @ApiTags('Payments')
 @Controller('payments')
 export class PaymentsController {
-  constructor(private readonly paymentsService: PaymentsService) { }
+  constructor(private readonly paymentsService: PaymentsService) {}
 
   @Post('create-order')
   @UseGuards(JwtAuthGuard, RolesGuard)
@@ -29,12 +29,22 @@ export class PaymentsController {
   @ApiOperation({ summary: 'Create Razorpay Order for a Meal Plan' })
   async createOrder(
     @Req() req: AuthenticatedRequest,
-    @Body() body: { mealPlanId: string; durationDays?: number | string; duration?: number | string },
+    @Body()
+    body: {
+      mealPlanId: string;
+      durationDays?: number | string;
+      duration?: number | string;
+    },
   ) {
     if (!body.mealPlanId)
       throw new BadRequestException('mealPlanId is required');
-    const durationInput = body.durationDays !== undefined ? body.durationDays : body.duration;
-    return this.paymentsService.createOrder(body.mealPlanId, req.user.userId, durationInput);
+    const durationInput =
+      body.durationDays !== undefined ? body.durationDays : body.duration;
+    return this.paymentsService.createOrder(
+      body.mealPlanId,
+      req.user.userId,
+      durationInput,
+    );
   }
 
   @Post('verify')
@@ -64,7 +74,8 @@ export class PaymentsController {
       throw new BadRequestException('Missing payment verification details');
     }
 
-    const durationInput = body.durationDays !== undefined ? body.durationDays : body.duration;
+    const durationInput =
+      body.durationDays !== undefined ? body.durationDays : body.duration;
 
     return this.paymentsService.processVerifiedPayment({
       userId: req.user.userId,
@@ -98,4 +109,3 @@ export class PaymentsController {
     return this.paymentsService.getHistory(req.user.userId);
   }
 }
-

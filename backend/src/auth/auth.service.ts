@@ -56,7 +56,13 @@ export class AuthService {
     await this.refreshTokenRepo.save(refreshTokenEntity);
 
     return {
-      user: { id: user.id, email: user.email, role: user.role, name: user.name, phone: user.phone },
+      user: {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+        name: user.name,
+        phone: user.phone,
+      },
       accessToken,
       refreshToken: rawRefreshToken,
     };
@@ -114,7 +120,9 @@ export class AuthService {
     try {
       payload = this.jwtService.verify(rawRefreshToken);
     } catch (_) {
-      throw new UnauthorizedException('Invalid or expired refresh token signature');
+      throw new UnauthorizedException(
+        'Invalid or expired refresh token signature',
+      );
     }
 
     const tokenHash = this.hashToken(rawRefreshToken);
@@ -123,7 +131,11 @@ export class AuthService {
       relations: { user: true },
     });
 
-    if (!tokenEntity || tokenEntity.revoked || new Date() > tokenEntity.expiresAt) {
+    if (
+      !tokenEntity ||
+      tokenEntity.revoked ||
+      new Date() > tokenEntity.expiresAt
+    ) {
       throw new UnauthorizedException(
         'Refresh token has expired, been revoked, or already reused',
       );
@@ -150,7 +162,8 @@ export class AuthService {
   async forgotPassword(dto: ForgotPasswordDto) {
     const email = dto.email ? dto.email.trim().toLowerCase() : '';
     const genericResponse = {
-      message: 'If an account exists for this email, a password reset link has been sent.',
+      message:
+        'If an account exists for this email, a password reset link has been sent.',
     };
 
     if (!email) {
@@ -196,7 +209,9 @@ export class AuthService {
     }
 
     if (resetTokenRecord.usedAt) {
-      throw new BadRequestException('Password reset token has already been used');
+      throw new BadRequestException(
+        'Password reset token has already been used',
+      );
     }
 
     if (new Date() > resetTokenRecord.expiresAt) {

@@ -95,8 +95,13 @@ export class SubscriptionsService {
         },
       });
 
-      if (provider.totalCapacity === null || provider.totalCapacity === undefined) {
-        throw new BadRequestException('Provider total student capacity is not set');
+      if (
+        provider.totalCapacity === null ||
+        provider.totalCapacity === undefined
+      ) {
+        throw new BadRequestException(
+          'Provider total student capacity is not set',
+        );
       }
 
       const totalCap = Number(provider.totalCapacity);
@@ -149,13 +154,20 @@ export class SubscriptionsService {
         amountPaid: rawAmount,
         razorpayOrderId: matchingPayment?.razorpayOrderId || null,
         razorpayPaymentId: matchingPayment?.razorpayPaymentId || null,
-        paymentStatus: matchingPayment?.status ? String(matchingPayment.status).toUpperCase() : (rawAmount !== null ? 'PAID' : 'UNKNOWN'),
+        paymentStatus: matchingPayment?.status
+          ? String(matchingPayment.status).toUpperCase()
+          : rawAmount !== null
+            ? 'PAID'
+            : 'UNKNOWN',
         paymentDate: matchingPayment?.createdAt || sub.createdAt,
       };
     });
   }
 
-  async verifyProviderOwnership(userId: string, providerId: string): Promise<void> {
+  async verifyProviderOwnership(
+    userId: string,
+    providerId: string,
+  ): Promise<void> {
     const provider = await this.subRepo.manager.findOne(MealProvider, {
       where: { id: providerId },
       relations: { user: true },
@@ -164,7 +176,9 @@ export class SubscriptionsService {
       throw new NotFoundException('Provider kitchen not found');
     }
     if (provider.user?.id !== userId && provider.userId !== userId) {
-      throw new ForbiddenException('Cannot access subscribers belonging to another provider');
+      throw new ForbiddenException(
+        'Cannot access subscribers belonging to another provider',
+      );
     }
   }
 

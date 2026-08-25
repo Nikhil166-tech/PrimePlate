@@ -11,7 +11,10 @@ import { Repository } from 'typeorm';
 import { Payment } from './payment.entity';
 import { MealPlan } from '../meal-plans/meal-plan.entity';
 import { MealProvider } from '../providers/meal-provider.entity';
-import { Subscription, SubscriptionStatus } from '../subscriptions/subscription.entity';
+import {
+  Subscription,
+  SubscriptionStatus,
+} from '../subscriptions/subscription.entity';
 import { User } from '../users/user.entity';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import * as crypto from 'crypto';
@@ -28,10 +31,34 @@ function parseDurationDays(durationInput: string | number | undefined): number {
   }
 
   const normalized = String(durationInput).trim().toUpperCase();
-  if (normalized === 'DAY' || normalized === '1' || normalized === 'ONE_DAY' || normalized === 'ONEDAY') return 1;
-  if (normalized === 'WEEK' || normalized === '7' || normalized === 'ONE_WEEK' || normalized === 'ONEWEEK') return 7;
-  if (normalized === 'FIFTEEN_DAYS' || normalized === '15' || normalized === 'FIFTEENDAYS' || normalized === 'HALF_MONTH') return 15;
-  if (normalized === 'MONTH' || normalized === '30' || normalized === 'ONE_MONTH' || normalized === 'ONEMONTH') return 30;
+  if (
+    normalized === 'DAY' ||
+    normalized === '1' ||
+    normalized === 'ONE_DAY' ||
+    normalized === 'ONEDAY'
+  )
+    return 1;
+  if (
+    normalized === 'WEEK' ||
+    normalized === '7' ||
+    normalized === 'ONE_WEEK' ||
+    normalized === 'ONEWEEK'
+  )
+    return 7;
+  if (
+    normalized === 'FIFTEEN_DAYS' ||
+    normalized === '15' ||
+    normalized === 'FIFTEENDAYS' ||
+    normalized === 'HALF_MONTH'
+  )
+    return 15;
+  if (
+    normalized === 'MONTH' ||
+    normalized === '30' ||
+    normalized === 'ONE_MONTH' ||
+    normalized === 'ONEMONTH'
+  )
+    return 30;
 
   const parsedNum = parseInt(normalized, 10);
   if (!isNaN(parsedNum) && [1, 7, 15, 30].includes(parsedNum)) {
@@ -43,7 +70,10 @@ function parseDurationDays(durationInput: string | number | undefined): number {
   );
 }
 
-function calculateAuthoritativeAmount(monthlyPrice: number, durationDays: number): number {
+function calculateAuthoritativeAmount(
+  monthlyPrice: number,
+  durationDays: number,
+): number {
   if (isNaN(monthlyPrice) || !isFinite(monthlyPrice) || monthlyPrice <= 0) {
     throw new BadRequestException('Invalid provider monthly price');
   }
@@ -73,7 +103,11 @@ export class PaymentsService {
     }
   }
 
-  async createOrder(mealPlanId: string, userId: string, durationInput?: string | number) {
+  async createOrder(
+    mealPlanId: string,
+    userId: string,
+    durationInput?: string | number,
+  ) {
     if (!mealPlanId) throw new BadRequestException('Meal plan ID is required');
     const durationDays = parseDurationDays(durationInput);
 
@@ -97,8 +131,13 @@ export class PaymentsService {
       }
     }
 
-    const baseMonthlyPrice = Number(plan.pricePerMonth || provider?.monthlyPrice || 0);
-    const authoritativeAmount = calculateAuthoritativeAmount(baseMonthlyPrice, durationDays);
+    const baseMonthlyPrice = Number(
+      plan.pricePerMonth || provider?.monthlyPrice || 0,
+    );
+    const authoritativeAmount = calculateAuthoritativeAmount(
+      baseMonthlyPrice,
+      durationDays,
+    );
     const amountInPaise = Math.round(authoritativeAmount * 100);
     const receipt = `rcpt_${userId.slice(0, 8)}_${Date.now()}`;
     const isProduction = process.env.NODE_ENV === 'production';
@@ -167,7 +206,11 @@ export class PaymentsService {
         return false;
       }
       // Allow local development/test signature prefixes in non-production mode
-      if (signature.startsWith('sig_test_') || signature.startsWith('sig_sandbox_') || signature.startsWith('sig_e2e_')) {
+      if (
+        signature.startsWith('sig_test_') ||
+        signature.startsWith('sig_sandbox_') ||
+        signature.startsWith('sig_e2e_')
+      ) {
         return true;
       }
       return false;
@@ -260,7 +303,8 @@ export class PaymentsService {
         this.logger.log(
           `Payment ${razorpayPaymentId} already processed (Idempotent replay).`,
         );
-        const existingSubs = await this.subscriptionsService.findByStudent(userId);
+        const existingSubs =
+          await this.subscriptionsService.findByStudent(userId);
         const sub = existingSubs.find((s) => s.mealPlan?.id === mealPlanId);
         return {
           success: true,
@@ -280,7 +324,8 @@ export class PaymentsService {
         relations: { provider: true },
       });
       if (!mealPlan) throw new NotFoundException('Meal plan not found');
-      if (!mealPlan.provider) throw new NotFoundException('Associated provider kitchen not found');
+      if (!mealPlan.provider)
+        throw new NotFoundException('Associated provider kitchen not found');
 
       const providerId = mealPlan.provider.id;
       const dbType = manager.connection.options.type;
@@ -294,15 +339,21 @@ export class PaymentsService {
           .getOne();
       }
 
-      const provider = await manager.findOne(MealProvider, { where: { id: providerId } });
+      const provider = await manager.findOne(MealProvider, {
+        where: { id: providerId },
+      });
       if (!provider) throw new NotFoundException('Provider record not found');
 
       if (provider.approvalStatus !== 'APPROVED') {
-        throw new BadRequestException('This provider is not currently approved for subscriptions');
+        throw new BadRequestException(
+          'This provider is not currently approved for subscriptions',
+        );
       }
 
       if (!provider.acceptingSubscriptions) {
-        throw new BadRequestException('This provider is currently closed for new subscriptions');
+        throw new BadRequestException(
+          'This provider is currently closed for new subscriptions',
+        );
       }
 
       const activeCount = await manager.count(Subscription, {
@@ -312,17 +363,29 @@ export class PaymentsService {
         },
       });
 
-      if (provider.totalCapacity === null || provider.totalCapacity === undefined) {
-        throw new BadRequestException('Provider total student capacity is not set');
+      if (
+        provider.totalCapacity === null ||
+        provider.totalCapacity === undefined
+      ) {
+        throw new BadRequestException(
+          'Provider total student capacity is not set',
+        );
       }
 
       const totalCap = Number(provider.totalCapacity);
       if (activeCount >= totalCap) {
-        throw new BadRequestException('This mess is fully booked. Maximum student capacity reached.');
+        throw new BadRequestException(
+          'This mess is fully booked. Maximum student capacity reached.',
+        );
       }
 
-      const baseMonthlyPrice = Number(mealPlan.pricePerMonth || provider.monthlyPrice || 0);
-      const authoritativeAmount = calculateAuthoritativeAmount(baseMonthlyPrice, durationDays);
+      const baseMonthlyPrice = Number(
+        mealPlan.pricePerMonth || provider.monthlyPrice || 0,
+      );
+      const authoritativeAmount = calculateAuthoritativeAmount(
+        baseMonthlyPrice,
+        durationDays,
+      );
 
       const startDate = new Date().toISOString().split('T')[0];
       const startObj = new Date(startDate);
@@ -338,7 +401,10 @@ export class PaymentsService {
         endDate,
       });
 
-      const savedSubscription = await manager.save(Subscription, subscriptionEntity);
+      const savedSubscription = await manager.save(
+        Subscription,
+        subscriptionEntity,
+      );
 
       // 5. Create and save Payment record linked to student & provider with authoritative amount
       const paymentEntity = manager.create(Payment, {
@@ -362,8 +428,14 @@ export class PaymentsService {
         };
       } catch (err: any) {
         // Handle duplicate key / race condition gracefully
-        if (err.code === '23505' || err.message?.includes('duplicate') || err.message?.includes('UNIQUE')) {
-          this.logger.warn(`Duplicate payment key detected during transaction for order ${razorpayOrderId}. Returning idempotent state.`);
+        if (
+          err.code === '23505' ||
+          err.message?.includes('duplicate') ||
+          err.message?.includes('UNIQUE')
+        ) {
+          this.logger.warn(
+            `Duplicate payment key detected during transaction for order ${razorpayOrderId}. Returning idempotent state.`,
+          );
           const existing = await manager.findOne(Payment, {
             where: [{ razorpayOrderId }, { razorpayPaymentId }],
             relations: { student: true, provider: true },
@@ -381,7 +453,11 @@ export class PaymentsService {
     });
   }
 
-  async handleWebhook(rawBody: string | Buffer, signature: string, eventData: any) {
+  async handleWebhook(
+    rawBody: string | Buffer,
+    signature: string,
+    eventData: any,
+  ) {
     const isValid = this.verifyWebhookSignature(rawBody, signature);
     if (!isValid) {
       throw new UnauthorizedException('Invalid webhook signature');

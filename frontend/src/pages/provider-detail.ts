@@ -2,6 +2,7 @@ import api from '../api';
 import { navigate } from '../router';
 import { showToast } from '../components/toast';
 import { renderNavbar, attachNavbarEvents } from '../components/navbar';
+import { renderFooter, attachFooterEvents } from '../components/footer';
 import { escapeHtml, getSafeImageUrl } from '../utils/sanitize';
 
 function getCurrentUserId(): string | null {
@@ -16,6 +17,7 @@ function getCurrentUserId(): string | null {
 }
 
 export async function renderProviderDetail(providerId: string) {
+  window.scrollTo(0, 0);
   const container = document.getElementById('app')!;
 
   container.innerHTML = `
@@ -29,12 +31,11 @@ export async function renderProviderDetail(providerId: string) {
       </div>
     </main>
 
-    <footer class="footer">
-      © ${new Date().getFullYear()} PrimePlate. Premium Meal Subscription Platform.
-    </footer>
+    ${renderFooter()}
   `;
 
   attachNavbarEvents();
+  attachFooterEvents();
 
   const detailView = document.getElementById('detailView')!;
 
@@ -205,7 +206,7 @@ export async function renderProviderDetail(providerId: string) {
             <div style="background: #fff; border: 1px solid var(--color-neutral-200); border-radius: 16px; padding: 20px; margin-bottom: 16px; overflow-wrap: anywhere; word-break: break-word;">
               <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; flex-wrap: wrap; gap: 8px;">
                 <div>
-                  <span style="font-weight: 700; font-size: 15px; color: var(--color-neutral-900); display: block;">${escapeHtml(r.student?.name || 'Student Customer')}</span>
+                  <span style="font-weight: 700; font-size: 15px; color: var(--color-neutral-900); display: block;">${escapeHtml(r.student?.name || 'PrimeMate')}</span>
                   <span style="font-size: 12px; color: var(--color-neutral-500);">${escapeHtml(formattedDate)}</span>
                 </div>
                 <div style="display: flex; align-items: center; gap: 12px;">
@@ -309,7 +310,7 @@ export async function renderProviderDetail(providerId: string) {
       } else {
         reviewActionAreaHtml = `
           <div style="background: var(--color-neutral-50); border: 1px dashed var(--color-neutral-300); border-radius: 16px; padding: 16px; margin-bottom: 24px; text-align: center; color: var(--color-neutral-600); font-size: 13px;">
-            <i class="fa-solid fa-lock" style="margin-right: 6px;"></i> Subscribed students can leave a review for this kitchen.
+            <i class="fa-solid fa-lock" style="margin-right: 6px;"></i> Subscribed PrimeMates can leave a review for this kitchen.
           </div>
         `;
       }
@@ -390,7 +391,7 @@ export async function renderProviderDetail(providerId: string) {
             </div>
 
             <!-- 3. Desktop Weekly Menu Grid -->
-            <div class="desktop-menu-section" style="background: #fff; border: 1px solid var(--color-neutral-200); border-radius: 24px; padding: 28px; box-shadow: 0 4px 12px rgba(0,0,0,0.03);">
+            <div id="weekly-menu-section" class="desktop-menu-section" style="background: #fff; border: 1px solid var(--color-neutral-200); border-radius: 24px; padding: 28px; box-shadow: 0 4px 12px rgba(0,0,0,0.03);">
               <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
                 <h2 class="font-display" style="font-size: 22px; font-weight: 700; color: var(--color-neutral-900);">Weekly Meal Menu (Mon - Sun)</h2>
                 <span style="font-size: 13px; font-weight: 600; color: var(--color-primary-600); background: var(--color-primary-50); padding: 4px 12px; border-radius: 999px;">
@@ -514,18 +515,33 @@ export async function renderProviderDetail(providerId: string) {
 
     document.getElementById('backBtn')?.addEventListener('click', () => navigate('#/providers'));
 
-    // See Menu Modal Toggle Handlers
+    // See Menu Modal Toggle & Smooth Scroll Handlers
     const menuModal = document.getElementById('weeklyMenuModal');
+    const menuSection = document.getElementById('weekly-menu-section');
+
+    const closeMenuModal = () => {
+      if (menuModal) {
+        menuModal.style.display = 'none';
+        document.body.style.overflow = '';
+      }
+    };
+
     document.querySelectorAll('.openMenuModalBtn').forEach((btn) => {
-      btn.addEventListener('click', () => {
-        if (menuModal) menuModal.style.display = 'flex';
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (window.innerWidth > 768 && menuSection) {
+          menuSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        } else if (menuModal) {
+          menuModal.style.display = 'flex';
+          document.body.style.overflow = 'hidden';
+        }
       });
     });
-    document.getElementById('closeMenuModalBtn')?.addEventListener('click', () => {
-      if (menuModal) menuModal.style.display = 'none';
-    });
+
+    document.getElementById('closeMenuModalBtn')?.addEventListener('click', closeMenuModal);
     menuModal?.addEventListener('click', (e) => {
-      if (e.target === menuModal) menuModal.style.display = 'none';
+      if (e.target === menuModal) closeMenuModal();
     });
 
     // Desktop Subscribe Button
@@ -570,12 +586,16 @@ export async function renderProviderDetail(providerId: string) {
     // Edit Review Modal Handlers
     const editReviewModal = document.getElementById('editReviewModal');
     const openEditModal = (revId: string) => {
-      const targetRev = reviews.find((r) => r.id === revId) || myReview;
-      if (!targetRev || !editReviewModal) return;
-      (document.getElementById('editReviewIdInput') as HTMLInputElement).value = targetRev.id;
-      (document.getElementById('editReviewRatingSelect') as HTMLSelectElement).value = String(targetRev.rating);
-      (document.getElementById('editReviewCommentText') as HTMLTextAreaElement).value = targetRev.comment || '';
-      editReviewModal.style.display = 'flex';
+      const rev = reviews.find((r: any) => r.id === revId);
+      if (rev) {
+        (document.getElementById('editReviewIdInput') as HTMLInputElement).value = rev.id;
+        (document.getElementById('editReviewRatingSelect') as HTMLSelectElement).value = String(rev.rating);
+        (document.getElementById('editReviewCommentText') as HTMLTextAreaElement).value = rev.comment || '';
+        if (editReviewModal) {
+          editReviewModal.style.display = 'flex';
+          document.body.style.overflow = 'hidden';
+        }
+      }
     };
 
     document.getElementById('openEditMyReviewBtn')?.addEventListener('click', () => {
@@ -590,7 +610,10 @@ export async function renderProviderDetail(providerId: string) {
     });
 
     const closeEditModal = () => {
-      if (editReviewModal) editReviewModal.style.display = 'none';
+      if (editReviewModal) {
+        editReviewModal.style.display = 'none';
+        document.body.style.overflow = '';
+      }
     };
     document.getElementById('closeEditReviewModalBtn')?.addEventListener('click', closeEditModal);
     document.getElementById('cancelEditReviewModalBtn')?.addEventListener('click', closeEditModal);
@@ -624,7 +647,10 @@ export async function renderProviderDetail(providerId: string) {
     const deleteReviewModal = document.getElementById('deleteReviewModal');
     const openDeleteModal = (revId: string) => {
       targetDeleteId = revId;
-      if (deleteReviewModal) deleteReviewModal.style.display = 'flex';
+      if (deleteReviewModal) {
+        deleteReviewModal.style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+      }
     };
 
     document.getElementById('deleteMyReviewBtn')?.addEventListener('click', () => {
@@ -640,7 +666,10 @@ export async function renderProviderDetail(providerId: string) {
 
     const closeDeleteModal = () => {
       targetDeleteId = null;
-      if (deleteReviewModal) deleteReviewModal.style.display = 'none';
+      if (deleteReviewModal) {
+        deleteReviewModal.style.display = 'none';
+        document.body.style.overflow = '';
+      }
     };
     document.getElementById('cancelDeleteReviewModalBtn')?.addEventListener('click', closeDeleteModal);
 

@@ -2,6 +2,7 @@ import api from '../api';
 import { navigate } from '../router';
 import { showToast } from '../components/toast';
 import { renderNavbar, attachNavbarEvents } from '../components/navbar';
+import { renderFooter, attachFooterEvents } from '../components/footer';
 import { escapeHtml, getSafeImageUrl } from '../utils/sanitize';
 
 const DAYS_OF_WEEK = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
@@ -216,7 +217,7 @@ export async function renderOwnerPortal() {
                     <input type="number" id="cPrice" class="btn-outline-action" style="width: 100%; background: #fff; padding: 12px 16px; font-size: 14px;" placeholder="Monthly Price" required />
                   </div>
                   <div>
-                    <label style="font-size: 13px; font-weight: 700; color: var(--color-neutral-800); display: block; margin-bottom: 6px;">Student Capacity *</label>
+                    <label style="font-size: 13px; font-weight: 700; color: var(--color-neutral-800); display: block; margin-bottom: 6px;">Subscriber Capacity *</label>
                     <input type="number" id="cCapacity" class="btn-outline-action" style="width: 100%; background: #fff; padding: 12px 16px; font-size: 14px;" placeholder="Capacity" required />
                   </div>
                 </div>
@@ -296,8 +297,8 @@ export async function renderOwnerPortal() {
                     <strong style="color: var(--color-primary-600);">${selectedHostel.monthlyPrice ? '₹' + Number(selectedHostel.monthlyPrice).toLocaleString('en-IN') + ' / mo' : 'Price unavailable'}</strong>
                   </div>
                   <div>
-                    <span style="color: var(--color-neutral-500); display: block;">Student Capacity:</span>
-                    <strong style="color: var(--color-neutral-900);">${selectedHostel.totalCapacity ? selectedHostel.totalCapacity + ' Students' : 'Capacity unavailable'}</strong>
+                    <span style="color: var(--color-neutral-500); display: block;">Subscriber Capacity:</span>
+                    <strong style="color: var(--color-neutral-900);">${selectedHostel.totalCapacity ? selectedHostel.totalCapacity + ' Subscribers' : 'Capacity unavailable'}</strong>
                   </div>
                   <div style="grid-column: 1 / -1;">
                     <span style="color: var(--color-neutral-500); display: block;">Address:</span>
@@ -697,7 +698,7 @@ export async function renderOwnerPortal() {
                   <i class="fa-solid fa-star" style="color: #f59e0b; font-size: 22px;"></i>
                   <div>
                     <h3 class="font-display" style="font-size: 18px; font-weight: 800; color: var(--color-neutral-900); margin: 0;">Reviews</h3>
-                    <span style="font-size: 12px; color: var(--color-neutral-500);">Reviews written by subscribed students</span>
+                    <span style="font-size: 12px; color: var(--color-neutral-500);">Reviews written by subscribers</span>
                   </div>
                 </div>
                 <div style="display: flex; align-items: center; gap: 16px;">
@@ -728,7 +729,7 @@ export async function renderOwnerPortal() {
                     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px;">
                       ${providerReviews
                         .map((r: any) => {
-                          const studentName = escapeHtml(r.student?.name || 'Student Customer');
+                          const studentName = escapeHtml(r.student?.name || 'Subscriber');
                           const dateStr = r.createdAt
                             ? new Date(r.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
                             : '';
@@ -894,12 +895,11 @@ export async function renderOwnerPortal() {
         </div>
       </div>
 
-      <footer class="footer">
-        © ${new Date().getFullYear()} PrimePlate. Premium Meal Subscription Platform.
-      </footer>
+      ${renderFooter()}
     `;
 
     attachNavbarEvents();
+    attachFooterEvents();
 
     const setupLocationBtn = (btnId: string, statusId: string, onCaptured: (lat: number, lng: number) => void) => {
       const btn = document.getElementById(btnId) as HTMLButtonElement;

@@ -1,6 +1,7 @@
 import api from '../api';
 import { navigate } from '../router';
 import { renderNavbar, attachNavbarEvents } from '../components/navbar';
+import { renderFooter, attachFooterEvents } from '../components/footer';
 import { escapeHtml, getSafeImageUrl } from '../utils/sanitize';
 import { showToast } from '../components/toast';
 
@@ -61,12 +62,11 @@ export async function renderProviders() {
       </div>
     </main>
 
-    <footer class="footer">
-      © ${new Date().getFullYear()} PrimePlate. Premium Meal Subscription Platform.
-    </footer>
+    ${renderFooter()}
   `;
 
   attachNavbarEvents();
+  attachFooterEvents();
 
   const grid = document.getElementById('browseGrid')!;
   const searchInput = document.getElementById('searchInput') as HTMLInputElement;

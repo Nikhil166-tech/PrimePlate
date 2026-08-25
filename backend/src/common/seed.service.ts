@@ -48,16 +48,23 @@ export class SeedService implements OnApplicationBootstrap {
     try {
       await this.seedAdmin();
     } catch (err: any) {
-      this.logger.error('Error initializing admin account:', err.message || err);
+      this.logger.error(
+        'Error initializing admin account:',
+        err.message || err,
+      );
     }
 
     // Production & Default Safety Guard: Disable mock seeding in production or when ENABLE_SEED is not explicitly 'true'
     if (isProduction || !isSeedEnabled) {
-      this.logger.log('Production seed disabled. No mock business data created.');
+      this.logger.log(
+        'Production seed disabled. No mock business data created.',
+      );
       return;
     }
 
-    this.logger.log('Explicit ENABLE_SEED=true flag detected in development. Starting mock database seeding...');
+    this.logger.log(
+      'Explicit ENABLE_SEED=true flag detected in development. Starting mock database seeding...',
+    );
 
     try {
       const providers = await this.seedProviders();
@@ -66,7 +73,9 @@ export class SeedService implements OnApplicationBootstrap {
       await this.seedWeeklyMenus(providers);
       await this.seedReviews(students, providers);
       await this.seedSubscriptionsAndPayments(students, plans, providers);
-      this.logger.log('Database seeding completed successfully! All development mock data ready.');
+      this.logger.log(
+        'Database seeding completed successfully! All development mock data ready.',
+      );
     } catch (err: any) {
       this.logger.error('Error during database seeding:', err.message || err);
     }
@@ -83,7 +92,9 @@ export class SeedService implements OnApplicationBootstrap {
 
     // Do not seed default admin password in production without explicit ADMIN_PASSWORD
     if (!adminPassword && process.env.NODE_ENV === 'production') {
-      this.logger.log('No ADMIN_PASSWORD configured in production environment. Skipping initial admin seed.');
+      this.logger.log(
+        'No ADMIN_PASSWORD configured in production environment. Skipping initial admin seed.',
+      );
       return null;
     }
 
@@ -103,7 +114,8 @@ export class SeedService implements OnApplicationBootstrap {
 
   private async seedProviders() {
     // Precomputed bcrypt hash for 'Provider@123'
-    const passwordHash = '$2a$10$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeg6Lruj3vjPGga31lW';
+    const passwordHash =
+      '$2a$10$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeg6Lruj3vjPGga31lW';
 
     // Provider 1 - Approved
     let owner1 = await this.userRepo.findOne({
@@ -233,7 +245,8 @@ export class SeedService implements OnApplicationBootstrap {
 
   private async seedStudents() {
     // Precomputed bcrypt hash for 'Student@123'
-    const passwordHash = '$2a$10$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeg6Lruj3vjPGga31lW';
+    const passwordHash =
+      '$2a$10$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeg6Lruj3vjPGga31lW';
     const sampleStudentsData = [
       {
         name: 'Aarav Patel',

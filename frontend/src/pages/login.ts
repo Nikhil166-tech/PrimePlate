@@ -84,7 +84,7 @@ export function renderLogin() {
         ? `<div style="text-align: left; margin-bottom: 20px;">
                       <label style="font-size: 13px; font-weight: 600; color: var(--color-neutral-700); display: block; margin-bottom: 6px;">Account Role</label>
                       <select id="role" class="btn-outline-action" style="width: 100%; text-align: left; background: #fff;">
-                        <option value="STUDENT">Student / Customer</option>
+                        <option value="STUDENT">PrimeMate (Customer)</option>
                         <option value="PROVIDER">Hostel / Mess Owner</option>
                       </select>
                     </div>`
@@ -99,10 +99,6 @@ export function renderLogin() {
           </div>
         </div>
       </main>
-
-      <footer class="footer">
-        © ${new Date().getFullYear()} PrimePlate. Premium Meal Subscription Platform.
-      </footer>
     `;
 
     attachNavbarEvents();

@@ -37,7 +37,10 @@ export class SubscriptionsController {
     @Param('providerId') providerId: string,
   ) {
     if (req.user.role === Role.PROVIDER) {
-      await this.subscriptionsService.verifyProviderOwnership(req.user.userId, providerId);
+      await this.subscriptionsService.verifyProviderOwnership(
+        req.user.userId,
+        providerId,
+      );
     }
     return this.subscriptionsService.findByProvider(providerId);
   }

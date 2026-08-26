@@ -108,13 +108,28 @@ export const approveSubscriptionBreak = (requestId: string) =>
 export const rejectSubscriptionBreak = (requestId: string) =>
   api.patch(`/subscription-breaks/${requestId}/reject`);
 
-export const updateProviderBreakSettings = (
+export const updateProviderBreakSettings = async (
   providerId: string,
   subscriptionBreaksEnabled: boolean,
-) =>
-  api.patch(`/providers/${providerId}/subscription-break-settings`, {
-    subscriptionBreaksEnabled,
-  });
+) => {
+  try {
+    return await api.patch(`/providers/${providerId}/subscription-break-settings`, {
+      subscriptionBreaksEnabled,
+    });
+  } catch (err: any) {
+    try {
+      return await api.patch(`/subscription-breaks/provider-settings/${providerId}`, {
+        subscriptionBreaksEnabled,
+      });
+    } catch (_) {
+      return await api.patch(`/subscription-breaks/provider-settings`, {
+        providerId,
+        subscriptionBreaksEnabled,
+      });
+    }
+  }
+};
+
 
 export default api;
 

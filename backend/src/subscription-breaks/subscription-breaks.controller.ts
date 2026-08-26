@@ -7,7 +7,9 @@ import {
   Param,
   UseGuards,
   Req,
+  BadRequestException,
 } from '@nestjs/common';
+
 import { SubscriptionBreaksService } from './subscription-breaks.service';
 import { CreateBreakRequestDto } from './dto/create-break-request.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -71,4 +73,35 @@ export class SubscriptionBreaksController {
       req.user.userId,
     );
   }
+
+  @Patch('provider-settings')
+  @Roles(Role.PROVIDER)
+  async updateBreakSettingsAlt(
+    @Req() req: AuthenticatedRequest,
+    @Body() body: { providerId?: string; subscriptionBreaksEnabled: boolean },
+  ) {
+    if (!body.providerId) {
+      throw new BadRequestException('providerId is required');
+    }
+    return await this.breaksService.updateBreakSettings(
+      body.providerId,
+      req.user.userId,
+      body.subscriptionBreaksEnabled,
+    );
+  }
+
+  @Patch('provider-settings/:providerId')
+  @Roles(Role.PROVIDER)
+  async updateBreakSettingsAlt2(
+    @Req() req: AuthenticatedRequest,
+    @Param('providerId') providerId: string,
+    @Body() body: { subscriptionBreaksEnabled: boolean },
+  ) {
+    return await this.breaksService.updateBreakSettings(
+      providerId,
+      req.user.userId,
+      body.subscriptionBreaksEnabled,
+    );
+  }
 }
+

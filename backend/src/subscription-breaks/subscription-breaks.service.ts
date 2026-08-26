@@ -341,4 +341,24 @@ export class SubscriptionBreaksService {
     req.rejectedById = providerUserId;
     return await this.breakRepo.save(req);
   }
+
+  async updateBreakSettings(
+    providerId: string,
+    providerUserId: string,
+    enabled: boolean,
+  ): Promise<MealProvider> {
+    const provider = await this.providerRepo.findOne({
+      where: { id: providerId },
+      relations: { user: true },
+    });
+    if (!provider) {
+      throw new NotFoundException('Provider kitchen not found');
+    }
+    if (provider.user?.id !== providerUserId && provider.userId !== providerUserId) {
+      throw new ForbiddenException('Cannot modify settings for another provider');
+    }
+    provider.subscriptionBreaksEnabled = enabled;
+    return await this.providerRepo.save(provider);
+  }
 }
+

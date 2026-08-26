@@ -89,4 +89,33 @@ api.interceptors.response.use(
   },
 );
 
+export const createSubscriptionBreak = (
+
+  subscriptionId: string,
+  fromDate: string,
+  toDate: string,
+  reason?: string,
+) => api.post('/subscription-breaks', { subscriptionId, fromDate, toDate, reason });
+
+export const getMySubscriptionBreaks = () => api.get('/subscription-breaks/my');
+
+export const getProviderSubscriptionBreaks = (providerId: string) =>
+  api.get(`/subscription-breaks/provider/${providerId}`);
+
+export const approveSubscriptionBreak = (requestId: string) =>
+  api.patch(`/subscription-breaks/${requestId}/approve`);
+
+export const rejectSubscriptionBreak = (requestId: string) =>
+  api.patch(`/subscription-breaks/${requestId}/reject`);
+
+export const updateProviderBreakSettings = (
+  providerId: string,
+  subscriptionBreaksEnabled: boolean,
+) =>
+  api.patch(`/providers/${providerId}/subscription-break-settings`, {
+    subscriptionBreaksEnabled,
+  });
+
 export default api;
+
+

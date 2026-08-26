@@ -182,13 +182,37 @@ export class SubscriptionsService {
     }
   }
 
-  async findByProvider(providerId: string): Promise<Subscription[]> {
-    return this.subRepo.find({
+  async findByProvider(providerId: string): Promise<any[]> {
+    const subs = await this.subRepo.find({
       where: { mealPlan: { provider: { id: providerId } } },
-      relations: { student: true, mealPlan: true },
+      relations: { student: true, mealPlan: { provider: true } },
       order: { createdAt: 'DESC' },
     });
+
+    const payments = await this.subRepo.manager.find(Payment, {
+      where: { provider: { id: providerId }, status: 'paid' },
+      relations: { student: true, provider: true },
+      order: { createdAt: 'DESC' },
+    });
+
+    return subs.map((sub: any) => {
+      const matchingPayment: any = payments.find(
+        (p: any) => p.student?.id === sub.student?.id,
+      );
+
+      const rawAmount = matchingPayment ? Number(matchingPayment.amount) : null;
+
+      return {
+        ...sub,
+        amountPaid: rawAmount,
+        razorpayOrderId: matchingPayment?.razorpayOrderId || null,
+        razorpayPaymentId: matchingPayment?.razorpayPaymentId || null,
+        paymentStatus: matchingPayment ? 'PAID' : 'UNKNOWN',
+        paymentDate: matchingPayment?.createdAt || sub.createdAt,
+      };
+    });
   }
+
 
   async pause(
     studentId: string,

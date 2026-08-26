@@ -92,6 +92,24 @@ export class ProvidersController {
     return this.providersService.update(req.user.userId, id, dto);
   }
 
+
+  @Patch(':id/subscription-break-settings')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.PROVIDER)
+  async updateBreakSettings(
+    @Req() req: AuthenticatedRequest,
+    @Param('id') id: string,
+    @Body() body: { subscriptionBreaksEnabled: boolean },
+  ) {
+    return this.providersService.updateBreakSettings(
+      id,
+      req.user.userId,
+      body.subscriptionBreaksEnabled,
+    );
+  }
+
+
+
   @Patch('approve/:id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN)

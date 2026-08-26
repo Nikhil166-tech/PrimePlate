@@ -15,8 +15,10 @@ describe('AppController', () => {
   });
 
   describe('root', () => {
-    it('should return "Hello World!"', () => {
-      expect(appController.getHello()).toBe('Hello World!');
+    it('should return app info', () => {
+      const res = appController.getRoot();
+      expect(res.status).toBe('active');
     });
   });
+
 });

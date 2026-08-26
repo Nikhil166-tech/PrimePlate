@@ -46,10 +46,12 @@ export class AnalyticsService {
   async getTotalRevenue(): Promise<number> {
     const revenueResult = await this.paymentRepo
       .createQueryBuilder('payment')
+      .where('payment.status = :status', { status: 'paid' })
       .select('SUM(payment.amount)', 'total')
       .getRawOne();
     return Number(revenueResult?.total) || 0;
   }
+
 
   async getTodaysUsers(): Promise<number> {
     const today = new Date();

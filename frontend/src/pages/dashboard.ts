@@ -1,5 +1,9 @@
-import api from '../api';
+import api, {
+  createSubscriptionBreak,
+  getMySubscriptionBreaks,
+} from '../api';
 import { navigate } from '../router';
+import { showToast } from '../components/toast';
 import { renderNavbar, attachNavbarEvents } from '../components/navbar';
 import { renderFooter, attachFooterEvents } from '../components/footer';
 import { escapeHtml } from '../utils/sanitize';
@@ -24,6 +28,7 @@ interface SubscriptionRecord {
       city?: string;
       address?: string;
       contactPhone?: string;
+      subscriptionBreaksEnabled?: boolean;
     };
   };
   provider?: {
@@ -32,6 +37,7 @@ interface SubscriptionRecord {
     city?: string;
     address?: string;
     contactPhone?: string;
+    subscriptionBreaksEnabled?: boolean;
   };
   status?: string;
   startDate?: string;
@@ -53,7 +59,22 @@ export async function renderDashboard() {
 
   let activeTab: 'PASSES' | 'HISTORY' = 'PASSES';
   let loadedSubs: any[] = [];
+  let loadedBreakRequests: any[] = [];
   let selectedSubForDetails: any = null;
+  let activeModal: 'NONE' | 'TAKE_BREAK' = 'NONE';
+  let modalTargetSub: any = null;
+  const todayStr = new Date().toISOString().split('T')[0];
+  let modalFromDate = todayStr;
+  let modalToDate = todayStr;
+  let modalReason = 'Going home';
+
+  const calculateInclusiveDays = (fromStr: string, toStr: string): number => {
+    if (!fromStr || !toStr || toStr < fromStr) return 0;
+    const from = new Date(fromStr + 'T00:00:00Z');
+    const to = new Date(toStr + 'T00:00:00Z');
+    const diff = to.getTime() - from.getTime();
+    return Math.round(diff / (1000 * 60 * 60 * 24)) + 1;
+  };
 
   const renderPage = () => {
     container.innerHTML = `
@@ -62,7 +83,7 @@ export async function renderDashboard() {
         <div style="max-width: 1280px; margin: 0 auto; padding: 0 16px;">
           
           <!-- Header -->
-          <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 28px; flex-wrap: wrap; gap: 16px;">
+          <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 24px; flex-wrap: wrap; gap: 16px;">
             <div>
               <h1 class="font-display" style="font-size: clamp(1.75rem, 4vw, 2.25rem); font-weight: 800; color: var(--color-neutral-900); margin-bottom: 4px;">PrimeMate Dashboard</h1>
               <p style="color: var(--color-neutral-600); font-size: clamp(0.875rem, 2vw, 0.95rem);">Welcome back, <strong>${escapeHtml(userName)}</strong> 👋 • Phone: <strong>${escapeHtml(userPhone)}</strong> (${escapeHtml(userEmail)})</p>
@@ -84,8 +105,8 @@ export async function renderDashboard() {
             </button>
           </div>
 
-          <!-- 3-Metrics Overview Grid -->
-          <div class="dashboard-metrics-grid">
+          <!-- 4-Metrics Overview Grid -->
+          <div class="dashboard-metrics-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); margin-bottom: 24px;">
             <div class="dashboard-metric-card active-pass">
               <div class="dashboard-metric-header">
                 <div class="dashboard-metric-icon">
@@ -94,6 +115,19 @@ export async function renderDashboard() {
                 <span class="dashboard-metric-label">Active Cards</span>
               </div>
               <p id="activeCardsCount" class="dashboard-metric-value">0</p>
+            </div>
+
+            <div class="dashboard-metric-card meal-credits">
+              <div class="dashboard-metric-header">
+                <div class="dashboard-metric-icon">
+                  <i class="fa-solid fa-plane-departure"></i>
+                </div>
+                <span class="dashboard-metric-label">Subscription Breaks</span>
+              </div>
+              <div>
+                <p id="breakSummaryText" class="dashboard-metric-value" style="color: var(--color-primary-700); font-size: 22px;">Max 4 Days</p>
+                <span style="font-size: 11px; color: var(--color-neutral-600);">Available for 1-Month Subscriptions</span>
+              </div>
             </div>
 
             <div class="dashboard-metric-card total-spent">
@@ -118,7 +152,7 @@ export async function renderDashboard() {
           </div>
 
           <!-- Main Grid Display -->
-          <div id="subsGrid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px;">
+          <div id="subsGrid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px;">
             <div style="grid-column: 1/-1; text-align: center; padding: 48px;">
               <i class="fa-solid fa-spinner fa-spin" style="font-size: 28px; color: var(--color-primary-600);"></i>
               <p style="margin-top: 12px; color: var(--color-neutral-600);">Loading subscription data...</p>
@@ -196,6 +230,64 @@ export async function renderDashboard() {
         ` : ''}
       </div>
 
+      <!-- Take a Subscription Break Modal -->
+      <div id="takeBreakModal" style="display: ${activeModal === 'TAKE_BREAK' && modalTargetSub ? 'flex' : 'none'}; position: fixed; inset: 0; background: rgba(0,0,0,0.55); align-items: center; justify-content: center; z-index: 1000; padding: 20px;">
+        ${activeModal === 'TAKE_BREAK' && modalTargetSub ? `
+          <div style="background: #fff; border-radius: 24px; max-width: 460px; width: 100%; padding: 28px; box-shadow: 0 20px 40px rgba(0,0,0,0.25);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+              <h3 class="font-display" style="font-size: 20px; font-weight: 800; color: var(--color-neutral-900); margin: 0;">
+                <i class="fa-solid fa-plane-departure" style="color: var(--color-primary-600);"></i> Take a Subscription Break
+              </h3>
+              <button id="closeBreakModalBtn" style="background: none; border: none; font-size: 24px; cursor: pointer; color: var(--color-neutral-500);">&times;</button>
+            </div>
+
+            <p style="color: var(--color-neutral-600); font-size: 14px; line-height: 1.5; margin-bottom: 20px;">
+              Temporarily pause your subscription while away from <strong>${escapeHtml(modalTargetSub.messName)}</strong>. Approved break days extend your subscription end date by the exact break duration.
+            </p>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px;">
+              <div>
+                <label style="font-size: 12px; font-weight: 700; color: var(--color-neutral-700); display: block; margin-bottom: 4px;">From Date *</label>
+                <input type="date" id="breakFromDateInput" value="${modalFromDate}" min="${todayStr}" max="${modalTargetSub.endDate || ''}" style="width: 100%; padding: 10px; border: 1px solid var(--color-neutral-300); border-radius: 10px; font-size: 13px;">
+              </div>
+              <div>
+                <label style="font-size: 12px; font-weight: 700; color: var(--color-neutral-700); display: block; margin-bottom: 4px;">To Date *</label>
+                <input type="date" id="breakToDateInput" value="${modalToDate}" min="${modalFromDate}" max="${modalTargetSub.endDate || ''}" style="width: 100%; padding: 10px; border: 1px solid var(--color-neutral-300); border-radius: 10px; font-size: 13px;">
+              </div>
+            </div>
+
+            <div style="background: var(--color-neutral-50); border: 1px solid var(--color-neutral-200); border-radius: 12px; padding: 12px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center;">
+              <div>
+                <span style="font-size: 12px; color: var(--color-neutral-500); font-weight: 600; display: block;">Calculated Duration</span>
+                <strong id="calcDurationText" style="font-size: 16px; color: var(--color-primary-700);">${calculateInclusiveDays(modalFromDate, modalToDate)} Day(s)</strong>
+              </div>
+              <span style="font-size: 11px; font-weight: 700; background: #ffedd5; color: #c2410c; padding: 4px 10px; border-radius: 20px;">
+                Max 4 Days Limit
+              </span>
+            </div>
+
+            <div style="margin-bottom: 24px;">
+              <label style="font-size: 12px; font-weight: 700; color: var(--color-neutral-700); display: block; margin-bottom: 4px;">Reason (Optional)</label>
+              <select id="breakReasonSelect" style="width: 100%; padding: 10px; border: 1px solid var(--color-neutral-300); border-radius: 10px; font-size: 13px; background: #fff;">
+                <option value="Going home" ${modalReason === 'Going home' ? 'selected' : ''}>Going home</option>
+                <option value="Travel" ${modalReason === 'Travel' ? 'selected' : ''}>Travel</option>
+                <option value="College holidays" ${modalReason === 'College holidays' ? 'selected' : ''}>College holidays</option>
+                <option value="Work travel" ${modalReason === 'Work travel' ? 'selected' : ''}>Work travel</option>
+                <option value="Personal" ${modalReason === 'Personal' ? 'selected' : ''}>Personal</option>
+                <option value="Other" ${modalReason === 'Other' ? 'selected' : ''}>Other</option>
+              </select>
+            </div>
+
+            <div style="display: flex; gap: 12px; justify-content: flex-end;">
+              <button id="cancelBreakModalBtn" class="btn-outline-action" style="padding: 10px 18px;">Cancel</button>
+              <button id="confirmBreakModalBtn" class="btn-primary-action" style="padding: 10px 20px;">
+                <i class="fa-solid fa-paper-plane"></i> Send Request
+              </button>
+            </div>
+          </div>
+        ` : ''}
+      </div>
+
       ${renderFooter()}
     `;
 
@@ -216,14 +308,51 @@ export async function renderDashboard() {
       updateContentDisplay();
     });
 
-    const closeDetails = () => {
+    const closeModal = () => {
+      activeModal = 'NONE';
+      modalTargetSub = null;
       selectedSubForDetails = null;
       renderPage();
       updateContentDisplay();
     };
 
-    document.getElementById('closeDetailsModalBtn')?.addEventListener('click', closeDetails);
-    document.getElementById('closeDetailsModalBtn2')?.addEventListener('click', closeDetails);
+    document.getElementById('closeDetailsModalBtn')?.addEventListener('click', closeModal);
+    document.getElementById('closeDetailsModalBtn2')?.addEventListener('click', closeModal);
+    document.getElementById('closeBreakModalBtn')?.addEventListener('click', closeModal);
+    document.getElementById('cancelBreakModalBtn')?.addEventListener('click', closeModal);
+
+    const fromInput = document.getElementById('breakFromDateInput') as HTMLInputElement;
+    const toInput = document.getElementById('breakToDateInput') as HTMLInputElement;
+    if (fromInput && toInput) {
+      fromInput.addEventListener('change', (e) => {
+        modalFromDate = (e.target as HTMLInputElement).value;
+        if (modalToDate < modalFromDate) modalToDate = modalFromDate;
+        const durEl = document.getElementById('calcDurationText');
+        if (durEl) durEl.innerText = `${calculateInclusiveDays(modalFromDate, modalToDate)} Day(s)`;
+      });
+      toInput.addEventListener('change', (e) => {
+        modalToDate = (e.target as HTMLInputElement).value;
+        const durEl = document.getElementById('calcDurationText');
+        if (durEl) durEl.innerText = `${calculateInclusiveDays(modalFromDate, modalToDate)} Day(s)`;
+      });
+    }
+
+    document.getElementById('confirmBreakModalBtn')?.addEventListener('click', async () => {
+      if (!modalTargetSub) return;
+      const fInput = (document.getElementById('breakFromDateInput') as HTMLInputElement)?.value || modalFromDate;
+      const tInput = (document.getElementById('breakToDateInput') as HTMLInputElement)?.value || modalToDate;
+      const rInput = (document.getElementById('breakReasonSelect') as HTMLSelectElement)?.value || modalReason;
+
+      try {
+        await createSubscriptionBreak(modalTargetSub.id, fInput, tInput, rInput);
+        showToast('Break request sent. Waiting for provider approval.', 'info');
+        activeModal = 'NONE';
+        modalTargetSub = null;
+        await fetchSubs();
+      } catch (err: any) {
+        showToast(err?.message || 'Unable to submit break request', 'error');
+      }
+    });
   };
 
   const updateContentDisplay = () => {
@@ -264,7 +393,84 @@ export async function renderDashboard() {
       }
 
       subsGrid.innerHTML = activeSubs
-        .map((s) => `
+        .map((s) => {
+          // Check if this subscription is a 1-MONTH subscription
+          const startDateObj = new Date(s.startDate);
+          const endDateObj = new Date(s.endDate || s.startDate);
+          const totalInitialDays = Math.round((endDateObj.getTime() - startDateObj.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+          const planTitleLower = (s.planType || '').toLowerCase();
+          const isOneMonthSub = totalInitialDays >= 25 || planTitleLower.includes('month') || planTitleLower.includes('monthly');
+
+          // Calculate break requests for this subscription
+          const subBreaks = loadedBreakRequests.filter((r) => r.subscriptionId === s.id);
+          const usedBreakDays = subBreaks.filter((r) => r.status === 'APPROVED').reduce((sum, r) => sum + Number(r.breakDays || 0), 0);
+          const availableBreakDays = Math.max(0, 4 - usedBreakDays);
+          const isProviderBreakEnabled = s.subscriptionBreaksEnabled;
+
+          let breakSectionHtml = '';
+          // Show Subscription Break section ONLY for 1-MONTH subscriptions
+          if (isOneMonthSub) {
+            if (!isProviderBreakEnabled) {
+              breakSectionHtml = `
+                <div class="meal-skip-card" style="background: #fff7ed; border-color: #ffedd5; margin-top: 14px;">
+                  <div style="font-size: 12px; font-weight: 600; color: #c2410c;">
+                    <i class="fa-solid fa-ban"></i> Subscription breaks are not available for this provider.
+                  </div>
+                </div>`;
+            } else if (usedBreakDays >= 4) {
+              breakSectionHtml = `
+                <div class="meal-skip-card" style="background: #fef2f2; border-color: #fee2e2; margin-top: 14px;">
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                    <span class="meal-skip-title"><i class="fa-solid fa-plane-departure" style="color: var(--color-primary-600);"></i> Subscription Break</span>
+                    <span class="meal-skip-counter">4 / 4 Days Used</span>
+                  </div>
+                  <div style="font-size: 12px; font-weight: 600; color: #dc2626;">
+                    <i class="fa-solid fa-circle-exclamation"></i> You've used all 4 break days for this subscription.
+                  </div>
+                </div>`;
+            } else {
+              breakSectionHtml = `
+                <div class="meal-skip-card" style="margin-top: 14px;">
+                  <div class="meal-skip-card-header">
+                    <div>
+                      <span class="meal-skip-title"><i class="fa-solid fa-plane-departure" style="color: var(--color-primary-600);"></i> Subscription Break</span>
+                      <span style="font-size: 11px; color: var(--color-neutral-500); display: block; margin-top: 2px;">Used: <strong>${usedBreakDays} / 4 days</strong> • Available: <strong>${availableBreakDays} days</strong></span>
+                    </div>
+                    <button class="take-break-btn btn-outline-action" data-sub-id="${escapeHtml(s.id)}" style="padding: 6px 14px; font-size: 12px; font-weight: 700; border-color: var(--color-primary-600); color: var(--color-primary-600);">
+                      <i class="fa-solid fa-calendar-plus"></i> Take a Break
+                    </button>
+                  </div>
+
+                  ${subBreaks.length > 0 ? `
+                    <div class="meal-skip-list">
+                      ${subBreaks.map((r) => {
+                        let badgeClass = 'pending';
+                        let statusText = 'Break request sent. Waiting for provider approval.';
+                        if (r.status === 'APPROVED') {
+                          badgeClass = 'approved';
+                          statusText = `✅ Break approved — Subscription extended by ${r.breakDays} days`;
+                        } else if (r.status === 'REJECTED') {
+                          badgeClass = 'rejected';
+                          statusText = 'Break request rejected — No subscription extension';
+                        }
+
+                        return `
+                          <div class="meal-skip-item">
+                            <div>
+                              <span style="font-weight: 700; font-size: 13px; color: var(--color-neutral-900); display: block;">${escapeHtml(r.fromDate)} → ${escapeHtml(r.toDate)} (${r.breakDays} days)</span>
+                              <span style="font-size: 11px; color: var(--color-neutral-500);">${escapeHtml(statusText)}</span>
+                            </div>
+                            <span class="meal-skip-badge ${badgeClass}">${escapeHtml(r.status)}</span>
+                          </div>
+                        `;
+                      }).join('')}
+                    </div>
+                  ` : '<p style="font-size: 12px; color: var(--color-neutral-500); margin: 6px 0 0 0;">No subscription breaks requested yet.</p>'}
+                </div>`;
+            }
+          }
+
+          return `
           <div style="background: #fff; border: 1px solid var(--color-neutral-200); border-radius: 24px; overflow: hidden; box-shadow: 0 4px 16px rgba(0,0,0,0.04);">
             <div style="background: linear-gradient(135deg, var(--color-primary-600), var(--color-primary-700)); padding: 24px; color: #fff;">
               <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px;">
@@ -307,24 +513,43 @@ export async function renderDashboard() {
                 <span style="font-weight: 600; color: var(--color-neutral-900);">${escapeHtml(s.startDate)} ${s.endDate ? 'to ' + escapeHtml(s.endDate) : ''}</span>
               </div>
 
-              <div style="display: flex; justify-content: space-between; align-items: center; font-size: 13px; color: var(--color-neutral-600); margin-bottom: 16px;">
+              <div style="display: flex; justify-content: space-between; align-items: center; font-size: 13px; color: var(--color-neutral-600); margin-bottom: 12px;">
                 <span>Remaining Days:</span>
                 <span style="font-weight: 700; color: var(--color-primary-600);">${s.daysLeft} Days</span>
               </div>
 
-              <div style="display: flex; gap: 8px;">
+              <!-- Subscription Break Section (Rendered only for 1-Month Subscriptions) -->
+              ${breakSectionHtml}
+
+              <div style="display: flex; gap: 8px; margin-top: 16px;">
                 <button class="btn-outline-action view-kitchen-btn" data-prov-id="${escapeHtml(s.providerId)}" style="flex: 1; padding: 10px; font-size: 13px;">
                   <i class="fa-solid fa-store"></i> View Kitchen
                 </button>
               </div>
             </div>
           </div>
-        `).join('');
+        `;
+        }).join('');
 
       subsGrid.querySelectorAll('.view-kitchen-btn').forEach((btn) => {
         btn.addEventListener('click', (e) => {
           const pId = (e.currentTarget as HTMLElement).getAttribute('data-prov-id');
           if (pId) navigate(`#/providers/${pId}`);
+        });
+      });
+
+      subsGrid.querySelectorAll('.take-break-btn').forEach((btn) => {
+        btn.addEventListener('click', (e) => {
+          const subId = (e.currentTarget as HTMLElement).getAttribute('data-sub-id');
+          const sub = loadedSubs.find((s) => s.id === subId);
+          if (sub) {
+            modalTargetSub = sub;
+            modalFromDate = todayStr;
+            modalToDate = todayStr;
+            activeModal = 'TAKE_BREAK';
+            renderPage();
+            updateContentDisplay();
+          }
         });
       });
     } else {
@@ -449,6 +674,15 @@ export async function renderDashboard() {
       return;
     }
 
+    try {
+      const breakData: any = await getMySubscriptionBreaks();
+      if (breakData && typeof breakData === 'object') {
+        loadedBreakRequests = Array.isArray(breakData.requests) ? breakData.requests : [];
+      }
+    } catch (_) {
+      loadedBreakRequests = [];
+    }
+
     loadedSubs = rawSubs.map((s) => {
       const provider = s.mealPlan?.provider || s.provider || {};
       const plan = s.mealPlan || {};
@@ -457,6 +691,7 @@ export async function renderDashboard() {
       const area = provider.address || provider.city || 'Location not recorded';
       const phone = provider.contactPhone || '';
       const planType = plan.title || 'Meal Subscription Plan';
+      const subscriptionBreaksEnabled = provider.subscriptionBreaksEnabled ?? false;
 
       const rawPaid = s.amountPaid !== undefined && s.amountPaid !== null
         ? s.amountPaid
@@ -506,6 +741,7 @@ export async function renderDashboard() {
         amountPaidDisplay,
         safeRef,
         providerId: provider.id || '',
+        subscriptionBreaksEnabled,
       };
     });
 
@@ -515,4 +751,3 @@ export async function renderDashboard() {
   renderPage();
   fetchSubs();
 }
-

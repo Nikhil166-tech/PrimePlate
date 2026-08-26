@@ -104,6 +104,12 @@ export class MealProvider {
   @Column({ nullable: true })
   contactPhone?: string;
 
+  @Column({ default: false })
+  subscriptionBreaksEnabled: boolean = false;
+
+
+
+
   @CreateDateColumn()
   createdAt: Date;
 

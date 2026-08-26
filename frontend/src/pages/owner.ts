@@ -175,7 +175,7 @@ export async function renderOwnerPortal() {
           <div>
             <span style="font-size: 11px; font-weight: 700; color: var(--color-neutral-500); text-transform: uppercase; display: block; margin-bottom: 2px;">GPS Location</span>
             <span style="font-size: 13px; font-weight: 600; color: #059669; display: inline-flex; align-items: center; gap: 4px;">
-              <i class="fa-solid fa-circle-check"></i> ${selectedHostel?.latitude && selectedHostel?.longitude ? 'Location saved' : 'Location not set'}
+              <i class="fa-solid fa-circle-check"></i> ${selectedHostel.latitude && selectedHostel.longitude ? 'Location saved' : 'Location not set'}
             </span>
           </div>
           <button type="button" class="open-edit-location-modal-btn btn-outline-action" style="padding: 8px 14px; font-size: 12px; font-weight: 700; background: #fff; border-radius: 8px; min-height: 40px; cursor: pointer;">
@@ -196,7 +196,7 @@ export async function renderOwnerPortal() {
         <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 12px 14px; background: var(--color-neutral-50); border: 1px solid var(--color-neutral-200); border-radius: 14px; flex-wrap: wrap;">
           <div>
             <span style="font-size: 11px; font-weight: 700; color: var(--color-neutral-500); text-transform: uppercase; display: block; margin-bottom: 2px;">Student Capacity</span>
-            <span style="font-size: 13px; font-weight: 600; color: var(--color-neutral-800);">👥 ${totalSubscribersCount} / ${selectedHostel?.totalCapacity ?? 50} students</span>
+            <span style="font-size: 13px; font-weight: 600; color: var(--color-neutral-800);">👥 ${totalSubscribersCount} / ${selectedHostel.totalCapacity ?? 50} students</span>
           </div>
           <button type="button" class="edit-capacity-btn btn-outline-action" style="padding: 8px 14px; font-size: 12px; font-weight: 700; background: #fff; border-radius: 8px; min-height: 40px; cursor: pointer;">
             <i class="fa-solid fa-users-gear"></i> Manage Capacity
@@ -206,20 +206,20 @@ export async function renderOwnerPortal() {
         <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 12px 14px; background: var(--color-neutral-50); border: 1px solid var(--color-neutral-200); border-radius: 14px; flex-wrap: wrap;">
           <div>
             <span style="font-size: 11px; font-weight: 700; color: var(--color-neutral-500); text-transform: uppercase; display: block; margin-bottom: 2px;">Kitchen Status</span>
-            <span style="font-size: 13px; font-weight: 700; color: ${selectedHostel?.acceptingSubscriptions !== false ? '#059669' : '#dc2626'};">
-              ${selectedHostel?.acceptingSubscriptions !== false ? '🟢 Kitchen OPEN' : '🔴 Kitchen CLOSED'}
+            <span style="font-size: 13px; font-weight: 700; color: ${selectedHostel.acceptingSubscriptions !== false ? '#059669' : '#dc2626'};">
+              ${selectedHostel.acceptingSubscriptions !== false ? '🟢 Kitchen OPEN' : '🔴 Kitchen CLOSED'}
             </span>
           </div>
           <button type="button" class="toggle-open-btn btn-outline-action" style="padding: 8px 14px; font-size: 12px; font-weight: 700; background: #fff; border-radius: 8px; min-height: 40px; cursor: pointer;">
-            <i class="fa-solid ${selectedHostel?.acceptingSubscriptions !== false ? 'fa-door-closed' : 'fa-door-open'}"></i> ${selectedHostel?.acceptingSubscriptions !== false ? 'Close Kitchen' : 'Open Kitchen'}
+            <i class="fa-solid ${selectedHostel.acceptingSubscriptions !== false ? 'fa-door-closed' : 'fa-door-open'}"></i> ${selectedHostel.acceptingSubscriptions !== false ? 'Close Kitchen' : 'Open Kitchen'}
           </button>
         </div>
 
         <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 12px 14px; background: #fff7ed; border: 1px solid #ffedd5; border-radius: 14px; flex-wrap: wrap;">
           <div>
             <span style="font-size: 11px; font-weight: 700; color: #c2410c; text-transform: uppercase; display: block; margin-bottom: 2px;">Subscription Breaks</span>
-            <span style="font-size: 13px; font-weight: 700; color: ${selectedHostel?.subscriptionBreaksEnabled ? '#15803d' : '#64748b'};">
-              ${selectedHostel?.subscriptionBreaksEnabled ? '● ENABLED (Max 4 Days)' : '● DISABLED'}
+            <span style="font-size: 13px; font-weight: 700; color: ${selectedHostel.subscriptionBreaksEnabled ? '#15803d' : '#64748b'};">
+              ${selectedHostel.subscriptionBreaksEnabled ? '● ENABLED (Max 4 Days)' : '● DISABLED'}
             </span>
           </div>
           <button type="button" class="open-break-settings-sheet-btn btn-outline-action" style="padding: 8px 14px; font-size: 12px; font-weight: 700; background: #fff; border-radius: 8px; min-height: 40px; cursor: pointer;">
@@ -235,31 +235,30 @@ export async function renderOwnerPortal() {
           ${providerBreakRequests.filter((r) => r.status === 'PENDING').length} Pending Requests
         </span>
       </div>
-      ${
-        breakRequestsLoading
-          ? `<div style="text-align: center; padding: 36px;"><i class="fa-solid fa-spinner fa-spin" style="font-size: 24px; color: var(--color-primary-600);"></i></div>`
-          : providerBreakRequests.length === 0
+      ${breakRequestsLoading
+        ? `<div style="text-align: center; padding: 36px;"><i class="fa-solid fa-spinner fa-spin" style="font-size: 24px; color: var(--color-primary-600);"></i></div>`
+        : providerBreakRequests.length === 0
           ? `<div style="text-align: center; padding: 32px; background: var(--color-neutral-50); border: 1px dashed var(--color-neutral-300); border-radius: 16px;">
               <i class="fa-solid fa-inbox" style="font-size: 28px; color: var(--color-neutral-400); margin-bottom: 8px;"></i>
               <p style="font-size: 14px; color: var(--color-neutral-600); margin: 0;">No subscription break requests submitted yet.</p>
             </div>`
           : `<div style="display: flex; flex-direction: column; gap: 12px;">
               ${providerBreakRequests
-                .map((r) => {
-                  const isPending = r.status === 'PENDING';
-                  const isApproved = r.status === 'APPROVED';
-                  const isRejected = r.status === 'REJECTED';
+            .map((r) => {
+              const isPending = r.status === 'PENDING';
+              const isApproved = r.status === 'APPROVED';
+              const isRejected = r.status === 'REJECTED';
 
-                  let statusBadgeHtml = '';
-                  if (isPending) {
-                    statusBadgeHtml = `<span style="font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 6px; background: #fef3c7; color: #d97706;">PENDING</span>`;
-                  } else if (isApproved) {
-                    statusBadgeHtml = `<span style="font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 6px; background: #dcfce7; color: #15803d;">Approved ✅</span>`;
-                  } else if (isRejected) {
-                    statusBadgeHtml = `<span style="font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 6px; background: #fee2e2; color: #b91c1c;">Rejected</span>`;
-                  }
+              let statusBadgeHtml = '';
+              if (isPending) {
+                statusBadgeHtml = `<span style="font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 6px; background: #fef3c7; color: #d97706;">PENDING</span>`;
+              } else if (isApproved) {
+                statusBadgeHtml = `<span style="font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 6px; background: #dcfce7; color: #15803d;">Approved ✅</span>`;
+              } else if (isRejected) {
+                statusBadgeHtml = `<span style="font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 6px; background: #fee2e2; color: #b91c1c;">Rejected</span>`;
+              }
 
-                  return `
+              return `
                     <div style="background: var(--color-neutral-50); border: 1px solid var(--color-neutral-200); border-radius: 14px; padding: 16px; display: flex; flex-direction: column; gap: 10px;">
                       <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 8px;">
                         <div>
@@ -295,9 +294,8 @@ export async function renderOwnerPortal() {
                         </div>
                       </div>
 
-                      ${
-                        isPending
-                          ? `<div style="display: flex; gap: 8px; justify-content: flex-end;">
+                      ${isPending
+                  ? `<div style="display: flex; gap: 8px; justify-content: flex-end;">
                               <button class="approve-break-btn btn-primary-action" data-req-id="${escapeHtml(r.id)}" style="padding: 8px 16px; font-size: 13px; background: #16a34a; border-color: #16a34a;">
                                 <i class="fa-solid fa-check"></i> Approve Break
                               </button>
@@ -305,12 +303,12 @@ export async function renderOwnerPortal() {
                                 <i class="fa-solid fa-xmark"></i> Reject
                               </button>
                             </div>`
-                          : ''
-                      }
+                  : ''
+                }
                     </div>
                   `;
-                })
-                .join('')}
+            })
+            .join('')}
             </div>`
       }
     `;
@@ -319,34 +317,33 @@ export async function renderOwnerPortal() {
       <div style="margin-bottom: 14px;">
         <input type="text" class="subscriber-search-input btn-outline-action" style="width: 100%; background: #fff; padding: 10px 14px; font-size: 13px; border-radius: 10px;" placeholder="Search subscribers by name or phone..." value="${escapeHtml(subscriberSearchQuery)}" />
       </div>
-      ${
-        subscribersLoading
-          ? `<div style="text-align: center; padding: 36px;"><i class="fa-solid fa-spinner fa-spin" style="font-size: 24px; color: var(--color-primary-600);"></i></div>`
-          : subscribersError
+      ${subscribersLoading
+        ? `<div style="text-align: center; padding: 36px;"><i class="fa-solid fa-spinner fa-spin" style="font-size: 24px; color: var(--color-primary-600);"></i></div>`
+        : subscribersError
           ? `<div style="text-align: center; padding: 24px;"><p style="color: #dc2626; font-size: 13px;">${escapeHtml(subscribersError)}</p></div>`
           : filteredSubscribers.length === 0
-          ? `<div style="text-align: center; padding: 32px; background: var(--color-neutral-50); border: 1px dashed var(--color-neutral-300); border-radius: 16px;">
+            ? `<div style="text-align: center; padding: 32px; background: var(--color-neutral-50); border: 1px dashed var(--color-neutral-300); border-radius: 16px;">
               <p style="font-size: 13px; color: var(--color-neutral-500); margin: 0;">${subscriberSearchQuery ? 'No subscribers match filter.' : 'No active subscribers.'}</p>
             </div>`
-          : `<div style="display: flex; flex-direction: column; gap: 10px; max-height: 480px; overflow-y: auto;">
+            : `<div style="display: flex; flex-direction: column; gap: 10px; max-height: 480px; overflow-y: auto;">
               ${filteredSubscribers
-                .map((sub: any) => {
-                  const studentName = escapeHtml(sub.student?.name || sub.student?.email || 'Subscriber');
-                  const studentPhone = escapeHtml(sub.student?.phone || 'Not recorded');
-                  const planTitle = escapeHtml(sub.mealPlan?.title || sub.planType || 'Subscription Plan');
-                  const statusUpper = sub.status ? String(sub.status).toUpperCase() : 'UNKNOWN';
-                  const statusBadgeStyle = getSubStatusStyle(statusUpper);
+              .map((sub: any) => {
+                const studentName = escapeHtml(sub.student?.name || sub.student?.email || 'Subscriber');
+                const studentPhone = escapeHtml(sub.student?.phone || 'Not recorded');
+                const planTitle = escapeHtml(sub.mealPlan?.title || sub.planType || 'Subscription Plan');
+                const statusUpper = sub.status ? String(sub.status).toUpperCase() : 'UNKNOWN';
+                const statusBadgeStyle = getSubStatusStyle(statusUpper);
 
-                  let amountPaidDisplay = 'Amount unavailable';
-                  if (sub.amountPaid !== undefined && sub.amountPaid !== null && !isNaN(Number(sub.amountPaid))) {
-                    amountPaidDisplay = `₹${Number(sub.amountPaid).toLocaleString('en-IN')}`;
-                  } else if (sub.payment?.amount !== undefined && sub.payment?.amount !== null && !isNaN(Number(sub.payment.amount))) {
-                    amountPaidDisplay = `₹${Number(sub.payment.amount).toLocaleString('en-IN')}`;
-                  } else if (sub.mealPlan?.pricePerMonth !== undefined && sub.mealPlan?.pricePerMonth !== null && !isNaN(Number(sub.mealPlan.pricePerMonth))) {
-                    amountPaidDisplay = `₹${Number(sub.mealPlan.pricePerMonth).toLocaleString('en-IN')}`;
-                  }
+                let amountPaidDisplay = 'Amount unavailable';
+                if (sub.amountPaid !== undefined && sub.amountPaid !== null && !isNaN(Number(sub.amountPaid))) {
+                  amountPaidDisplay = `₹${Number(sub.amountPaid).toLocaleString('en-IN')}`;
+                } else if (sub.payment?.amount !== undefined && sub.payment?.amount !== null && !isNaN(Number(sub.payment.amount))) {
+                  amountPaidDisplay = `₹${Number(sub.payment.amount).toLocaleString('en-IN')}`;
+                } else if (sub.mealPlan?.pricePerMonth !== undefined && sub.mealPlan?.pricePerMonth !== null && !isNaN(Number(sub.mealPlan.pricePerMonth))) {
+                  amountPaidDisplay = `₹${Number(sub.mealPlan.pricePerMonth).toLocaleString('en-IN')}`;
+                }
 
-                  return `
+                return `
                     <div style="background: var(--color-neutral-50); border-radius: 14px; padding: 12px; border: 1px solid var(--color-neutral-200); font-size: 13px;">
                       <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; margin-bottom: 6px;">
                         <div>
@@ -361,8 +358,8 @@ export async function renderOwnerPortal() {
                       </div>
                     </div>
                   `;
-                })
-                .join('')}
+              })
+              .join('')}
             </div>`
       }
     `;
@@ -370,14 +367,14 @@ export async function renderOwnerPortal() {
     const renderWeeklyMenuContent = () => `
       <div style="display: flex; flex-direction: column; gap: 14px; max-height: 520px; overflow-y: auto;">
         ${DAYS_OF_WEEK.map(
-          (day, dayIdx) => `
+      (day, dayIdx) => `
           <div style="border-bottom: 1px solid var(--color-neutral-100); padding-bottom: 10px;">
             <strong style="font-size: 13px; color: var(--color-neutral-900); display: block; margin-bottom: 6px;">${day}</strong>
             <div style="display: flex; flex-direction: column; gap: 6px;">
               ${['Breakfast', 'Lunch', 'Dinner'].map((meal) => {
-                const currentVal = getMenuItem(dayIdx, meal);
-                const isEditing = editingMenu?.dayIdx === dayIdx && editingMenu?.mealType === meal;
-                return `
+        const currentVal = getMenuItem(dayIdx, meal);
+        const isEditing = editingMenu?.dayIdx === dayIdx && editingMenu?.mealType === meal;
+        return `
                   <div class="menu-meal-card" style="padding: 8px 10px;">
                     <div class="menu-meal-header">
                       <span class="menu-meal-title ${meal.toLowerCase()}" style="font-size: 11px;">${meal}</span>
@@ -400,7 +397,7 @@ export async function renderOwnerPortal() {
                     `}
                   </div>
                 `;
-              }).join('')}
+      }).join('')}
             </div>
           </div>
         `).join('')}
@@ -413,12 +410,11 @@ export async function renderOwnerPortal() {
           ⭐ ${(selectedHostel?.rating && Number(selectedHostel.rating) > 0 ? Number(selectedHostel.rating).toFixed(1) : '0.0')} (${providerReviews.length} reviews)
         </span>
       </div>
-      ${
-        providerReviews.length === 0
-          ? `<div style="text-align: center; padding: 32px; background: var(--color-neutral-50); border: 1px dashed var(--color-neutral-300); border-radius: 16px;"><p style="font-size: 13px; color: var(--color-neutral-500); margin: 0;">No reviews written yet.</p></div>`
-          : `<div style="display: flex; flex-direction: column; gap: 10px; max-height: 480px; overflow-y: auto;">
+      ${providerReviews.length === 0
+        ? `<div style="text-align: center; padding: 32px; background: var(--color-neutral-50); border: 1px dashed var(--color-neutral-300); border-radius: 16px;"><p style="font-size: 13px; color: var(--color-neutral-500); margin: 0;">No reviews written yet.</p></div>`
+        : `<div style="display: flex; flex-direction: column; gap: 10px; max-height: 480px; overflow-y: auto;">
               ${providerReviews
-                .map((r: any) => `
+          .map((r: any) => `
                   <div style="background: var(--color-neutral-50); border: 1px solid var(--color-neutral-200); border-radius: 12px; padding: 12px;">
                     <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
                       <strong style="font-size: 13px; color: var(--color-neutral-900);">${escapeHtml(r.student?.name || 'Subscriber')}</strong>
@@ -439,10 +435,9 @@ export async function renderOwnerPortal() {
             <span style="font-size: 12px; color: var(--color-neutral-500);">Allow PrimeMates on 1-Month plans to request breaks (max 4 days)</span>
           </div>
           <label class="toggle-switch">
-            <input type="checkbox" class="subscription-breaks-toggle-input" ${selectedHostel?.subscriptionBreaksEnabled ? 'checked' : ''} />
+            <input type="checkbox" class="subscription-breaks-toggle-input" ${selectedHostel.subscriptionBreaksEnabled ? 'checked' : ''} />
             <span class="toggle-slider"></span>
           </label>
-
         </div>
 
         <button class="save-break-settings-btn btn-primary-action" style="width: 100%; justify-content: center; padding: 12px; font-size: 14px;">
@@ -466,15 +461,15 @@ export async function renderOwnerPortal() {
             </div>
 
             ${!isNewProvider && !isPending
-              ? `<button id="openHostelModalBtn" class="btn-primary-action" style="padding: 10px 20px; font-size: 14px;">
+        ? `<button id="openHostelModalBtn" class="btn-primary-action" style="padding: 10px 20px; font-size: 14px;">
                   <i class="fa-solid fa-plus"></i> Add Another Hostel
                 </button>`
-              : ''
-            }
+        : ''
+      }
           </div>
 
           ${isNewProvider
-            ? `
+        ? `
               <div style="max-width: 680px; margin: 20px auto; background: #fff; border: 1px solid var(--color-neutral-200); border-radius: 28px; padding: 40px; box-shadow: 0 12px 36px rgba(0,0,0,0.06); text-align: center;">
                 <div style="width: 72px; height: 72px; border-radius: 20px; background: var(--color-primary-100); color: var(--color-primary-600); display: flex; align-items: center; justify-content: center; font-size: 32px; margin: 0 auto 20px;">
                   <i class="fa-solid fa-store"></i>
@@ -535,29 +530,29 @@ export async function renderOwnerPortal() {
                 </form>
               </div>
             `
-            : isPending
-            ? `
+        : isPending
+          ? `
               <div style="max-width: 600px; margin: 40px auto; background: #fff; border: 1px solid #fef08a; border-radius: 28px; padding: 40px; text-align: center; box-shadow: 0 12px 36px rgba(0,0,0,0.04);">
                 <div style="width: 64px; height: 64px; border-radius: 50%; background: #fef9c3; color: #ca8a04; display: flex; align-items: center; justify-content: center; font-size: 28px; margin: 0 auto 16px;">
                   <i class="fa-solid fa-clock"></i>
                 </div>
                 <h3 class="font-display" style="font-size: 24px; font-weight: 800; color: var(--color-neutral-900); margin-bottom: 8px;">Approval Pending</h3>
-                <p style="color: var(--color-neutral-600); font-size: 14px; margin-bottom: 24px;">Your kitchen listing for <strong>${escapeHtml(selectedHostel?.name || 'Mess')}</strong> is under review by PrimePlate Admin.</p>
+                <p style="color: var(--color-neutral-600); font-size: 14px; margin-bottom: 24px;">Your kitchen listing for <strong>${escapeHtml(selectedHostel.name)}</strong> is under review by PrimePlate Admin.</p>
                 <button id="refreshStatusBtn" class="btn-primary-action">Check Approval Status</button>
               </div>
             `
-            : `
+          : `
               <!-- Hostels Switcher Bar -->
               ${hostels.length > 1
-                ? `<div style="display: flex; gap: 8px; overflow-x: auto; margin-bottom: 20px; padding-bottom: 4px;">
+            ? `<div style="display: flex; gap: 8px; overflow-x: auto; margin-bottom: 20px; padding-bottom: 4px;">
                     ${hostels.map((h) => `
-                      <button class="select-hostel-tab-btn btn-outline-action" data-id="${h.id}" style="font-weight: 700; padding: 8px 16px; border-radius: 999px; font-size: 13px; background: ${selectedHostel?.id === h.id ? 'var(--color-primary-600)' : '#fff'}; color: ${selectedHostel?.id === h.id ? '#fff' : 'var(--color-neutral-700)'}; border-color: ${selectedHostel?.id === h.id ? 'var(--color-primary-600)' : 'var(--color-neutral-300)'};">
+                      <button class="select-hostel-tab-btn btn-outline-action" data-id="${h.id}" style="font-weight: 700; padding: 8px 16px; border-radius: 999px; font-size: 13px; background: ${selectedHostel.id === h.id ? 'var(--color-primary-600)' : '#fff'}; color: ${selectedHostel.id === h.id ? '#fff' : 'var(--color-neutral-700)'}; border-color: ${selectedHostel.id === h.id ? 'var(--color-primary-600)' : 'var(--color-neutral-300)'};">
                         ${escapeHtml(h.name)}
                       </button>
                     `).join('')}
                   </div>`
-                : ''
-              }
+            : ''
+          }
 
               <!-- Overview Stat Cards -->
               <div class="owner-stats-grid" style="margin-bottom: 24px;">
@@ -566,7 +561,7 @@ export async function renderOwnerPortal() {
                     <div class="owner-stat-icon"><i class="fa-solid fa-users"></i></div>
                     <span class="owner-stat-label">Active Subscribers</span>
                   </div>
-                  <p class="owner-stat-value">${activeSubscribersCount} / ${selectedHostel?.totalCapacity ?? 50}</p>
+                  <p class="owner-stat-value">${activeSubscribersCount} / ${selectedHostel.totalCapacity ?? 50}</p>
                 </div>
                 <div class="owner-stat-card revenue">
                   <div class="owner-stat-header">
@@ -580,7 +575,7 @@ export async function renderOwnerPortal() {
                     <div class="owner-stat-icon"><i class="fa-solid fa-star"></i></div>
                     <span class="owner-stat-label">Rating</span>
                   </div>
-                  <p class="owner-stat-value">${(selectedHostel?.rating ?? 0) > 0 ? Number(selectedHostel?.rating).toFixed(1) : '0.0'}</p>
+                  <p class="owner-stat-value">${(selectedHostel.rating ?? 0) > 0 ? Number(selectedHostel.rating).toFixed(1) : '0.0'}</p>
                 </div>
               </div>
 
@@ -591,11 +586,11 @@ export async function renderOwnerPortal() {
                 <!-- Primary PG Card -->
                 <div style="background: #fff; border: 1px solid var(--color-neutral-200); border-radius: 20px; padding: 18px; margin-bottom: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.03);">
                   <div style="display: flex; align-items: flex-start; gap: 12px; margin-bottom: 14px;">
-                    <img src="${getSafeImageUrl(selectedHostel?.imageUrl)}" alt="${escapeHtml(selectedHostel?.name || '')}" style="width: 64px; height: 64px; border-radius: 12px; object-fit: cover; flex-shrink: 0; border: 1px solid var(--color-neutral-200);" />
+                    <img src="${getSafeImageUrl(selectedHostel.imageUrl)}" alt="${escapeHtml(selectedHostel.name)}" style="width: 64px; height: 64px; border-radius: 12px; object-fit: cover; flex-shrink: 0; border: 1px solid var(--color-neutral-200);" />
                     <div style="flex: 1; min-width: 0;">
-                      <h2 class="font-display" style="font-size: 18px; font-weight: 800; color: var(--color-neutral-900); margin: 0 0 2px 0;">${escapeHtml(selectedHostel?.name || '')}</h2>
-                      <p style="font-size: 12px; color: var(--color-neutral-600); margin: 0 0 2px 0;"><i class="fa-solid fa-location-dot" style="color: var(--color-primary-600);"></i> ${escapeHtml(selectedHostel?.address || selectedHostel?.city || 'Location not set')}</p>
-                      <p style="font-size: 12px; color: var(--color-neutral-500); margin: 0;"><i class="fa-solid fa-phone"></i> ${escapeHtml(selectedHostel?.contactPhone || 'No phone')}</p>
+                      <h2 class="font-display" style="font-size: 18px; font-weight: 800; color: var(--color-neutral-900); margin: 0 0 2px 0;">${escapeHtml(selectedHostel.name)}</h2>
+                      <p style="font-size: 12px; color: var(--color-neutral-600); margin: 0 0 2px 0;"><i class="fa-solid fa-location-dot" style="color: var(--color-primary-600);"></i> ${escapeHtml(selectedHostel.address || selectedHostel.city || 'Location not set')}</p>
+                      <p style="font-size: 12px; color: var(--color-neutral-500); margin: 0;"><i class="fa-solid fa-phone"></i> ${escapeHtml(selectedHostel.contactPhone || 'No phone')}</p>
                     </div>
                   </div>
 
@@ -604,10 +599,10 @@ export async function renderOwnerPortal() {
                       <span style="font-size: 16px; font-weight: 800; color: var(--color-neutral-900);">₹${monthlyPriceNum.toLocaleString('en-IN')}</span>
                       <span style="font-size: 12px; color: var(--color-neutral-500);">/ mo</span>
                     </div>
-                    <span style="font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 999px; background: ${selectedHostel?.acceptingSubscriptions !== false ? '#d1fae5' : '#fee2e2'}; color: ${selectedHostel?.acceptingSubscriptions !== false ? '#047857' : '#b91c1c'};">
-                      ${selectedHostel?.acceptingSubscriptions !== false ? '🟢 Kitchen OPEN' : '🔴 Kitchen CLOSED'}
+                    <span style="font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 999px; background: ${selectedHostel.acceptingSubscriptions !== false ? '#d1fae5' : '#fee2e2'}; color: ${selectedHostel.acceptingSubscriptions !== false ? '#047857' : '#b91c1c'};">
+                      ${selectedHostel.acceptingSubscriptions !== false ? '🟢 Kitchen OPEN' : '🔴 Kitchen CLOSED'}
                     </span>
-                    <span style="font-size: 12px; font-weight: 600; color: var(--color-neutral-700);">👥 ${totalSubscribersCount} / ${selectedHostel?.totalCapacity ?? 50}</span>
+                    <span style="font-size: 12px; font-weight: 600; color: var(--color-neutral-700);">👥 ${totalSubscribersCount} / ${selectedHostel.totalCapacity ?? 50}</span>
                   </div>
 
                   <button class="open-manage-pg-sheet-btn btn-primary-action" style="width: 100%; justify-content: center; padding: 12px; font-size: 14px; font-weight: 700; border-radius: 12px; min-height: 44px;">
@@ -654,7 +649,7 @@ export async function renderOwnerPortal() {
                   <div class="compact-action-card">
                     <div>
                       <span style="font-size: 14px; font-weight: 700; color: var(--color-neutral-900); display: block;"><i class="fa-solid fa-star" style="color: #f59e0b; margin-right: 6px;"></i> Reviews</span>
-                      <span style="font-size: 12px; font-weight: 600; color: var(--color-neutral-600);">⭐ ${(selectedHostel?.rating ?? 0) > 0 ? Number(selectedHostel?.rating).toFixed(1) : '0.0'} · ${providerReviews.length} reviews</span>
+                      <span style="font-size: 12px; font-weight: 600; color: var(--color-neutral-600);">⭐ ${(selectedHostel.rating ?? 0) > 0 ? Number(selectedHostel.rating).toFixed(1) : '0.0'} · ${providerReviews.length} reviews</span>
                     </div>
                     <button class="open-reviews-sheet-btn btn-outline-action" style="padding: 8px 14px; font-size: 12px; font-weight: 700; border-radius: 10px; min-height: 40px; background: #fff;">
                       View Reviews
@@ -670,11 +665,11 @@ export async function renderOwnerPortal() {
                 <!-- Mess Profile Management Card -->
                 <div id="messProfileSection" class="owner-section-card" style="background: #fff; border: 1px solid var(--color-neutral-200); border-radius: 20px; padding: 20px; margin-bottom: 24px; box-shadow: 0 4px 12px rgba(0,0,0,0.03);">
                   <div style="display: flex; align-items: flex-start; gap: 14px; margin-bottom: 16px;">
-                    <img src="${getSafeImageUrl(selectedHostel?.imageUrl)}" alt="${escapeHtml(selectedHostel?.name || '')}" style="width: 80px; height: 80px; border-radius: 14px; object-fit: cover; flex-shrink: 0; border: 1px solid var(--color-neutral-200);" />
+                    <img src="${getSafeImageUrl(selectedHostel.imageUrl)}" alt="${escapeHtml(selectedHostel.name)}" style="width: 80px; height: 80px; border-radius: 14px; object-fit: cover; flex-shrink: 0; border: 1px solid var(--color-neutral-200);" />
                     <div style="flex: 1; min-width: 0;">
-                      <h2 class="font-display" style="font-size: 20px; font-weight: 800; color: var(--color-neutral-900); margin: 0 0 4px 0;">${escapeHtml(selectedHostel?.name || '')}</h2>
-                      <p style="font-size: 13px; color: var(--color-neutral-700); margin: 0 0 4px 0;"><i class="fa-solid fa-location-dot" style="color: var(--color-primary-600);"></i> ${escapeHtml(selectedHostel?.address || selectedHostel?.city || 'Location not specified')}</p>
-                      <p style="font-size: 13px; color: var(--color-neutral-600); margin: 0;"><i class="fa-solid fa-phone"></i> ${escapeHtml(selectedHostel?.contactPhone || 'No phone')}</p>
+                      <h2 class="font-display" style="font-size: 20px; font-weight: 800; color: var(--color-neutral-900); margin: 0 0 4px 0;">${escapeHtml(selectedHostel.name)}</h2>
+                      <p style="font-size: 13px; color: var(--color-neutral-700); margin: 0 0 4px 0;"><i class="fa-solid fa-location-dot" style="color: var(--color-primary-600);"></i> ${escapeHtml(selectedHostel.address || selectedHostel.city || 'Location not specified')}</p>
+                      <p style="font-size: 13px; color: var(--color-neutral-600); margin: 0;"><i class="fa-solid fa-phone"></i> ${escapeHtml(selectedHostel.contactPhone || 'No phone')}</p>
                     </div>
                   </div>
 
@@ -684,8 +679,8 @@ export async function renderOwnerPortal() {
                         <span style="font-size: 18px; font-weight: 800; color: var(--color-neutral-900);">₹${monthlyPriceNum.toLocaleString('en-IN')}</span>
                         <span style="font-size: 13px; color: var(--color-neutral-500);">/ month</span>
                       </div>
-                      <div style="display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: 999px; font-size: 12px; font-weight: 700; background: ${selectedHostel?.acceptingSubscriptions !== false ? '#d1fae5' : '#fee2e2'}; color: ${selectedHostel?.acceptingSubscriptions !== false ? '#047857' : '#b91c1c'}; border: 1px solid ${selectedHostel?.acceptingSubscriptions !== false ? '#a7f3d0' : '#fca5a5'};">
-                        <span>${selectedHostel?.acceptingSubscriptions !== false ? 'Kitchen OPEN' : 'Kitchen CLOSED'}</span>
+                      <div style="display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: 999px; font-size: 12px; font-weight: 700; background: ${selectedHostel.acceptingSubscriptions !== false ? '#d1fae5' : '#fee2e2'}; color: ${selectedHostel.acceptingSubscriptions !== false ? '#047857' : '#b91c1c'}; border: 1px solid ${selectedHostel.acceptingSubscriptions !== false ? '#a7f3d0' : '#fca5a5'};">
+                        <span>${selectedHostel.acceptingSubscriptions !== false ? 'Kitchen OPEN' : 'Kitchen CLOSED'}</span>
                       </div>
                     </div>
                   </div>
@@ -753,7 +748,7 @@ export async function renderOwnerPortal() {
                 </div>
               </div>
             `
-          }
+      }
         </div>
       </main>
 
@@ -764,22 +759,21 @@ export async function renderOwnerPortal() {
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; border-bottom: 1px solid var(--color-neutral-200); padding-bottom: 12px;">
               <h3 class="font-display" style="font-size: 20px; font-weight: 800; color: var(--color-neutral-900); margin: 0;">
                 ${mobileSheet === 'MANAGE_PG' ? 'Manage PG' :
-                  mobileSheet === 'BREAK_REQUESTS' ? 'Subscription Break Requests' :
-                  mobileSheet === 'SUBSCRIBERS' ? 'Subscribers' :
-                  mobileSheet === 'WEEKLY_MENU' ? 'Weekly Menu Editor' :
-                  mobileSheet === 'REVIEWS' ? 'Provider Reviews' :
+          mobileSheet === 'BREAK_REQUESTS' ? 'Subscription Break Requests' :
+            mobileSheet === 'SUBSCRIBERS' ? 'Subscribers' :
+              mobileSheet === 'WEEKLY_MENU' ? 'Weekly Menu Editor' :
+                mobileSheet === 'REVIEWS' ? 'Provider Reviews' :
                   'Subscription Breaks Settings'}
               </h3>
               <button class="close-mobile-sheet-btn" style="background: none; border: none; font-size: 24px; cursor: pointer; color: var(--color-neutral-500); padding: 4px 8px;">&times;</button>
             </div>
-            ${
-              mobileSheet === 'MANAGE_PG' ? renderManagePgContent() :
-              mobileSheet === 'BREAK_REQUESTS' ? renderBreakRequestsContent() :
-              mobileSheet === 'SUBSCRIBERS' ? renderSubscribersContent() :
+            ${mobileSheet === 'MANAGE_PG' ? renderManagePgContent() :
+          mobileSheet === 'BREAK_REQUESTS' ? renderBreakRequestsContent() :
+            mobileSheet === 'SUBSCRIBERS' ? renderSubscribersContent() :
               mobileSheet === 'WEEKLY_MENU' ? renderWeeklyMenuContent() :
-              mobileSheet === 'REVIEWS' ? renderReviewsContent() :
-              renderBreakSettingsContent()
-            }
+                mobileSheet === 'REVIEWS' ? renderReviewsContent() :
+                  renderBreakSettingsContent()
+        }
           </div>
         </div>
       ` : ''}
@@ -875,9 +869,8 @@ export async function renderOwnerPortal() {
                   <i class="fa-solid fa-crosshairs" style="color: var(--color-primary-600);"></i> 📍 Use My Current Location
                 </button>
                 <span id="mLocationStatus" style="font-size: 12px; color: var(--color-neutral-500);">
-                  ${selectedHostel?.latitude && selectedHostel?.longitude ? 'Current GPS: ' + Number(selectedHostel.latitude).toFixed(4) + ', ' + Number(selectedHostel.longitude).toFixed(4) : 'Location coordinates not set'}
+                  ${selectedHostel.latitude && selectedHostel.longitude ? 'Current GPS: ' + Number(selectedHostel.latitude).toFixed(4) + ', ' + Number(selectedHostel.longitude).toFixed(4) : 'Location coordinates not set'}
                 </span>
-
               </div>
             </div>
 
@@ -1018,12 +1011,11 @@ export async function renderOwnerPortal() {
         if (!selectedHostel) return;
         try {
           await api.put(`/providers/${selectedHostel.id}`, {
-            latitude: modalEditLat ?? selectedHostel?.latitude,
-            longitude: modalEditLng ?? selectedHostel?.longitude,
+            latitude: modalEditLat ?? selectedHostel.latitude,
+            longitude: modalEditLng ?? selectedHostel.longitude,
           });
-          if (modalEditLat && selectedHostel) selectedHostel.latitude = modalEditLat;
-          if (modalEditLng && selectedHostel) selectedHostel.longitude = modalEditLng;
-
+          if (modalEditLat) selectedHostel.latitude = modalEditLat;
+          if (modalEditLng) selectedHostel.longitude = modalEditLng;
           showToast('Location updated successfully!', 'success');
           showEditLocationModal = false;
           render();

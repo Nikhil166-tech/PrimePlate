@@ -204,7 +204,7 @@ export async function renderOwnerPortal() {
           <div>
             <span style="font-size: 11px; font-weight: 700; color: var(--color-neutral-500); text-transform: uppercase; display: block; margin-bottom: 2px;">GPS Location</span>
             <span style="font-size: 13px; font-weight: 600; color: #059669; display: inline-flex; align-items: center; gap: 4px;">
-              <i class="fa-solid fa-circle-check"></i> ${selectedHostel.latitude && selectedHostel.longitude ? 'Location saved' : 'Location not set'}
+              <i class="fa-solid fa-circle-check"></i> ${selectedHostel?.latitude && selectedHostel?.longitude ? 'Location saved' : 'Location not set'}
             </span>
           </div>
           <button type="button" class="open-edit-location-modal-btn btn-outline-action" style="padding: 8px 14px; font-size: 12px; font-weight: 700; background: #fff; border-radius: 8px; min-height: 40px; cursor: pointer;">
@@ -1027,7 +1027,7 @@ export async function renderOwnerPortal() {
                   <i class="fa-solid fa-crosshairs" style="color: var(--color-primary-600);"></i> 📍 Use My Current Location
                 </button>
                 <span id="mLocationStatus" style="font-size: 12px; color: var(--color-neutral-500);">
-                  ${selectedHostel.latitude && selectedHostel.longitude ? 'Current GPS: ' + Number(selectedHostel.latitude).toFixed(4) + ', ' + Number(selectedHostel.longitude).toFixed(4) : 'Location coordinates not set'}
+                  ${selectedHostel?.latitude && selectedHostel?.longitude ? 'Current GPS: ' + Number(selectedHostel.latitude).toFixed(4) + ', ' + Number(selectedHostel.longitude).toFixed(4) : 'Location coordinates not set'}
                 </span>
               </div>
             </div>

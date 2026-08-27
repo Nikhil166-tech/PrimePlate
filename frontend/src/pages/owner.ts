@@ -3,6 +3,8 @@ import api, {
   approveSubscriptionBreak,
   rejectSubscriptionBreak,
   updateProviderBreakSettings,
+  getProviderEarningsSummary,
+  getProviderEarningsHistory,
 } from '../api';
 import { navigate } from '../router';
 import { showToast } from '../components/toast';
@@ -29,11 +31,21 @@ export async function renderOwnerPortal() {
   let showEditPriceModal = false;
   let showEditLocationModal = false;
   let showManagePanel = false;
-  let mobileSheet: 'NONE' | 'MANAGE_PG' | 'BREAK_REQUESTS' | 'SUBSCRIBERS' | 'WEEKLY_MENU' | 'REVIEWS' | 'BREAK_SETTINGS' = 'NONE';
+  let mobileSheet: 'NONE' | 'MANAGE_PG' | 'BREAK_REQUESTS' | 'SUBSCRIBERS' | 'WEEKLY_MENU' | 'REVIEWS' | 'BREAK_SETTINGS' | 'EARNINGS_HISTORY' = 'NONE';
   let editingMenu: { dayIdx: number; mealType: string } | null = null;
   let editingMenuValue = '';
   let modalEditLat: number | null = null;
   let modalEditLng: number | null = null;
+  let earningsSummary: any = {
+    totalGross: 0,
+    platformFees: 0,
+    totalProviderEarnings: 0,
+    pendingAmount: 0,
+    paidAmount: 0,
+    refundedAmount: 0,
+  };
+  let earningsHistory: any[] = [];
+  let earningsLoading = false;
 
   const fetchHostels = async () => {
     try {
@@ -122,10 +134,27 @@ export async function renderOwnerPortal() {
     }
   };
 
+  const fetchEarningsData = async () => {
+    earningsLoading = true;
+    try {
+      const [sumData, histData]: any[] = await Promise.all([
+        getProviderEarningsSummary(),
+        getProviderEarningsHistory(),
+      ]);
+      earningsSummary = sumData || earningsSummary;
+      earningsHistory = Array.isArray(histData) ? histData : [];
+    } catch (_) {
+      // fallback if not authenticated or error
+    } finally {
+      earningsLoading = false;
+    }
+  };
+
   await fetchLiveSubs();
   await fetchWeeklyMenus();
   await fetchProviderReviews();
   await fetchProviderBreakRequests();
+  await fetchEarningsData();
 
   const render = () => {
     const totalSubscribersCount = liveSubs.length;
@@ -446,6 +475,85 @@ export async function renderOwnerPortal() {
       </div>
     `;
 
+    const renderEarningsSummaryContent = () => `
+      <div style="background: #fff; border: 1px solid var(--color-neutral-200); border-radius: 20px; padding: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.03);">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 10px;">
+          <h3 class="font-display" style="font-size: 18px; font-weight: 800; color: var(--color-neutral-900); margin: 0;">
+            <i class="fa-solid fa-wallet" style="color: var(--color-primary-600); margin-right: 8px;"></i> Earnings Ledger Overview
+          </h3>
+          <div style="display: inline-flex; align-items: center; gap: 6px; background: #fef3c7; color: #d97706; padding: 4px 12px; border-radius: 999px; font-size: 12px; font-weight: 700; border: 1px solid #fde68a;">
+            <i class="fa-solid fa-circle-info"></i> Payout Status: Not connected <span style="font-size: 11px; opacity: 0.85; margin-left: 2px;">[ Coming Soon ]</span>
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; margin-bottom: 16px;">
+          <div style="background: var(--color-neutral-50); border: 1px solid var(--color-neutral-200); border-radius: 14px; padding: 14px;">
+            <span style="font-size: 11px; font-weight: 700; color: var(--color-neutral-500); text-transform: uppercase; display: block; margin-bottom: 4px;">Total Earnings</span>
+            <span style="font-size: 20px; font-weight: 800; color: var(--color-neutral-900);">₹${Number(earningsSummary.totalProviderEarnings || 0).toLocaleString('en-IN')}</span>
+          </div>
+          <div style="background: var(--color-neutral-50); border: 1px solid var(--color-neutral-200); border-radius: 14px; padding: 14px;">
+            <span style="font-size: 11px; font-weight: 700; color: #d97706; text-transform: uppercase; display: block; margin-bottom: 4px;">Pending</span>
+            <span style="font-size: 20px; font-weight: 800; color: #d97706;">₹${Number(earningsSummary.pendingAmount || 0).toLocaleString('en-IN')}</span>
+          </div>
+          <div style="background: var(--color-neutral-50); border: 1px solid var(--color-neutral-200); border-radius: 14px; padding: 14px;">
+            <span style="font-size: 11px; font-weight: 700; color: #059669; text-transform: uppercase; display: block; margin-bottom: 4px;">Paid</span>
+            <span style="font-size: 20px; font-weight: 800; color: #059669;">₹${Number(earningsSummary.paidAmount || 0).toLocaleString('en-IN')}</span>
+          </div>
+          <div style="background: var(--color-neutral-50); border: 1px solid var(--color-neutral-200); border-radius: 14px; padding: 14px;">
+            <span style="font-size: 11px; font-weight: 700; color: var(--color-neutral-500); text-transform: uppercase; display: block; margin-bottom: 4px;">Platform Fee</span>
+            <span style="font-size: 20px; font-weight: 800; color: var(--color-neutral-700);">₹${Number(earningsSummary.platformFees || 0).toLocaleString('en-IN')}</span>
+          </div>
+        </div>
+
+        <div style="font-size: 12px; color: var(--color-neutral-600); background: #f8fafc; padding: 10px 14px; border-radius: 10px; border: 1px solid var(--color-neutral-200);">
+          <i class="fa-solid fa-shield-halved" style="color: var(--color-primary-600); margin-right: 4px;"></i> PrimePlate 0% commission model. All payments recorded in immutable ledger.
+        </div>
+      </div>
+    `;
+
+    const renderEarningsHistoryContent = () => `
+      <div style="display: flex; flex-direction: column; gap: 10px; max-height: 480px; overflow-y: auto;">
+        ${earningsLoading
+          ? `<div style="text-align: center; padding: 36px;"><i class="fa-solid fa-spinner fa-spin" style="font-size: 24px; color: var(--color-primary-600);"></i></div>`
+          : earningsHistory.length === 0
+            ? `<div style="text-align: center; padding: 32px; background: var(--color-neutral-50); border: 1px dashed var(--color-neutral-300); border-radius: 16px;">
+                <i class="fa-solid fa-receipt" style="font-size: 28px; color: var(--color-neutral-400); margin-bottom: 8px;"></i>
+                <p style="font-size: 13px; color: var(--color-neutral-500); margin: 0;">No provider earning records found in ledger.</p>
+              </div>`
+            : earningsHistory.map((item) => {
+                const dateStr = item.date ? new Date(item.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Recent';
+                const planText = item.subscription?.planTitle || `${item.subscription?.durationDays || 30} Day Subscription`;
+                const providerAmt = Number(item.providerAmount || 0);
+                const statusUpper = (item.status || 'PENDING').toUpperCase();
+
+                let badgeStyle = 'background: #fef3c7; color: #d97706; border: 1px solid #fde68a;';
+                if (statusUpper === 'PAID') {
+                  badgeStyle = 'background: #dcfce7; color: #15803d; border: 1px solid #bbf7d0;';
+                } else if (statusUpper === 'REFUNDED' || statusUpper === 'REVERSED') {
+                  badgeStyle = 'background: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5;';
+                }
+
+                return `
+                  <div style="background: var(--color-neutral-50); border: 1px solid var(--color-neutral-200); border-radius: 14px; padding: 14px; display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap;">
+                    <div>
+                      <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                        <span style="font-size: 12px; font-weight: 700; color: var(--color-neutral-600);">${dateStr}</span>
+                        <span style="font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; ${badgeStyle}">${statusUpper}</span>
+                      </div>
+                      <strong style="font-size: 14px; color: var(--color-neutral-900); display: block;">${escapeHtml(planText)}</strong>
+                      <span style="font-size: 11px; color: var(--color-neutral-500);">Ref: ${escapeHtml(String(item.paymentReference || ''))}</span>
+                    </div>
+                    <div style="text-align: right;">
+                      <span style="font-size: 16px; font-weight: 800; color: var(--color-primary-700);">₹${providerAmt.toLocaleString('en-IN')}</span>
+                      <span style="font-size: 11px; color: var(--color-neutral-500); display: block;">Fee: ₹${Number(item.platformFee || 0)}</span>
+                    </div>
+                  </div>
+                `;
+              }).join('')
+        }
+      </div>
+    `;
+
     container.innerHTML = `
       ${renderNavbar()}
       <main class="main-content" style="padding-top: 88px; padding-bottom: 60px; background: #f8fafc;">
@@ -610,6 +718,33 @@ export async function renderOwnerPortal() {
                   </button>
                 </div>
 
+                <!-- Compact Mobile Earnings Card (Section 15 & 23 Requirements) -->
+                <div style="background: #fff; border: 1px solid var(--color-neutral-200); border-radius: 20px; padding: 18px; margin-bottom: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.03);">
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+                    <span style="font-size: 15px; font-weight: 800; color: var(--color-neutral-900); display: flex; align-items: center; gap: 6px;">
+                      <i class="fa-solid fa-wallet" style="color: var(--color-primary-600);"></i> Earnings
+                    </span>
+                    <span style="font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 999px; background: #fef3c7; color: #d97706; border: 1px solid #fde68a;">
+                      Payout Status: Not connected
+                    </span>
+                  </div>
+
+                  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px;">
+                    <div style="background: var(--color-neutral-50); border: 1px solid var(--color-neutral-200); border-radius: 12px; padding: 12px;">
+                      <span style="font-size: 11px; font-weight: 700; color: var(--color-neutral-500); text-transform: uppercase; display: block; margin-bottom: 2px;">Earnings</span>
+                      <span style="font-size: 18px; font-weight: 800; color: var(--color-neutral-900);">₹${Number(earningsSummary.totalProviderEarnings || 0).toLocaleString('en-IN')}</span>
+                    </div>
+                    <div style="background: var(--color-neutral-50); border: 1px solid var(--color-neutral-200); border-radius: 12px; padding: 12px;">
+                      <span style="font-size: 11px; font-weight: 700; color: #d97706; text-transform: uppercase; display: block; margin-bottom: 2px;">Pending</span>
+                      <span style="font-size: 18px; font-weight: 800; color: #d97706;">₹${Number(earningsSummary.pendingAmount || 0).toLocaleString('en-IN')}</span>
+                    </div>
+                  </div>
+
+                  <button class="open-earnings-sheet-btn btn-primary-action" style="width: 100%; justify-content: center; padding: 12px; font-size: 14px; font-weight: 700; border-radius: 12px; min-height: 44px;">
+                    <i class="fa-solid fa-receipt"></i> View Earnings
+                  </button>
+                </div>
+
                 <!-- Operational Action Cards -->
                 <h4 style="font-size: 12px; font-weight: 700; color: var(--color-neutral-500); text-transform: uppercase; letter-spacing: 0.5px; margin: 0 0 10px 4px;">Pending Actions & Operations</h4>
 
@@ -741,6 +876,17 @@ export async function renderOwnerPortal() {
                   </div>
                 </div>
 
+                <!-- Provider Earnings Ledger Summary Section -->
+                <div id="earningsOverviewSection" style="margin-bottom: 24px;">
+                  ${renderEarningsSummaryContent()}
+                </div>
+
+                <!-- Provider Earnings History Section -->
+                <div id="earningsHistorySection" style="background: #fff; border: 1px solid var(--color-neutral-200); border-radius: 24px; padding: 24px; margin-bottom: 24px; box-shadow: 0 4px 12px rgba(0,0,0,0.03);">
+                  <h3 class="font-display" style="font-size: 18px; font-weight: 700; color: var(--color-neutral-900); margin-bottom: 16px;"><i class="fa-solid fa-history" style="color: var(--color-primary-600);"></i> Earnings History</h3>
+                  ${renderEarningsHistoryContent()}
+                </div>
+
                 <!-- Reviews Section -->
                 <div id="providerReviewsSection" style="background: #fff; border: 1px solid var(--color-neutral-200); border-radius: 24px; padding: 24px; box-shadow: 0 4px 12px rgba(0,0,0,0.03);">
                   <h3 class="font-display" style="font-size: 18px; font-weight: 700; color: var(--color-neutral-900); margin-bottom: 16px;"><i class="fa-solid fa-star" style="color: #f59e0b;"></i> Provider Reviews</h3>
@@ -763,7 +909,8 @@ export async function renderOwnerPortal() {
             mobileSheet === 'SUBSCRIBERS' ? 'Subscribers' :
               mobileSheet === 'WEEKLY_MENU' ? 'Weekly Menu Editor' :
                 mobileSheet === 'REVIEWS' ? 'Provider Reviews' :
-                  'Subscription Breaks Settings'}
+                  mobileSheet === 'EARNINGS_HISTORY' ? 'Provider Earnings History' :
+                    'Subscription Breaks Settings'}
               </h3>
               <button class="close-mobile-sheet-btn" style="background: none; border: none; font-size: 24px; cursor: pointer; color: var(--color-neutral-500); padding: 4px 8px;">&times;</button>
             </div>
@@ -772,7 +919,18 @@ export async function renderOwnerPortal() {
             mobileSheet === 'SUBSCRIBERS' ? renderSubscribersContent() :
               mobileSheet === 'WEEKLY_MENU' ? renderWeeklyMenuContent() :
                 mobileSheet === 'REVIEWS' ? renderReviewsContent() :
-                  renderBreakSettingsContent()
+                  mobileSheet === 'EARNINGS_HISTORY' ? `
+                    <div style="display: flex; flex-direction: column; gap: 16px;">
+                      ${renderEarningsSummaryContent()}
+                      <div>
+                        <h4 style="font-size: 14px; font-weight: 700; color: var(--color-neutral-900); margin-bottom: 10px; display: flex; align-items: center; gap: 6px;">
+                          <i class="fa-solid fa-history" style="color: var(--color-primary-600);"></i> Earnings History
+                        </h4>
+                        ${renderEarningsHistoryContent()}
+                      </div>
+                    </div>
+                  ` :
+                    renderBreakSettingsContent()
         }
           </div>
         </div>
@@ -910,6 +1068,13 @@ export async function renderOwnerPortal() {
     document.querySelectorAll('.open-manage-pg-sheet-btn').forEach((btn) => {
       btn.addEventListener('click', () => {
         mobileSheet = 'MANAGE_PG';
+        render();
+      });
+    });
+
+    document.querySelectorAll('.open-earnings-sheet-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        mobileSheet = 'EARNINGS_HISTORY';
         render();
       });
     });

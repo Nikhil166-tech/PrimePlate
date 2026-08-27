@@ -12,6 +12,7 @@ export const AppDataSource = new DataSource(
         type: 'postgres',
         url: dbUrl,
         synchronize: false,
+        migrationsRun: true,
         logging: true,
         entities: [__dirname + '/**/*.entity{.ts,.js}'],
         migrations: [__dirname + '/migrations/*{.ts,.js}'],

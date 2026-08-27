@@ -71,10 +71,10 @@ export class SubscriptionBreakRequest {
   @CreateDateColumn()
   requestedAt: Date;
 
-  @Column({ type: 'datetime', nullable: true })
+  @Column({ nullable: true })
   approvedAt?: Date;
 
-  @Column({ type: 'datetime', nullable: true })
+  @Column({ nullable: true })
   rejectedAt?: Date;
 
   @Column({ nullable: true })

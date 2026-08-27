@@ -52,6 +52,17 @@ export class AnalyticsService {
     return Number(revenueResult?.total) || 0;
   }
 
+  async getRevenueBreakdown() {
+    const grossRevenue = await this.getTotalRevenue();
+    const platformFees = 0; // Current 0% commission model
+    const providerEarnings = grossRevenue - platformFees;
+
+    return {
+      grossRevenue,
+      platformFees,
+      providerEarnings,
+    };
+  }
 
   async getTodaysUsers(): Promise<number> {
     const today = new Date();
@@ -69,6 +80,7 @@ export class AnalyticsService {
       activeSubscriptions,
       totalRevenue,
       todaysUsers,
+      revenueBreakdown,
     ] = await Promise.all([
       this.getTotalUsers(),
       this.getTotalProviders(),
@@ -76,6 +88,7 @@ export class AnalyticsService {
       this.getTotalSubscriptions(),
       this.getTotalRevenue(),
       this.getTodaysUsers(),
+      this.getRevenueBreakdown(),
     ]);
 
     return {
@@ -85,6 +98,9 @@ export class AnalyticsService {
       activeSubscriptions,
       totalRevenue,
       todaysUsers,
+      grossRevenue: revenueBreakdown.grossRevenue,
+      platformFees: revenueBreakdown.platformFees,
+      providerEarnings: revenueBreakdown.providerEarnings,
     };
   }
 }

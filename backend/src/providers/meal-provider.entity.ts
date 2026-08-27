@@ -48,10 +48,10 @@ export class MealProvider {
   @Column({ type: 'float', nullable: true })
   distanceKm?: number;
 
-  @Column({ type: 'double precision', nullable: true })
+  @Column({ type: 'float', nullable: true })
   latitude?: number;
 
-  @Column({ type: 'double precision', nullable: true })
+  @Column({ type: 'float', nullable: true })
   longitude?: number;
 
   @Column({ type: 'float', nullable: true })

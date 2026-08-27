@@ -22,6 +22,8 @@ import { PasswordResetToken } from './auth/password-reset-token.entity';
 import { WeeklyMenusModule } from './weekly-menus/weekly-menus.module';
 import { SubscriptionBreakRequest } from './subscription-breaks/subscription-break-request.entity';
 import { SubscriptionBreaksModule } from './subscription-breaks/subscription-breaks.module';
+import { ProviderEarning } from './payouts/provider-earning.entity';
+import { PayoutsModule } from './payouts/payouts.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 
@@ -47,6 +49,7 @@ import { AppService } from './app.service';
             type: 'postgres',
             url: dbUrl,
             synchronize: false, // Strictly disabled in production
+            migrationsRun: true, // Automatically execute pending migrations on startup
             entities: [__dirname + '/**/*.entity{.ts,.js}'],
             migrations: [__dirname + '/migrations/*{.ts,.js}'],
             ssl: useSsl ? { rejectUnauthorized: false } : false,
@@ -73,6 +76,7 @@ import { AppService } from './app.service';
       WeeklyMenu,
       PasswordResetToken,
       SubscriptionBreakRequest,
+      ProviderEarning,
     ]),
     AuthModule,
     UsersModule,
@@ -80,6 +84,7 @@ import { AppService } from './app.service';
     MealPlansModule,
     SubscriptionsModule,
     PaymentsModule,
+    PayoutsModule,
     UploadsModule,
     ReviewsModule,
     AnalyticsModule,

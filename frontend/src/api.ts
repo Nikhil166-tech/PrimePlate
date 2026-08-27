@@ -130,6 +130,8 @@ export const updateProviderBreakSettings = async (
   }
 };
 
+export const getProviderEarningsSummary = () => api.get('/payouts/provider/summary');
+export const getProviderEarningsHistory = () => api.get('/payouts/provider/history');
 
 export default api;
 

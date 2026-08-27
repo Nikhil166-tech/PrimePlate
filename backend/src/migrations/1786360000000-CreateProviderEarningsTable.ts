@@ -13,7 +13,7 @@ export class CreateProviderEarningsTable1786360000000
         await queryRunner.query(`
           CREATE TABLE "provider_earnings" (
             "id" uuid NOT NULL DEFAULT uuid_generate_v4(),
-            "paymentId" varchar NOT NULL,
+            "paymentId" uuid NOT NULL,
             "subscriptionId" uuid,
             "providerId" uuid NOT NULL,
             "studentId" uuid NOT NULL,

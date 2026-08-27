@@ -18,7 +18,11 @@ export function registerRoute(path: string, handler: RouteHandler) {
 }
 
 export function navigate(path: string) {
-  window.location.hash = path;
+  if (window.location.hash === path) {
+    onHashChange();
+  } else {
+    window.location.hash = path;
+  }
 }
 
 function onHashChange() {

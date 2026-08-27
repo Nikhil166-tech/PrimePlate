@@ -203,8 +203,14 @@ export function renderLogin() {
         }
 
         const pendingRedirect = localStorage.getItem('redirectAfterAuth');
-        if (pendingRedirect && role === 'STUDENT') {
-          localStorage.removeItem('redirectAfterAuth');
+        localStorage.removeItem('redirectAfterAuth');
+
+        if (
+          pendingRedirect &&
+          pendingRedirect !== '#/login' &&
+          pendingRedirect !== '#' &&
+          pendingRedirect !== '#/'
+        ) {
           navigate(pendingRedirect);
           return;
         }

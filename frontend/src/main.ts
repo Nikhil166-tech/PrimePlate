@@ -17,8 +17,10 @@ function requireRole(allowedRoles: string[], callback: () => void) {
   const role = (localStorage.getItem('userRole') || 'STUDENT').toUpperCase();
 
   if (!token) {
-    // Save target route so visitor returns directly to checkout after login/register
-    localStorage.setItem('redirectAfterAuth', window.location.hash);
+    // Save target route so visitor returns directly after login/register
+    if (window.location.hash && window.location.hash !== '#/login') {
+      localStorage.setItem('redirectAfterAuth', window.location.hash);
+    }
     navigate('#/login');
     return;
   }

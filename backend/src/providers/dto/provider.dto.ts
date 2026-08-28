@@ -42,9 +42,13 @@ export class ProviderDto {
   contactPhone?: string;
 
   @IsOptional()
+  @IsNumber({}, { message: 'Total capacity must be a number' })
+  @Min(1, { message: 'Total capacity must be at least 1' })
   totalCapacity?: number;
 
   @IsOptional()
+  @IsNumber({}, { message: 'Monthly price must be a valid number' })
+  @Min(1, { message: 'Monthly price must be greater than 0' })
   monthlyPrice?: number;
 
   @IsOptional()

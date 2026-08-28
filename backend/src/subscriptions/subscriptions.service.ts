@@ -11,6 +11,7 @@ import { User } from '../users/user.entity';
 import { MealPlan } from '../meal-plans/meal-plan.entity';
 import { MealProvider } from '../providers/meal-provider.entity';
 import { Payment } from '../payments/payment.entity';
+import { ProviderEarning } from '../payouts/provider-earning.entity';
 
 @Injectable()
 export class SubscriptionsService {
@@ -136,6 +137,11 @@ export class SubscriptionsService {
       order: { createdAt: 'DESC' },
     });
 
+    const earnings = await this.subRepo.manager.find(ProviderEarning, {
+      where: { studentId },
+      relations: { payment: true },
+    });
+
     const payments = await this.subRepo.manager.find(Payment, {
       where: { student: { id: studentId } },
       relations: { provider: true },
@@ -143,9 +149,19 @@ export class SubscriptionsService {
     });
 
     return subs.map((sub: any) => {
-      const matchingPayment: any = payments.find(
-        (p: any) => p.provider?.id === sub.mealPlan?.provider?.id,
-      );
+      // 1. Direct link via ProviderEarning
+      const earning = earnings.find((e) => e.subscriptionId === sub.id);
+      let matchingPayment: any = earning?.payment;
+
+      // 2. Direct match by created timestamp & provider if earning not present
+      if (!matchingPayment) {
+        matchingPayment = payments.find((p: any) => {
+          if (p.provider?.id !== sub.mealPlan?.provider?.id) return false;
+          const pTime = new Date(p.createdAt).getTime();
+          const sTime = new Date(sub.createdAt).getTime();
+          return Math.abs(pTime - sTime) <= 120000;
+        });
+      }
 
       const rawAmount = matchingPayment ? Number(matchingPayment.amount) : null;
 
@@ -189,6 +205,11 @@ export class SubscriptionsService {
       order: { createdAt: 'DESC' },
     });
 
+    const earnings = await this.subRepo.manager.find(ProviderEarning, {
+      where: { providerId },
+      relations: { payment: true },
+    });
+
     const payments = await this.subRepo.manager.find(Payment, {
       where: { provider: { id: providerId }, status: 'paid' },
       relations: { student: true, provider: true },
@@ -196,9 +217,24 @@ export class SubscriptionsService {
     });
 
     return subs.map((sub: any) => {
-      const matchingPayment: any = payments.find(
-        (p: any) => p.student?.id === sub.student?.id,
-      );
+      const earning = earnings.find((e) => e.subscriptionId === sub.id);
+      let matchingPayment: any = earning?.payment;
+
+      if (!matchingPayment) {
+        matchingPayment = payments.find((p: any) => {
+          if (p.student?.id !== sub.student?.id) return false;
+          if (p.createdAt && sub.createdAt) {
+            const pTime = new Date(p.createdAt).getTime();
+            const sTime = new Date(sub.createdAt).getTime();
+            return Math.abs(pTime - sTime) <= 120000;
+          }
+          return true;
+        });
+      }
+
+      if (!matchingPayment) {
+        matchingPayment = payments.find((p: any) => p.student?.id === sub.student?.id);
+      }
 
       const rawAmount = matchingPayment ? Number(matchingPayment.amount) : null;
 
@@ -207,7 +243,7 @@ export class SubscriptionsService {
         amountPaid: rawAmount,
         razorpayOrderId: matchingPayment?.razorpayOrderId || null,
         razorpayPaymentId: matchingPayment?.razorpayPaymentId || null,
-        paymentStatus: matchingPayment ? 'PAID' : 'UNKNOWN',
+        paymentStatus: matchingPayment ? 'PAID' : (rawAmount !== null ? 'PAID' : 'UNKNOWN'),
         paymentDate: matchingPayment?.createdAt || sub.createdAt,
       };
     });

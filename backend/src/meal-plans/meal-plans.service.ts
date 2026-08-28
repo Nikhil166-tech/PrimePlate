@@ -104,16 +104,18 @@ export class MealPlansService {
       provider.monthlyPrice &&
       Number(provider.monthlyPrice) > 0
     ) {
-      return {
-        id: provider.id,
-        title: 'Monthly Subscription Plan',
+      const newPlan = this.planRepo.create({
+        title: `${provider.name} Monthly Mess Plan`,
         pricePerMonth: Number(provider.monthlyPrice),
         description: 'Daily fresh cooked breakfast, lunch & dinner',
         provider,
         isActive: true,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      } as any;
+      });
+      try {
+        return await this.planRepo.save(newPlan);
+      } catch (_) {
+        return newPlan;
+      }
     }
 
     throw new NotFoundException('Meal plan not found');

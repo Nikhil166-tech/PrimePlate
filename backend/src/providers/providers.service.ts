@@ -37,6 +37,7 @@ export class ProvidersService {
         'Only providers can create a provider profile',
       );
     }
+    const isProd = process.env.NODE_ENV === 'production';
     const provider = this.providerRepo.create({
       user,
       name: dto.name,
@@ -45,16 +46,36 @@ export class ProvidersService {
       address: dto.address,
       imageUrl: dto.imageUrl,
       category: dto.category,
+      monthlyPrice: dto.monthlyPrice || 2999,
       totalCapacity: dto.totalCapacity || 50,
       acceptingSubscriptions: dto.acceptingSubscriptions ?? true,
       amenities: dto.amenities || [],
       contactPhone: dto.contactPhone || user.phone || '',
       latitude: dto.latitude ?? null,
       longitude: dto.longitude ?? null,
-      approvalStatus: ProviderApprovalStatus.PENDING,
-      verified: false,
+      approvalStatus: isProd
+        ? ProviderApprovalStatus.PENDING
+        : ProviderApprovalStatus.APPROVED,
+      verified: !isProd,
     } as Partial<MealProvider>);
-    return this.providerRepo.save(provider);
+    const saved = await this.providerRepo.save(provider);
+
+    // Auto-create default meal plan for immediate student checkout
+    try {
+      const defaultPlan = this.providerRepo.manager.create(MealPlan, {
+        title: `${saved.name} Monthly Mess Plan`,
+        pricePerMonth: saved.monthlyPrice || 2999,
+        description:
+          'Standard fresh 3-meal monthly PG/hostel mess subscription',
+        provider: saved,
+        isActive: true,
+      });
+      await this.providerRepo.manager.save(MealPlan, defaultPlan);
+    } catch (_) {
+      // MealPlan creation fallback handled on query
+    }
+
+    return saved;
   }
 
   private async attachCapacityInfo(provider: MealProvider): Promise<any> {
@@ -241,12 +262,16 @@ export class ProvidersService {
       provider.subscriptionBreaksEnabled = Boolean(dto.subscriptionBreaksEnabled);
 
     if (dto.monthlyPrice !== undefined) {
-      provider.monthlyPrice = dto.monthlyPrice;
+      const parsedPrice = Number(dto.monthlyPrice);
+      if (isNaN(parsedPrice) || parsedPrice <= 0) {
+        throw new BadRequestException('Monthly price must be a valid number greater than 0');
+      }
+      provider.monthlyPrice = parsedPrice;
       const plans = await this.providerRepo.manager.find(MealPlan, {
         where: { provider: { id: provider.id } },
       });
       for (const p of plans) {
-        p.pricePerMonth = dto.monthlyPrice;
+        p.pricePerMonth = parsedPrice;
         await this.providerRepo.manager.save(MealPlan, p);
       }
     }

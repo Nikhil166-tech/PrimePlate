@@ -30,6 +30,8 @@ export async function renderOwnerPortal() {
   let showModal = false;
   let showEditPriceModal = false;
   let showEditLocationModal = false;
+  let showSubscriberDetailsModal = false;
+  let selectedSubscriberForDetails: any = null;
   let showManagePanel = false;
   let mobileSheet: 'NONE' | 'MANAGE_PG' | 'BREAK_REQUESTS' | 'SUBSCRIBERS' | 'WEEKLY_MENU' | 'REVIEWS' | 'BREAK_SETTINGS' | 'EARNINGS_HISTORY' = 'NONE';
   let editingMenu: { dayIdx: number; mealType: string } | null = null;
@@ -186,6 +188,25 @@ export async function renderOwnerPortal() {
       if (st === 'PAUSED') return 'background: #fef3c7; color: #d97706; border: 1px solid #fde68a;';
       if (st === 'CANCELLED') return 'background: #fee2e2; color: #dc2626; border: 1px solid #fca5a5;';
       return 'background: var(--color-neutral-100); color: var(--color-neutral-600); border: 1px solid var(--color-neutral-200);';
+    };
+
+    const formatSubscriberDate = (dateStr?: string | null): string => {
+      if (!dateStr) return 'Not available';
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return escapeHtml(dateStr);
+      return d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+    };
+
+    const getSubscriberAmount = (sub: any): string => {
+      if (!sub) return 'Amount unavailable';
+      const rawPaid = sub.amountPaid !== undefined && sub.amountPaid !== null
+        ? sub.amountPaid
+        : (sub.payment?.amount !== undefined && sub.payment?.amount !== null ? sub.payment.amount : null);
+
+      if (rawPaid !== null && rawPaid !== undefined && !isNaN(Number(rawPaid))) {
+        return `₹${Number(rawPaid).toLocaleString('en-IN')}`;
+      }
+      return 'Amount unavailable';
     };
 
     const monthlyPriceNum = Number(selectedHostel?.monthlyPrice || 2999);
@@ -362,18 +383,10 @@ export async function renderOwnerPortal() {
                 const planTitle = escapeHtml(sub.mealPlan?.title || sub.planType || 'Subscription Plan');
                 const statusUpper = sub.status ? String(sub.status).toUpperCase() : 'UNKNOWN';
                 const statusBadgeStyle = getSubStatusStyle(statusUpper);
-
-                let amountPaidDisplay = 'Amount unavailable';
-                if (sub.amountPaid !== undefined && sub.amountPaid !== null && !isNaN(Number(sub.amountPaid))) {
-                  amountPaidDisplay = `₹${Number(sub.amountPaid).toLocaleString('en-IN')}`;
-                } else if (sub.payment?.amount !== undefined && sub.payment?.amount !== null && !isNaN(Number(sub.payment.amount))) {
-                  amountPaidDisplay = `₹${Number(sub.payment.amount).toLocaleString('en-IN')}`;
-                } else if (sub.mealPlan?.pricePerMonth !== undefined && sub.mealPlan?.pricePerMonth !== null && !isNaN(Number(sub.mealPlan.pricePerMonth))) {
-                  amountPaidDisplay = `₹${Number(sub.mealPlan.pricePerMonth).toLocaleString('en-IN')}`;
-                }
+                const amountPaidDisplay = getSubscriberAmount(sub);
 
                 return `
-                    <div style="background: var(--color-neutral-50); border-radius: 14px; padding: 12px; border: 1px solid var(--color-neutral-200); font-size: 13px;">
+                    <div class="subscriber-card-item" data-sub-id="${escapeHtml(sub.id)}" style="background: var(--color-neutral-50); border-radius: 14px; padding: 12px 14px; border: 1px solid var(--color-neutral-200); font-size: 13px; cursor: pointer; transition: all 0.2s ease;">
                       <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; margin-bottom: 6px;">
                         <div>
                           <strong style="font-size: 14px; color: var(--color-neutral-900); display: block;">${studentName}</strong>
@@ -381,9 +394,12 @@ export async function renderOwnerPortal() {
                         </div>
                         <span style="font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; ${statusBadgeStyle}">${statusUpper}</span>
                       </div>
-                      <div style="display: flex; justify-content: space-between; font-size: 12px; color: var(--color-neutral-600);">
+                      <div style="display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: var(--color-neutral-600);">
                         <span>${planTitle}</span>
-                        <strong style="color: var(--color-primary-600);">${amountPaidDisplay}</strong>
+                        <div style="display: flex; align-items: center; gap: 6px;">
+                          <strong style="color: var(--color-primary-600);">${escapeHtml(amountPaidDisplay)}</strong>
+                          <i class="fa-solid fa-chevron-right" style="font-size: 10px; color: var(--color-neutral-400);"></i>
+                        </div>
                       </div>
                     </div>
                   `;
@@ -568,7 +584,7 @@ export async function renderOwnerPortal() {
               <p style="color: var(--color-neutral-600); font-size: 14px; margin-top: 4px;">Owner: <strong>${escapeHtml(ownerName)}</strong> • Phone: <strong>${escapeHtml(ownerPhone)}</strong> (${escapeHtml(userEmail)})</p>
             </div>
 
-            ${!isNewProvider && !isPending
+            ${!isNewProvider
         ? `<button id="openHostelModalBtn" class="btn-primary-action" style="padding: 10px 20px; font-size: 14px;">
                   <i class="fa-solid fa-plus"></i> Add Another Hostel
                 </button>`
@@ -628,6 +644,9 @@ export async function renderOwnerPortal() {
                         <option value="Non Veg">Non Veg</option>
                         <option value="South Indian">South Indian</option>
                         <option value="North Indian">North Indian</option>
+                        <option value="Andhra Meals">Andhra Meals</option>
+                        <option value="Healthy">Healthy</option>
+                        <option value="Budget">Budget</option>
                       </select>
                     </div>
                   </div>
@@ -638,18 +657,24 @@ export async function renderOwnerPortal() {
                 </form>
               </div>
             `
-        : isPending
-          ? `
-              <div style="max-width: 600px; margin: 40px auto; background: #fff; border: 1px solid #fef08a; border-radius: 28px; padding: 40px; text-align: center; box-shadow: 0 12px 36px rgba(0,0,0,0.04);">
-                <div style="width: 64px; height: 64px; border-radius: 50%; background: #fef9c3; color: #ca8a04; display: flex; align-items: center; justify-content: center; font-size: 28px; margin: 0 auto 16px;">
-                  <i class="fa-solid fa-clock"></i>
+        : `
+              ${isPending ? `
+                <div style="background: #fefce8; border: 1px solid #fef08a; border-radius: 18px; padding: 18px 24px; margin-bottom: 24px; display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; box-shadow: 0 4px 12px rgba(202, 138, 4, 0.08);">
+                  <div style="display: flex; align-items: center; gap: 14px;">
+                    <div style="width: 44px; height: 44px; border-radius: 12px; background: #fef9c3; color: #ca8a04; display: flex; align-items: center; justify-content: center; font-size: 22px; flex-shrink: 0;">
+                      <i class="fa-solid fa-clock"></i>
+                    </div>
+                    <div>
+                      <h4 style="font-size: 16px; font-weight: 800; color: #854d0e; margin: 0 0 2px 0;">Kitchen Listing Under Review (Approval Pending)</h4>
+                      <p style="font-size: 13px; color: #a16207; margin: 0;">Your listing for <strong>${escapeHtml(selectedHostel.name)}</strong> is under review by PrimePlate Admin. You can configure your weekly menu, capacity, and settings below.</p>
+                    </div>
+                  </div>
+                  <button id="refreshStatusBtn" class="btn-outline-action" style="background: #fff; font-size: 13px; font-weight: 700; border-color: #fde047; color: #854d0e; padding: 8px 16px;">
+                    <i class="fa-solid fa-arrows-rotate"></i> Check Status
+                  </button>
                 </div>
-                <h3 class="font-display" style="font-size: 24px; font-weight: 800; color: var(--color-neutral-900); margin-bottom: 8px;">Approval Pending</h3>
-                <p style="color: var(--color-neutral-600); font-size: 14px; margin-bottom: 24px;">Your kitchen listing for <strong>${escapeHtml(selectedHostel.name)}</strong> is under review by PrimePlate Admin.</p>
-                <button id="refreshStatusBtn" class="btn-primary-action">Check Approval Status</button>
-              </div>
-            `
-          : `
+              ` : ''}
+
               <!-- Hostels Switcher Bar -->
               ${hostels.length > 1
             ? `<div style="display: flex; gap: 8px; overflow-x: auto; margin-bottom: 20px; padding-bottom: 4px;">
@@ -1040,6 +1065,85 @@ export async function renderOwnerPortal() {
         </div>
       </div>
 
+      <!-- Modal: Subscriber Details Popup -->
+      <div id="subscriberDetailsModal" style="display: ${showSubscriberDetailsModal && selectedSubscriberForDetails ? 'flex' : 'none'}; position: fixed; inset: 0; background: rgba(0,0,0,0.55); align-items: center; justify-content: center; z-index: 2100; padding: 16px;">
+        <div id="subscriberDetailsCard" style="background: #fff; border-radius: 24px; max-width: 460px; width: 100%; padding: 24px; box-shadow: 0 20px 40px rgba(0,0,0,0.25); max-height: 90vh; overflow-y: auto; display: flex; flex-direction: column; gap: 18px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--color-neutral-200); padding-bottom: 14px;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <div style="width: 36px; height: 36px; border-radius: 10px; background: var(--color-primary-50); color: var(--color-primary-600); display: flex; align-items: center; justify-content: center; font-size: 16px;">
+                <i class="fa-solid fa-id-card"></i>
+              </div>
+              <h3 class="font-display" style="font-size: 18px; font-weight: 800; color: var(--color-neutral-900); margin: 0;">Subscriber Details</h3>
+            </div>
+            <button id="closeSubscriberDetailsXBtn" style="background: none; border: none; font-size: 24px; cursor: pointer; color: var(--color-neutral-500); padding: 4px 8px; line-height: 1;">&times;</button>
+          </div>
+
+          ${selectedSubscriberForDetails ? `
+            <div style="display: flex; flex-direction: column; gap: 14px; font-size: 13px;">
+              <!-- Student Name & Phone -->
+              <div style="background: var(--color-neutral-50); border: 1px solid var(--color-neutral-200); border-radius: 14px; padding: 14px; display: flex; flex-direction: column; gap: 8px;">
+                <div>
+                  <span style="font-size: 11px; font-weight: 700; color: var(--color-neutral-500); text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 2px;">Student Name</span>
+                  <strong style="font-size: 15px; color: var(--color-neutral-900); word-break: break-word;">${escapeHtml(selectedSubscriberForDetails.student?.name || selectedSubscriberForDetails.student?.email || 'Not available')}</strong>
+                </div>
+                <div>
+                  <span style="font-size: 11px; font-weight: 700; color: var(--color-neutral-500); text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 2px;">Phone Number</span>
+                  <span style="font-size: 14px; color: var(--color-neutral-800); font-weight: 600; word-break: break-word;">
+                    <i class="fa-solid fa-phone" style="color: var(--color-primary-600); margin-right: 4px;"></i> ${escapeHtml(selectedSubscriberForDetails.student?.phone || 'Not available')}
+                  </span>
+                </div>
+              </div>
+
+              <!-- Plan & Amount -->
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                <div style="background: var(--color-neutral-50); border: 1px solid var(--color-neutral-200); border-radius: 12px; padding: 12px;">
+                  <span style="font-size: 11px; font-weight: 700; color: var(--color-neutral-500); text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 2px;">Subscription Plan</span>
+                  <strong style="font-size: 13px; color: var(--color-neutral-900); word-break: break-word;">${escapeHtml(selectedSubscriberForDetails.mealPlan?.title || selectedSubscriberForDetails.planType || 'Not available')}</strong>
+                </div>
+                <div style="background: var(--color-neutral-50); border: 1px solid var(--color-neutral-200); border-radius: 12px; padding: 12px;">
+                  <span style="font-size: 11px; font-weight: 700; color: var(--color-neutral-500); text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 2px;">Amount Paid</span>
+                  <strong style="font-size: 14px; color: var(--color-primary-600); word-break: break-word;">${escapeHtml(getSubscriberAmount(selectedSubscriberForDetails))}</strong>
+                </div>
+              </div>
+
+              <!-- Payment & Subscription Status -->
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                <div style="background: var(--color-neutral-50); border: 1px solid var(--color-neutral-200); border-radius: 12px; padding: 12px;">
+                  <span style="font-size: 11px; font-weight: 700; color: var(--color-neutral-500); text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 4px;">Payment Status</span>
+                  <span style="font-size: 11px; font-weight: 800; padding: 3px 8px; border-radius: 999px; display: inline-block; ${selectedSubscriberForDetails.paymentStatus === 'PAID' ? 'background: #d1fae5; color: #047857;' : 'background: #fee2e2; color: #dc2626;'}">
+                    ${escapeHtml(selectedSubscriberForDetails.paymentStatus || (selectedSubscriberForDetails.amountPaid ? 'PAID' : 'Not available'))}
+                  </span>
+                </div>
+                <div style="background: var(--color-neutral-50); border: 1px solid var(--color-neutral-200); border-radius: 12px; padding: 12px;">
+                  <span style="font-size: 11px; font-weight: 700; color: var(--color-neutral-500); text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 4px;">Subscription Status</span>
+                  <span style="font-size: 11px; font-weight: 800; padding: 3px 8px; border-radius: 999px; display: inline-block; ${getSubStatusStyle((selectedSubscriberForDetails.status || 'UNKNOWN').toUpperCase())}">
+                    ${escapeHtml((selectedSubscriberForDetails.status || 'UNKNOWN').toUpperCase())}
+                  </span>
+                </div>
+              </div>
+
+              <!-- Dates -->
+              <div style="background: var(--color-neutral-50); border: 1px solid var(--color-neutral-200); border-radius: 12px; padding: 12px; display: flex; flex-direction: column; gap: 6px;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                  <span style="color: var(--color-neutral-500); font-weight: 600;">Start Date:</span>
+                  <strong style="color: var(--color-neutral-900);">${formatSubscriberDate(selectedSubscriberForDetails.startDate)}</strong>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                  <span style="color: var(--color-neutral-500); font-weight: 600;">End Date:</span>
+                  <strong style="color: var(--color-neutral-900);">${formatSubscriberDate(selectedSubscriberForDetails.endDate)}</strong>
+                </div>
+              </div>
+            </div>
+          ` : ''}
+
+          <div style="display: flex; justify-content: flex-end; padding-top: 8px; border-top: 1px solid var(--color-neutral-200);">
+            <button type="button" id="closeSubscriberDetailsBtn" class="btn-primary-action" style="padding: 10px 24px; font-size: 14px; justify-content: center; width: 100%;">
+              Close
+            </button>
+          </div>
+        </div>
+      </div>
+
       ${renderFooter()}
     `;
 
@@ -1331,6 +1435,47 @@ export async function renderOwnerPortal() {
       });
     });
 
+    // Subscriber Card Click -> Open Subscriber Details Modal
+    document.querySelectorAll('.subscriber-card-item').forEach((item) => {
+      item.addEventListener('click', (e) => {
+        const subId = (e.currentTarget as HTMLElement).getAttribute('data-sub-id');
+        const sub = liveSubs.find((s) => s.id === subId);
+        if (sub) {
+          selectedSubscriberForDetails = sub;
+          showSubscriberDetailsModal = true;
+          render();
+        }
+      });
+    });
+
+    const closeSubscriberModal = () => {
+      showSubscriberDetailsModal = false;
+      selectedSubscriberForDetails = null;
+      render();
+    };
+
+    document.getElementById('closeSubscriberDetailsBtn')?.addEventListener('click', closeSubscriberModal);
+    document.getElementById('closeSubscriberDetailsXBtn')?.addEventListener('click', closeSubscriberModal);
+
+    const subscriberModalOverlay = document.getElementById('subscriberDetailsModal');
+    if (subscriberModalOverlay) {
+      subscriberModalOverlay.addEventListener('click', (e) => {
+        if (e.target === subscriberModalOverlay) {
+          closeSubscriberModal();
+        }
+      });
+    }
+
+    if (showSubscriberDetailsModal) {
+      const handleEscapeKey = (e: KeyboardEvent) => {
+        if (e.key === 'Escape' && showSubscriberDetailsModal) {
+          window.removeEventListener('keydown', handleEscapeKey);
+          closeSubscriberModal();
+        }
+      };
+      window.addEventListener('keydown', handleEscapeKey, { once: true });
+    }
+
     // Weekly Menu Inline Edit Listeners
     document.querySelectorAll('.start-edit-menu-btn').forEach((btn) => {
       btn.addEventListener('click', (e) => {
@@ -1378,6 +1523,58 @@ export async function renderOwnerPortal() {
         }
       });
     }
+
+    // Center Hostel Registration Form Submit (for first-time providers)
+    const centerHostelForm = document.getElementById('centerHostelForm') as HTMLFormElement;
+    if (centerHostelForm) {
+      centerHostelForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const name = (centerHostelForm.querySelector('#cName') as HTMLInputElement)?.value?.trim();
+        const city = (centerHostelForm.querySelector('#cCity') as HTMLInputElement)?.value?.trim();
+        const area = (centerHostelForm.querySelector('#cArea') as HTMLInputElement)?.value?.trim();
+        const address = (centerHostelForm.querySelector('#cAddress') as HTMLInputElement)?.value?.trim();
+        const price = parseFloat((centerHostelForm.querySelector('#cPrice') as HTMLInputElement)?.value) || 0;
+        const capacity = parseInt((centerHostelForm.querySelector('#cCapacity') as HTMLInputElement)?.value, 10) || 50;
+        const phone = (centerHostelForm.querySelector('#cPhone') as HTMLInputElement)?.value?.trim();
+        const category = (centerHostelForm.querySelector('#cCategory') as HTMLSelectElement)?.value || 'Veg';
+
+        if (!name || !city || !address || !phone) {
+          showToast('Please fill in all required fields.', 'error');
+          return;
+        }
+
+        try {
+          await api.post('/providers', {
+            name,
+            city,
+            address: area ? `${address}, ${area}` : address,
+            monthlyPrice: price,
+            totalCapacity: capacity,
+            contactPhone: phone,
+            category,
+          });
+          showToast('Kitchen registered successfully! Welcome to your provider portal.', 'success');
+          await fetchHostels();
+          await fetchLiveSubs();
+          await fetchWeeklyMenus();
+          await fetchProviderReviews();
+          await fetchProviderBreakRequests();
+          await fetchEarningsData();
+          render();
+        } catch (err: any) {
+          showToast(err.message || 'Failed to submit kitchen registration', 'error');
+        }
+      });
+    }
+
+    // Refresh Status Button
+    document.getElementById('refreshStatusBtn')?.addEventListener('click', async () => {
+      showToast('Checking approval status...', 'info');
+      await fetchHostels();
+      await fetchLiveSubs();
+      await fetchWeeklyMenus();
+      render();
+    });
 
     // Modal Triggers for Adding New Hostel
     document.getElementById('openHostelModalBtn')?.addEventListener('click', () => {

@@ -8,6 +8,15 @@ import { renderNavbar, attachNavbarEvents } from '../components/navbar';
 import { renderFooter, attachFooterEvents } from '../components/footer';
 import { escapeHtml } from '../utils/sanitize';
 
+export function calculateInclusiveDays(fromDateStr: string, toDateStr: string): number {
+  if (!fromDateStr || !toDateStr) return 1;
+  const from = new Date(fromDateStr + 'T00:00:00Z');
+  const to = new Date(toDateStr + 'T00:00:00Z');
+  const diffTime = to.getTime() - from.getTime();
+  if (isNaN(diffTime) || diffTime < 0) return 1;
+  return Math.round(diffTime / (1000 * 60 * 60 * 24)) + 1;
+}
+
 interface SubscriptionRecord {
   id?: string;
   amountPaid?: number | string | null;
@@ -343,6 +352,12 @@ export async function renderDashboard() {
       const tInput = (document.getElementById('breakToDateInput') as HTMLInputElement)?.value || modalToDate;
       const rInput = (document.getElementById('breakReasonSelect') as HTMLSelectElement)?.value || modalReason;
 
+      const breakDays = calculateInclusiveDays(fInput, tInput);
+      if (breakDays < 1 || breakDays > 4) {
+        showToast('Break duration must be between 1 and 4 days.', 'error');
+        return;
+      }
+
       try {
         await createSubscriptionBreak(modalTargetSub.id, fInput, tInput, rInput);
         showToast('Break request sent. Waiting for provider approval.', 'info');
@@ -399,25 +414,23 @@ export async function renderDashboard() {
           const endDateObj = new Date(s.endDate || s.startDate);
           const totalInitialDays = Math.round((endDateObj.getTime() - startDateObj.getTime()) / (1000 * 60 * 60 * 24)) + 1;
           const planTitleLower = (s.planType || '').toLowerCase();
-          const isOneMonthSub = totalInitialDays >= 25 || planTitleLower.includes('month') || planTitleLower.includes('monthly');
+          const isHalfMonth = planTitleLower.includes('15 day') || planTitleLower.includes('half-month') || planTitleLower.includes('half month');
+          const isOneDay = planTitleLower.includes('1 day') || planTitleLower.includes('one day') || totalInitialDays <= 3;
+          const isOneWeek = planTitleLower.includes('1 week') || planTitleLower.includes('one week') || planTitleLower.includes('7 day');
+          const isOneMonthSub = (s.status || '').toUpperCase() === 'ACTIVE' &&
+            !isHalfMonth && !isOneDay && !isOneWeek &&
+            (totalInitialDays >= 25 || planTitleLower.includes('1 month') || planTitleLower.includes('one month') || (planTitleLower.includes('month') && !planTitleLower.includes('half')));
 
           // Calculate break requests for this subscription
           const subBreaks = loadedBreakRequests.filter((r) => r.subscriptionId === s.id);
           const usedBreakDays = subBreaks.filter((r) => r.status === 'APPROVED').reduce((sum, r) => sum + Number(r.breakDays || 0), 0);
           const availableBreakDays = Math.max(0, 4 - usedBreakDays);
-          const isProviderBreakEnabled = s.subscriptionBreaksEnabled;
+          const isProviderBreakEnabled = s.subscriptionBreaksEnabled === true || s.mealPlan?.provider?.subscriptionBreaksEnabled === true || s.provider?.subscriptionBreaksEnabled === true;
 
           let breakSectionHtml = '';
-          // Show Subscription Break section ONLY for 1-MONTH subscriptions
-          if (isOneMonthSub) {
-            if (!isProviderBreakEnabled) {
-              breakSectionHtml = `
-                <div class="meal-skip-card" style="background: #fff7ed; border-color: #ffedd5; margin-top: 14px;">
-                  <div style="font-size: 12px; font-weight: 600; color: #c2410c;">
-                    <i class="fa-solid fa-ban"></i> Subscription breaks are not available for this provider.
-                  </div>
-                </div>`;
-            } else if (usedBreakDays >= 4) {
+          // Show Subscription Break section ONLY for eligible active 1-MONTH subscriptions with break enabled
+          if (isOneMonthSub && isProviderBreakEnabled) {
+            if (usedBreakDays >= 4) {
               breakSectionHtml = `
                 <div class="meal-skip-card" style="background: #fef2f2; border-color: #fee2e2; margin-top: 14px;">
                   <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
@@ -525,6 +538,9 @@ export async function renderDashboard() {
                 <button class="btn-outline-action view-kitchen-btn" data-prov-id="${escapeHtml(s.providerId)}" style="flex: 1; padding: 10px; font-size: 13px;">
                   <i class="fa-solid fa-store"></i> View Kitchen
                 </button>
+                <button class="btn-primary-action renew-plan-btn" data-plan-id="${escapeHtml(s.planId || '')}" data-prov-id="${escapeHtml(s.providerId || '')}" style="flex: 1; padding: 10px; font-size: 13px; justify-content: center;">
+                  <i class="fa-solid fa-arrows-rotate"></i> Renew Plan
+                </button>
               </div>
             </div>
           </div>
@@ -535,6 +551,18 @@ export async function renderDashboard() {
         btn.addEventListener('click', (e) => {
           const pId = (e.currentTarget as HTMLElement).getAttribute('data-prov-id');
           if (pId) navigate(`#/providers/${pId}`);
+        });
+      });
+
+      subsGrid.querySelectorAll('.renew-plan-btn').forEach((btn) => {
+        btn.addEventListener('click', (e) => {
+          const planId = (e.currentTarget as HTMLElement).getAttribute('data-plan-id');
+          const provId = (e.currentTarget as HTMLElement).getAttribute('data-prov-id');
+          if (planId) {
+            navigate(`#/checkout/${planId}`);
+          } else if (provId) {
+            navigate(`#/providers/${provId}`);
+          }
         });
       });
 
@@ -740,6 +768,7 @@ export async function renderDashboard() {
         parsedPaid,
         amountPaidDisplay,
         safeRef,
+        planId: plan.id || '',
         providerId: provider.id || '',
         subscriptionBreaksEnabled,
       };

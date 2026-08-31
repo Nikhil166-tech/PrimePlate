@@ -3,7 +3,11 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
 import * as crypto from 'crypto';
 import * as bcrypt from 'bcryptjs';
-import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
 
 // Entities & Services
 import { AnalyticsService } from './analytics/analytics.service';
@@ -16,11 +20,17 @@ import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 
 import { Payment } from './payments/payment.entity';
-import { Subscription, SubscriptionStatus } from './subscriptions/subscription.entity';
+import {
+  Subscription,
+  SubscriptionStatus,
+} from './subscriptions/subscription.entity';
 import { MealProvider } from './providers/meal-provider.entity';
 import { User } from './users/user.entity';
 import { MealPlan } from './meal-plans/meal-plan.entity';
-import { SubscriptionBreakRequest, SubscriptionBreakStatus } from './subscription-breaks/subscription-break-request.entity';
+import {
+  SubscriptionBreakRequest,
+  SubscriptionBreakStatus,
+} from './subscription-breaks/subscription-break-request.entity';
 import { Review } from './reviews/review.entity';
 import { PasswordResetToken } from './auth/password-reset-token.entity';
 import { RefreshToken } from './auth/refresh-token.entity';
@@ -57,14 +67,25 @@ describe('PrimePlate Comprehensive QA Suite (Sections 19, 24, 26, 27, 28, 30, 40
               })),
             },
           },
-          { provide: getRepositoryToken(User), useValue: { count: jest.fn().mockResolvedValue(10) } },
-          { provide: getRepositoryToken(MealProvider), useValue: { count: jest.fn().mockResolvedValue(3) } },
-          { provide: getRepositoryToken(Subscription), useValue: { count: jest.fn().mockResolvedValue(3) } },
+          {
+            provide: getRepositoryToken(User),
+            useValue: { count: jest.fn().mockResolvedValue(10) },
+          },
+          {
+            provide: getRepositoryToken(MealProvider),
+            useValue: { count: jest.fn().mockResolvedValue(3) },
+          },
+          {
+            provide: getRepositoryToken(Subscription),
+            useValue: { count: jest.fn().mockResolvedValue(3) },
+          },
         ],
       }).compile();
 
       analyticsService = module.get<AnalyticsService>(AnalyticsService);
-      paymentRepo = module.get<Repository<Payment>>(getRepositoryToken(Payment));
+      paymentRepo = module.get<Repository<Payment>>(
+        getRepositoryToken(Payment),
+      );
     });
 
     it('calculates total revenue as ₹10,500 from historical paid records (excluding failed/unverified)', async () => {
@@ -88,13 +109,17 @@ describe('PrimePlate Comprehensive QA Suite (Sections 19, 24, 26, 27, 28, 30, 40
       expect(studentBPayment.amount).toBe(3500);
       expect(studentCPayment.amount).toBe(4000);
 
-      const total = studentAPayment.amount + studentBPayment.amount + studentCPayment.amount;
+      const total =
+        studentAPayment.amount +
+        studentBPayment.amount +
+        studentCPayment.amount;
       expect(total).toBe(10500);
     });
 
     it('verifies duration pricing formula (1 Day, 1 Week, 15 Days, 1 Month) for ₹3,000 base price', () => {
       const baseMonthlyPrice = 3000;
-      const calcPrice = (days: number) => Math.max(1, Math.round(baseMonthlyPrice * (days / 30)));
+      const calcPrice = (days: number) =>
+        Math.max(1, Math.round(baseMonthlyPrice * (days / 30)));
       expect(calcPrice(1)).toBe(100);
       expect(calcPrice(7)).toBe(700);
       expect(calcPrice(15)).toBe(1500);
@@ -127,7 +152,11 @@ describe('PrimePlate Comprehensive QA Suite (Sections 19, 24, 26, 27, 28, 30, 40
       status: SubscriptionStatus.ACTIVE,
       startDate: '2026-09-01',
       endDate: '2026-09-30',
-      mealPlan: { id: 'plan-1', title: '1 Month Standard Plan', provider: providerEntity },
+      mealPlan: {
+        id: 'plan-1',
+        title: '1 Month Standard Plan',
+        provider: providerEntity,
+      },
     };
 
     const oneDaySub: any = {
@@ -136,7 +165,11 @@ describe('PrimePlate Comprehensive QA Suite (Sections 19, 24, 26, 27, 28, 30, 40
       status: SubscriptionStatus.ACTIVE,
       startDate: '2026-09-01',
       endDate: '2026-09-01',
-      mealPlan: { id: 'plan-day', title: '1 Day Plan', provider: providerEntity },
+      mealPlan: {
+        id: 'plan-day',
+        title: '1 Day Plan',
+        provider: providerEntity,
+      },
     };
 
     beforeEach(async () => {
@@ -180,7 +213,9 @@ describe('PrimePlate Comprehensive QA Suite (Sections 19, 24, 26, 27, 28, 30, 40
               return null;
             }),
             find: jest.fn().mockResolvedValue([]),
-            save: jest.fn((entityClass, entity) => Promise.resolve(entity || entityClass)),
+            save: jest.fn((entityClass, entity) =>
+              Promise.resolve(entity || entityClass),
+            ),
           };
           return cb(manager);
         }),
@@ -189,7 +224,10 @@ describe('PrimePlate Comprehensive QA Suite (Sections 19, 24, 26, 27, 28, 30, 40
       const module: TestingModule = await Test.createTestingModule({
         providers: [
           SubscriptionBreaksService,
-          { provide: getRepositoryToken(SubscriptionBreakRequest), useValue: breakRepo },
+          {
+            provide: getRepositoryToken(SubscriptionBreakRequest),
+            useValue: breakRepo,
+          },
           { provide: getRepositoryToken(Subscription), useValue: subRepo },
           { provide: getRepositoryToken(MealProvider), useValue: providerRepo },
           { provide: getRepositoryToken(User), useValue: userRepo },
@@ -197,7 +235,9 @@ describe('PrimePlate Comprehensive QA Suite (Sections 19, 24, 26, 27, 28, 30, 40
         ],
       }).compile();
 
-      breaksService = module.get<SubscriptionBreaksService>(SubscriptionBreaksService);
+      breaksService = module.get<SubscriptionBreaksService>(
+        SubscriptionBreaksService,
+      );
     });
 
     it('rejects break requests for non 1-month subscriptions (e.g. 1-day plan)', async () => {
@@ -213,7 +253,10 @@ describe('PrimePlate Comprehensive QA Suite (Sections 19, 24, 26, 27, 28, 30, 40
 
     it('rejects break requests when provider setting subscriptionBreaksEnabled is disabled', async () => {
       subRepo.findOne.mockResolvedValue(oneMonthSub);
-      providerRepo.findOne.mockResolvedValue({ ...providerEntity, subscriptionBreaksEnabled: false });
+      providerRepo.findOne.mockResolvedValue({
+        ...providerEntity,
+        subscriptionBreaksEnabled: false,
+      });
 
       await expect(
         breaksService.createBreakRequest('student-1', {
@@ -221,7 +264,9 @@ describe('PrimePlate Comprehensive QA Suite (Sections 19, 24, 26, 27, 28, 30, 40
           fromDate: '2026-09-10',
           toDate: '2026-09-12',
         }),
-      ).rejects.toThrow('Subscription breaks are not available for this provider.');
+      ).rejects.toThrow(
+        'Subscription breaks are not available for this provider.',
+      );
     });
 
     it('rejects breaks with duration > 4 days (e.g. 5 days)', async () => {
@@ -269,7 +314,9 @@ describe('PrimePlate Comprehensive QA Suite (Sections 19, 24, 26, 27, 28, 30, 40
           fromDate: '2026-09-11',
           toDate: '2026-09-13',
         }),
-      ).rejects.toThrow('A break request already exists for an overlapping date range.');
+      ).rejects.toThrow(
+        'A break request already exists for an overlapping date range.',
+      );
     });
 
     it('rejects requests exceeding total 4-day limit for subscription', async () => {
@@ -293,7 +340,10 @@ describe('PrimePlate Comprehensive QA Suite (Sections 19, 24, 26, 27, 28, 30, 40
     });
 
     it('approving a 3-day break extends subscription endDate by exactly 3 days without changing payment/revenue', async () => {
-      const approved = await breaksService.approveBreakRequest('break-req-1', 'provider-user-1');
+      const approved = await breaksService.approveBreakRequest(
+        'break-req-1',
+        'provider-user-1',
+      );
       expect(approved.status).toBe(SubscriptionBreakStatus.APPROVED);
     });
 
@@ -314,7 +364,12 @@ describe('PrimePlate Comprehensive QA Suite (Sections 19, 24, 26, 27, 28, 30, 40
 
     const studentA: any = { id: 'student-A', name: 'Alice' };
     const studentB: any = { id: 'student-B', name: 'Bob' };
-    const providerObj: any = { id: 'prov-1', name: 'Alpha Mess', rating: 0, user: { id: 'provider-user-1' } };
+    const providerObj: any = {
+      id: 'prov-1',
+      name: 'Alpha Mess',
+      rating: 0,
+      user: { id: 'provider-user-1' },
+    };
 
     beforeEach(async () => {
       reviewRepo = {
@@ -341,7 +396,10 @@ describe('PrimePlate Comprehensive QA Suite (Sections 19, 24, 26, 27, 28, 30, 40
       };
 
       userRepo = { findOne: jest.fn().mockResolvedValue(studentA) };
-      providerRepo = { findOne: jest.fn().mockResolvedValue(providerObj), save: jest.fn() };
+      providerRepo = {
+        findOne: jest.fn().mockResolvedValue(providerObj),
+        save: jest.fn(),
+      };
       subscriptionRepo = {
         createQueryBuilder: jest.fn(() => ({
           leftJoin: jest.fn().mockReturnThis(),
@@ -357,7 +415,10 @@ describe('PrimePlate Comprehensive QA Suite (Sections 19, 24, 26, 27, 28, 30, 40
           { provide: getRepositoryToken(Review), useValue: reviewRepo },
           { provide: getRepositoryToken(User), useValue: userRepo },
           { provide: getRepositoryToken(MealProvider), useValue: providerRepo },
-          { provide: getRepositoryToken(Subscription), useValue: subscriptionRepo },
+          {
+            provide: getRepositoryToken(Subscription),
+            useValue: subscriptionRepo,
+          },
         ],
       }).compile();
 
@@ -389,14 +450,24 @@ describe('PrimePlate Comprehensive QA Suite (Sections 19, 24, 26, 27, 28, 30, 40
         getOne: jest.fn().mockResolvedValue(null),
       }));
 
-      const rev = await reviewsService.create('student-A', 'prov-1', 5, 'Delicious and clean!');
+      const rev = await reviewsService.create(
+        'student-A',
+        'prov-1',
+        5,
+        'Delicious and clean!',
+      );
       expect(rev.rating).toBe(5);
       expect(rev.comment).toBe('Delicious and clean!');
     });
 
     it('allows student to edit their own review, rejects other student editing it', async () => {
       // Student A edits own review -> Success
-      const updated = await reviewsService.update('student-A', 'rev-1', 5, 'Updated to excellent');
+      const updated = await reviewsService.update(
+        'student-A',
+        'rev-1',
+        5,
+        'Updated to excellent',
+      );
       expect(updated.rating).toBe(5);
 
       // Student B attempts to edit Student A review -> Forbidden
@@ -407,7 +478,9 @@ describe('PrimePlate Comprehensive QA Suite (Sections 19, 24, 26, 27, 28, 30, 40
 
     it('allows student to delete their own review, rejects other student deleting it', async () => {
       // Student B attempts delete -> Forbidden
-      await expect(reviewsService.delete('student-B', 'rev-1')).rejects.toThrow(ForbiddenException);
+      await expect(reviewsService.delete('student-B', 'rev-1')).rejects.toThrow(
+        ForbiddenException,
+      );
 
       // Student A deletes own review -> Success
       const res = await reviewsService.delete('student-A', 'rev-1');
@@ -416,7 +489,10 @@ describe('PrimePlate Comprehensive QA Suite (Sections 19, 24, 26, 27, 28, 30, 40
 
     it('prevents provider from accessing reviews of another provider', async () => {
       await expect(
-        reviewsService.findByProvider('prov-1', { userId: 'different-provider-user', role: Role.PROVIDER }),
+        reviewsService.findByProvider('prov-1', {
+          userId: 'different-provider-user',
+          role: Role.PROVIDER,
+        }),
       ).rejects.toThrow(ForbiddenException);
     });
   });
@@ -438,7 +514,11 @@ describe('PrimePlate Comprehensive QA Suite (Sections 19, 24, 26, 27, 28, 30, 40
 
     beforeEach(async () => {
       usersService = {
-        findByEmail: jest.fn().mockImplementation(async (e) => (e === 'student@example.com' ? mockUser : null)),
+        findByEmail: jest
+          .fn()
+          .mockImplementation(async (e) =>
+            e === 'student@example.com' ? mockUser : null,
+          ),
         findById: jest.fn().mockResolvedValue(mockUser),
       } as any;
 
@@ -467,7 +547,9 @@ describe('PrimePlate Comprehensive QA Suite (Sections 19, 24, 26, 27, 28, 30, 40
           manager: {
             save: jest.fn((_, entity) => Promise.resolve(entity)),
             getRepository: jest.fn(() => ({
-              find: jest.fn().mockResolvedValue([{ id: 'ref-1', revoked: false }]),
+              find: jest
+                .fn()
+                .mockResolvedValue([{ id: 'ref-1', revoked: false }]),
             })),
           },
         })),
@@ -477,11 +559,20 @@ describe('PrimePlate Comprehensive QA Suite (Sections 19, 24, 26, 27, 28, 30, 40
         providers: [
           AuthService,
           { provide: UsersService, useValue: usersService },
-          { provide: getRepositoryToken(PasswordResetToken), useValue: resetTokenRepo },
-          { provide: getRepositoryToken(RefreshToken), useValue: refreshTokenRepo },
+          {
+            provide: getRepositoryToken(PasswordResetToken),
+            useValue: resetTokenRepo,
+          },
+          {
+            provide: getRepositoryToken(RefreshToken),
+            useValue: refreshTokenRepo,
+          },
           { provide: EmailService, useValue: emailService },
           { provide: JwtService, useValue: { sign: jest.fn() } },
-          { provide: ConfigService, useValue: { get: jest.fn().mockReturnValue('mock_secret') } },
+          {
+            provide: ConfigService,
+            useValue: { get: jest.fn().mockReturnValue('mock_secret') },
+          },
           { provide: DataSource, useValue: dataSourceMock },
         ],
       }).compile();
@@ -490,12 +581,16 @@ describe('PrimePlate Comprehensive QA Suite (Sections 19, 24, 26, 27, 28, 30, 40
     });
 
     it('returns generic response for nonexistent email without leaking account existence', async () => {
-      const res = await authService.forgotPassword({ email: 'nonexistent@example.com' });
+      const res = await authService.forgotPassword({
+        email: 'nonexistent@example.com',
+      });
       expect(res.message).toContain('If an account exists');
     });
 
     it('creates a hashed token with 15-minute expiration upon forgotPassword', async () => {
-      const res = await authService.forgotPassword({ email: 'student@example.com' });
+      const res = await authService.forgotPassword({
+        email: 'student@example.com',
+      });
       expect(res.message).toContain('If an account exists');
       expect(resetTokenRepo.save).toHaveBeenCalled();
       expect(emailService.sendPasswordResetEmail).toHaveBeenCalled();
@@ -511,7 +606,10 @@ describe('PrimePlate Comprehensive QA Suite (Sections 19, 24, 26, 27, 28, 30, 40
       });
 
       await expect(
-        authService.resetPassword({ token: 'raw_token', newPassword: 'NewPassword123!' }),
+        authService.resetPassword({
+          token: 'raw_token',
+          newPassword: 'NewPassword123!',
+        }),
       ).rejects.toThrow('Password reset token has expired');
 
       // Already used token
@@ -523,7 +621,10 @@ describe('PrimePlate Comprehensive QA Suite (Sections 19, 24, 26, 27, 28, 30, 40
       });
 
       await expect(
-        authService.resetPassword({ token: 'raw_token', newPassword: 'NewPassword123!' }),
+        authService.resetPassword({
+          token: 'raw_token',
+          newPassword: 'NewPassword123!',
+        }),
       ).rejects.toThrow('Password reset token has already been used');
     });
 
@@ -584,7 +685,9 @@ describe('PrimePlate Comprehensive QA Suite (Sections 19, 24, 26, 27, 28, 30, 40
           {
             provide: 'ProvidersService',
             useFactory: () => {
-              const { ProvidersService } = require('./providers/providers.service');
+              const {
+                ProvidersService,
+              } = require('./providers/providers.service');
               return new ProvidersService(providerRepo, mockSubRepo as any);
             },
           },
@@ -596,34 +699,50 @@ describe('PrimePlate Comprehensive QA Suite (Sections 19, 24, 26, 27, 28, 30, 40
 
     it('allows provider owner to update price from ₹3,000 -> ₹3,500 -> ₹4,000', async () => {
       // 1. Update to 3500
-      const updated3500 = await providersService.update('provider-user-A', 'prov-A', { monthlyPrice: 3500 });
+      const updated3500 = await providersService.update(
+        'provider-user-A',
+        'prov-A',
+        { monthlyPrice: 3500 },
+      );
       expect(updated3500.monthlyPrice).toBe(3500);
 
       // 2. Update to 4000
-      const updated4000 = await providersService.update('provider-user-A', 'prov-A', { monthlyPrice: 4000 });
+      const updated4000 = await providersService.update(
+        'provider-user-A',
+        'prov-A',
+        { monthlyPrice: 4000 },
+      );
       expect(updated4000.monthlyPrice).toBe(4000);
     });
 
     it('rejects update if a different provider user attempts to modify price', async () => {
       await expect(
-        providersService.update('provider-user-B', 'prov-A', { monthlyPrice: 5000 }),
+        providersService.update('provider-user-B', 'prov-A', {
+          monthlyPrice: 5000,
+        }),
       ).rejects.toThrow(ForbiddenException);
     });
 
     it('rejects invalid, zero, or negative monthly price', async () => {
       // Zero price
       await expect(
-        providersService.update('provider-user-A', 'prov-A', { monthlyPrice: 0 }),
+        providersService.update('provider-user-A', 'prov-A', {
+          monthlyPrice: 0,
+        }),
       ).rejects.toThrow(BadRequestException);
 
       // Negative price
       await expect(
-        providersService.update('provider-user-A', 'prov-A', { monthlyPrice: -500 }),
+        providersService.update('provider-user-A', 'prov-A', {
+          monthlyPrice: -500,
+        }),
       ).rejects.toThrow(BadRequestException);
 
       // NaN
       await expect(
-        providersService.update('provider-user-A', 'prov-A', { monthlyPrice: NaN }),
+        providersService.update('provider-user-A', 'prov-A', {
+          monthlyPrice: NaN,
+        }),
       ).rejects.toThrow(BadRequestException);
     });
   });
@@ -639,7 +758,11 @@ describe('PrimePlate Comprehensive QA Suite (Sections 19, 24, 26, 27, 28, 30, 40
     const subStudentA: any = {
       id: 'sub-A',
       student: { id: studentAId },
-      mealPlan: { id: 'plan-1', title: '1 Month Plan', provider: { id: 'prov-1', name: 'Mess 1' } },
+      mealPlan: {
+        id: 'plan-1',
+        title: '1 Month Plan',
+        provider: { id: 'prov-1', name: 'Mess 1' },
+      },
       status: SubscriptionStatus.ACTIVE,
       startDate: '2026-08-01',
       endDate: '2026-08-31',
@@ -660,12 +783,16 @@ describe('PrimePlate Comprehensive QA Suite (Sections 19, 24, 26, 27, 28, 30, 40
     beforeEach(async () => {
       subRepo = {
         find: jest.fn().mockImplementation(async (opts) => {
-          if (opts.where.student?.id === studentAId) return [{ ...subStudentA }];
+          if (opts.where.student?.id === studentAId)
+            return [{ ...subStudentA }];
           return [];
         }),
         manager: {
           find: jest.fn().mockImplementation(async (entityClass, opts) => {
-            if (opts.where?.studentId === studentAId || opts.where?.student?.id === studentAId) {
+            if (
+              opts.where?.studentId === studentAId ||
+              opts.where?.student?.id === studentAId
+            ) {
               return [{ ...paymentStudentA }];
             }
             return [];
@@ -678,7 +805,9 @@ describe('PrimePlate Comprehensive QA Suite (Sections 19, 24, 26, 27, 28, 30, 40
           {
             provide: 'SubscriptionsService',
             useFactory: () => {
-              const { SubscriptionsService } = require('./subscriptions/subscriptions.service');
+              const {
+                SubscriptionsService,
+              } = require('./subscriptions/subscriptions.service');
               return new SubscriptionsService(subRepo, {} as any, {} as any);
             },
           },
@@ -705,15 +834,36 @@ describe('PrimePlate Comprehensive QA Suite (Sections 19, 24, 26, 27, 28, 30, 40
   describe('SECTION 23: Subscription Renewal Price and History Integrity', () => {
     it('renewal charges current provider price while leaving past payment records unchanged', () => {
       // Past subscription at ₹3,000
-      const pastPayment = { id: 'pay-past', amount: 3000, status: 'paid', createdAt: '2026-07-01' };
-      const pastSubscription = { id: 'sub-past', amountPaid: 3000, status: 'expired', endDate: '2026-07-31' };
+      const pastPayment = {
+        id: 'pay-past',
+        amount: 3000,
+        status: 'paid',
+        createdAt: '2026-07-01',
+      };
+      const pastSubscription = {
+        id: 'sub-past',
+        amountPaid: 3000,
+        status: 'expired',
+        endDate: '2026-07-31',
+      };
 
       // Provider price increases to ₹3,500
       const currentProviderPrice = 3500;
 
       // Student renews for next month
-      const renewedPayment = { id: 'pay-renewed', amount: currentProviderPrice, status: 'paid', createdAt: '2026-08-01' };
-      const renewedSubscription = { id: 'sub-renewed', amountPaid: currentProviderPrice, status: 'active', startDate: '2026-08-01', endDate: '2026-08-31' };
+      const renewedPayment = {
+        id: 'pay-renewed',
+        amount: currentProviderPrice,
+        status: 'paid',
+        createdAt: '2026-08-01',
+      };
+      const renewedSubscription = {
+        id: 'sub-renewed',
+        amountPaid: currentProviderPrice,
+        status: 'active',
+        startDate: '2026-08-01',
+        endDate: '2026-08-31',
+      };
 
       // Past records must NOT mutate
       expect(pastPayment.amount).toBe(3000);
@@ -729,8 +879,18 @@ describe('PrimePlate Comprehensive QA Suite (Sections 19, 24, 26, 27, 28, 30, 40
   describe('SECTION 41: Cross-Feature End-to-End Consistency', () => {
     it('verifies data alignment across Dashboard, Subscriptions, Breaks, Earnings, and Revenue', () => {
       const paymentRecord = { id: 'pay-101', amount: 3000, status: 'paid' };
-      const subscriptionRecord = { id: 'sub-101', amountPaid: 3000, status: 'active', startDate: '2026-08-01', endDate: '2026-08-31' };
-      const providerEarning = { paymentId: 'pay-101', subscriptionId: 'sub-101', grossAmount: 3000 };
+      const subscriptionRecord = {
+        id: 'sub-101',
+        amountPaid: 3000,
+        status: 'active',
+        startDate: '2026-08-01',
+        endDate: '2026-08-31',
+      };
+      const providerEarning = {
+        paymentId: 'pay-101',
+        subscriptionId: 'sub-101',
+        grossAmount: 3000,
+      };
 
       // 1. Initial consistency
       expect(subscriptionRecord.amountPaid).toBe(paymentRecord.amount);

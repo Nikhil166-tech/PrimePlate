@@ -16,6 +16,7 @@ import { MealProvider } from './providers/meal-provider.entity';
 import { MealPlan } from './meal-plans/meal-plan.entity';
 import { Subscription } from './subscriptions/subscription.entity';
 import { Payment } from './payments/payment.entity';
+import { PaymentWebhookEvent } from './payments/webhook-event.entity';
 import { Review } from './reviews/review.entity';
 import { WeeklyMenu } from './weekly-menus/weekly-menu.entity';
 import { PasswordResetToken } from './auth/password-reset-token.entity';
@@ -72,6 +73,7 @@ import { AppService } from './app.service';
       MealPlan,
       Subscription,
       Payment,
+      PaymentWebhookEvent,
       Review,
       WeeklyMenu,
       PasswordResetToken,
@@ -95,6 +97,3 @@ import { AppService } from './app.service';
   providers: [AppService, SeedService],
 })
 export class AppModule {}
-
-
-

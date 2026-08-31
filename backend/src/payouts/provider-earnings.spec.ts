@@ -1,9 +1,13 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { PayoutsService } from './payouts.service';
-import { ProviderEarning, ProviderEarningStatus } from './provider-earning.entity';
+import {
+  ProviderEarning,
+  ProviderEarningStatus,
+} from './provider-earning.entity';
 import { MealProvider } from '../providers/meal-provider.entity';
 import { Payment } from '../payments/payment.entity';
+import { PaymentWebhookEvent } from '../payments/webhook-event.entity';
 import { Subscription } from '../subscriptions/subscription.entity';
 import { User } from '../users/user.entity';
 import { MealPlan } from '../meal-plans/meal-plan.entity';
@@ -20,8 +24,16 @@ describe('Provider Earnings & Payout Ledger Specification', () => {
   const makeSig = (payload: string) =>
     crypto.createHmac('sha256', secret).update(payload).digest('hex');
 
-  const mockStudent1: any = { id: 'student-1', name: 'PrimeMate One', role: 'STUDENT' };
-  const mockStudent2: any = { id: 'student-2', name: 'PrimeMate Two', role: 'STUDENT' };
+  const mockStudent1: any = {
+    id: 'student-1',
+    name: 'PrimeMate One',
+    role: 'STUDENT',
+  };
+  const mockStudent2: any = {
+    id: 'student-2',
+    name: 'PrimeMate Two',
+    role: 'STUDENT',
+  };
 
   const mockUserProviderA: any = { id: 'user-prov-A', role: 'PROVIDER' };
   const mockUserProviderB: any = { id: 'user-prov-B', role: 'PROVIDER' };
@@ -80,6 +92,15 @@ describe('Provider Earnings & Payout Ledger Specification', () => {
           },
         },
         {
+          provide: getRepositoryToken(PaymentWebhookEvent),
+          useValue: {
+            create: jest
+              .fn()
+              .mockImplementation((d) => ({ ...d, id: `we_${Date.now()}` })),
+            save: jest.fn().mockImplementation((d) => Promise.resolve(d)),
+          },
+        },
+        {
           provide: getRepositoryToken(ProviderEarning),
           useValue: {
             find: jest.fn().mockImplementation((opts) => {
@@ -111,9 +132,14 @@ describe('Provider Earnings & Payout Ledger Specification', () => {
               };
             }),
             save: jest.fn().mockImplementation((entity) => {
-              const idx = mockEarningsStore.findIndex((e) => e.id === entity.id || e.paymentId === entity.paymentId);
+              const idx = mockEarningsStore.findIndex(
+                (e) => e.id === entity.id || e.paymentId === entity.paymentId,
+              );
               if (idx >= 0) {
-                mockEarningsStore[idx] = { ...mockEarningsStore[idx], ...entity };
+                mockEarningsStore[idx] = {
+                  ...mockEarningsStore[idx],
+                  ...entity,
+                };
                 return Promise.resolve(mockEarningsStore[idx]);
               }
               mockEarningsStore.push(entity);
@@ -125,10 +151,14 @@ describe('Provider Earnings & Payout Ledger Specification', () => {
           provide: getRepositoryToken(MealProvider),
           useValue: {
             findOne: jest.fn().mockImplementation((opts) => {
-              if (opts?.where?.user?.id === 'user-prov-A') return Promise.resolve(mockProviderA);
-              if (opts?.where?.user?.id === 'user-prov-B') return Promise.resolve(mockProviderB);
-              if (opts?.where?.id === 'prov-A') return Promise.resolve(mockProviderA);
-              if (opts?.where?.id === 'prov-B') return Promise.resolve(mockProviderB);
+              if (opts?.where?.user?.id === 'user-prov-A')
+                return Promise.resolve(mockProviderA);
+              if (opts?.where?.user?.id === 'user-prov-B')
+                return Promise.resolve(mockProviderB);
+              if (opts?.where?.id === 'prov-A')
+                return Promise.resolve(mockProviderA);
+              if (opts?.where?.id === 'prov-B')
+                return Promise.resolve(mockProviderB);
               return Promise.resolve(null);
             }),
           },
@@ -148,8 +178,10 @@ describe('Provider Earnings & Payout Ledger Specification', () => {
                 for (const w of opts.where) {
                   const found = mockPaymentsStore.find(
                     (p) =>
-                      (w.razorpayOrderId && p.razorpayOrderId === w.razorpayOrderId) ||
-                      (w.razorpayPaymentId && p.razorpayPaymentId === w.razorpayPaymentId) ||
+                      (w.razorpayOrderId &&
+                        p.razorpayOrderId === w.razorpayOrderId) ||
+                      (w.razorpayPaymentId &&
+                        p.razorpayPaymentId === w.razorpayPaymentId) ||
                       (w.id && p.id === w.id),
                   );
                   if (found) return Promise.resolve(found);
@@ -157,7 +189,9 @@ describe('Provider Earnings & Payout Ledger Specification', () => {
                 return Promise.resolve(null);
               }
               if (opts?.where?.id) {
-                return Promise.resolve(mockPaymentsStore.find((p) => p.id === opts.where.id) || null);
+                return Promise.resolve(
+                  mockPaymentsStore.find((p) => p.id === opts.where.id) || null,
+                );
               }
               return Promise.resolve(null);
             }),
@@ -167,9 +201,14 @@ describe('Provider Earnings & Payout Ledger Specification', () => {
               ...dto,
             })),
             save: jest.fn().mockImplementation((entity) => {
-              const idx = mockPaymentsStore.findIndex((p) => p.id === entity.id);
+              const idx = mockPaymentsStore.findIndex(
+                (p) => p.id === entity.id,
+              );
               if (idx >= 0) {
-                mockPaymentsStore[idx] = { ...mockPaymentsStore[idx], ...entity };
+                mockPaymentsStore[idx] = {
+                  ...mockPaymentsStore[idx],
+                  ...entity,
+                };
                 return Promise.resolve(mockPaymentsStore[idx]);
               }
               mockPaymentsStore.push(entity);
@@ -184,21 +223,33 @@ describe('Provider Earnings & Payout Ledger Specification', () => {
                       for (const w of opts.where) {
                         const found = mockPaymentsStore.find(
                           (p) =>
-                            (w.razorpayOrderId && p.razorpayOrderId === w.razorpayOrderId) ||
-                            (w.razorpayPaymentId && p.razorpayPaymentId === w.razorpayPaymentId) ||
+                            (w.razorpayOrderId &&
+                              p.razorpayOrderId === w.razorpayOrderId) ||
+                            (w.razorpayPaymentId &&
+                              p.razorpayPaymentId === w.razorpayPaymentId) ||
                             (w.id && p.id === w.id),
                         );
                         if (found) return Promise.resolve(found);
                       }
                       return Promise.resolve(null);
                     }
-                    return Promise.resolve(mockPaymentsStore.find((p) => p.id === opts?.where?.id) || null);
+                    return Promise.resolve(
+                      mockPaymentsStore.find((p) => p.id === opts?.where?.id) ||
+                        null,
+                    );
                   }
-                  if (entityClass === User) return Promise.resolve(mockStudent1);
-                  if (entityClass === MealPlan) return Promise.resolve(mockPlanA);
-                  if (entityClass === MealProvider) return Promise.resolve(mockProviderA);
+                  if (entityClass === User)
+                    return Promise.resolve(mockStudent1);
+                  if (entityClass === MealPlan)
+                    return Promise.resolve(mockPlanA);
+                  if (entityClass === MealProvider)
+                    return Promise.resolve(mockProviderA);
                   if (entityClass === ProviderEarning) {
-                    return Promise.resolve(mockEarningsStore.find((e) => e.paymentId === opts?.where?.paymentId) || null);
+                    return Promise.resolve(
+                      mockEarningsStore.find(
+                        (e) => e.paymentId === opts?.where?.paymentId,
+                      ) || null,
+                    );
                   }
                   return Promise.resolve(null);
                 }),
@@ -206,7 +257,9 @@ describe('Provider Earnings & Payout Ledger Specification', () => {
                   if (entityClass === Subscription) {
                     let res = [...mockSubscriptionsStore];
                     if (opts?.where?.student?.id) {
-                      res = res.filter((s) => s.student?.id === opts.where.student.id);
+                      res = res.filter(
+                        (s) => s.student?.id === opts.where.student.id,
+                      );
                     }
                     return Promise.resolve(res);
                   }
@@ -220,7 +273,9 @@ describe('Provider Earnings & Payout Ledger Specification', () => {
                   if (entityClass === ProviderEarning) {
                     let res = [...mockEarningsStore];
                     if (opts?.where?.providerId) {
-                      res = res.filter((e) => e.providerId === opts.where.providerId);
+                      res = res.filter(
+                        (e) => e.providerId === opts.where.providerId,
+                      );
                     }
                     return Promise.resolve(res);
                   }
@@ -234,23 +289,46 @@ describe('Provider Earnings & Payout Ledger Specification', () => {
                 save: jest.fn().mockImplementation((entityClass, entity) => {
                   const target = entity !== undefined ? entity : entityClass;
                   if (target.grossAmount !== undefined) {
-                    const idx = mockEarningsStore.findIndex((e) => e.id === target.id || e.paymentId === target.paymentId);
+                    const idx = mockEarningsStore.findIndex(
+                      (e) =>
+                        e.id === target.id || e.paymentId === target.paymentId,
+                    );
                     if (idx >= 0) {
-                      mockEarningsStore[idx] = { ...mockEarningsStore[idx], ...target };
+                      mockEarningsStore[idx] = {
+                        ...mockEarningsStore[idx],
+                        ...target,
+                      };
                     } else {
                       mockEarningsStore.push(target);
                     }
-                  } else if (target.razorpayPaymentId || target.status === 'paid' || target.status === 'refunded') {
-                    const idx = mockPaymentsStore.findIndex((p) => p.id === target.id || (target.razorpayPaymentId && p.razorpayPaymentId === target.razorpayPaymentId));
+                  } else if (
+                    target.razorpayPaymentId ||
+                    target.status === 'paid' ||
+                    target.status === 'refunded'
+                  ) {
+                    const idx = mockPaymentsStore.findIndex(
+                      (p) =>
+                        p.id === target.id ||
+                        (target.razorpayPaymentId &&
+                          p.razorpayPaymentId === target.razorpayPaymentId),
+                    );
                     if (idx >= 0) {
-                      mockPaymentsStore[idx] = { ...mockPaymentsStore[idx], ...target };
+                      mockPaymentsStore[idx] = {
+                        ...mockPaymentsStore[idx],
+                        ...target,
+                      };
                     } else {
                       mockPaymentsStore.push(target);
                     }
                   } else if (target.startDate) {
-                    const idx = mockSubscriptionsStore.findIndex((s) => s.id === target.id);
+                    const idx = mockSubscriptionsStore.findIndex(
+                      (s) => s.id === target.id,
+                    );
                     if (idx >= 0) {
-                      mockSubscriptionsStore[idx] = { ...mockSubscriptionsStore[idx], ...target };
+                      mockSubscriptionsStore[idx] = {
+                        ...mockSubscriptionsStore[idx],
+                        ...target,
+                      };
                     } else {
                       mockSubscriptionsStore.push(target);
                     }
@@ -258,7 +336,9 @@ describe('Provider Earnings & Payout Ledger Specification', () => {
                   return Promise.resolve(target);
                 }),
               };
-              managerMock.transaction = jest.fn().mockImplementation((cb) => cb(managerMock));
+              managerMock.transaction = jest
+                .fn()
+                .mockImplementation((cb) => cb(managerMock));
               return managerMock;
             })(),
           },
@@ -266,13 +346,19 @@ describe('Provider Earnings & Payout Ledger Specification', () => {
         {
           provide: getRepositoryToken(Subscription),
           useValue: {
-            find: jest.fn().mockImplementation(() => Promise.resolve(mockSubscriptionsStore)),
+            find: jest
+              .fn()
+              .mockImplementation(() =>
+                Promise.resolve(mockSubscriptionsStore),
+              ),
             manager: {
               find: jest.fn().mockImplementation((entityClass, opts) => {
                 if (entityClass === Payment) {
                   let res = [...mockPaymentsStore];
                   if (opts?.where?.student?.id) {
-                    res = res.filter((p) => p.student?.id === opts.where.student.id);
+                    res = res.filter(
+                      (p) => p.student?.id === opts.where.student.id,
+                    );
                   }
                   return Promise.resolve(res);
                 }
@@ -325,7 +411,10 @@ describe('Provider Earnings & Payout Ledger Specification', () => {
       provider: mockProviderA,
     };
 
-    const earning = await payoutsService.createEarningForPayment(failedPayment, 'sub-failed');
+    const earning = await payoutsService.createEarningForPayment(
+      failedPayment,
+      'sub-failed',
+    );
     expect(earning).toBeNull();
     expect(mockEarningsStore.length).toBe(0);
   });
@@ -339,7 +428,10 @@ describe('Provider Earnings & Payout Ledger Specification', () => {
       provider: mockProviderA,
     };
 
-    const earning = await payoutsService.createEarningForPayment(unverifiedPayment, 'sub-unverified');
+    const earning = await payoutsService.createEarningForPayment(
+      unverifiedPayment,
+      'sub-unverified',
+    );
     expect(earning).toBeNull();
     expect(mockEarningsStore.length).toBe(0);
   });
@@ -407,7 +499,10 @@ describe('Provider Earnings & Payout Ledger Specification', () => {
       provider: mockProviderA,
     };
 
-    const earning = await payoutsService.createEarningForPayment(payObj, 'sub-custom');
+    const earning = await payoutsService.createEarningForPayment(
+      payObj,
+      'sub-custom',
+    );
     expect(earning?.grossAmount).toBe(933);
   });
 
@@ -420,7 +515,10 @@ describe('Provider Earnings & Payout Ledger Specification', () => {
       provider: mockProviderA,
     };
 
-    const earning = await payoutsService.createEarningForPayment(payObj, 'sub-fee');
+    const earning = await payoutsService.createEarningForPayment(
+      payObj,
+      'sub-fee',
+    );
     expect(earning?.platformFee).toBe(0);
   });
 
@@ -433,7 +531,10 @@ describe('Provider Earnings & Payout Ledger Specification', () => {
       provider: mockProviderA,
     };
 
-    const earning = await payoutsService.createEarningForPayment(payObj, 'sub-amt');
+    const earning = await payoutsService.createEarningForPayment(
+      payObj,
+      'sub-amt',
+    );
     expect(earning?.providerAmount).toBe(3000);
     expect(earning?.providerAmount).toBe(earning?.grossAmount);
   });
@@ -447,7 +548,10 @@ describe('Provider Earnings & Payout Ledger Specification', () => {
       provider: mockProviderA,
     };
 
-    const earning = await payoutsService.createEarningForPayment(payObj, 'sub-hist-1');
+    const earning = await payoutsService.createEarningForPayment(
+      payObj,
+      'sub-hist-1',
+    );
     expect(earning?.providerAmount).toBe(3000);
 
     // Provider updates current monthly price to ₹3,500
@@ -555,7 +659,9 @@ describe('Provider Earnings & Payout Ledger Specification', () => {
     const refundRes = await paymentsService.processRefund('pay-refund-test');
     expect(refundRes.status).toBe('refunded');
 
-    const earning = mockEarningsStore.find((e) => e.paymentId === 'pay-refund-test');
+    const earning = mockEarningsStore.find(
+      (e) => e.paymentId === 'pay-refund-test',
+    );
     expect(earning?.status).toBe(ProviderEarningStatus.REFUNDED);
 
     const summary = await payoutsService.getProviderSummary('user-prov-A');

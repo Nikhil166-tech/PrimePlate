@@ -46,7 +46,7 @@ export class SubscriptionsController {
   }
 
   @Post()
-  @Roles(Role.STUDENT)
+  @Roles(Role.ADMIN)
   async create(
     @Req() req: AuthenticatedRequest,
     @Body() body: { mealPlanId: string; startDate?: string; endDate?: string },

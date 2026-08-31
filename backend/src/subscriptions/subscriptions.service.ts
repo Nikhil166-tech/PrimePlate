@@ -233,7 +233,9 @@ export class SubscriptionsService {
       }
 
       if (!matchingPayment) {
-        matchingPayment = payments.find((p: any) => p.student?.id === sub.student?.id);
+        matchingPayment = payments.find(
+          (p: any) => p.student?.id === sub.student?.id,
+        );
       }
 
       const rawAmount = matchingPayment ? Number(matchingPayment.amount) : null;
@@ -243,12 +245,15 @@ export class SubscriptionsService {
         amountPaid: rawAmount,
         razorpayOrderId: matchingPayment?.razorpayOrderId || null,
         razorpayPaymentId: matchingPayment?.razorpayPaymentId || null,
-        paymentStatus: matchingPayment ? 'PAID' : (rawAmount !== null ? 'PAID' : 'UNKNOWN'),
+        paymentStatus: matchingPayment
+          ? 'PAID'
+          : rawAmount !== null
+            ? 'PAID'
+            : 'UNKNOWN',
         paymentDate: matchingPayment?.createdAt || sub.createdAt,
       };
     });
   }
-
 
   async pause(
     studentId: string,

@@ -69,6 +69,3 @@ export class ProviderDto {
   @IsOptional()
   subscriptionBreaksEnabled?: boolean;
 }
-
-
-

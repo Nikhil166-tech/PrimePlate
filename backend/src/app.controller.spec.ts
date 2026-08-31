@@ -20,5 +20,4 @@ describe('AppController', () => {
       expect(res.status).toBe('active');
     });
   });
-
 });

@@ -18,7 +18,7 @@ async function bootstrap() {
     process.exit(1);
   }
 
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, { rawBody: true });
 
   // Configure Express Trust Proxy for Render reverse proxy (1 hop) in production
   if (isProduction) {
@@ -51,7 +51,27 @@ async function bootstrap() {
 
   // Enable CORS prior to middleware, helmet, and route handlers
   app.enableCors({
-    origin: allowedOrigins,
+    origin: (origin, callback) => {
+      // Allow requests with no origin (e.g. server-to-server, mobile apps, Postman)
+      if (!origin) return callback(null, true);
+
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+
+      // In non-production, allow localhost and private network IPs (192.168.x.x, 10.x.x.x, 172.x.x.x)
+      if (!isProduction) {
+        const isLocalNetwork =
+          /^http:\/\/(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[01])\.\d+\.\d+)(:\d+)?$/.test(
+            origin,
+          );
+        if (isLocalNetwork) {
+          return callback(null, true);
+        }
+      }
+
+      return callback(null, false);
+    },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: [
@@ -59,6 +79,8 @@ async function bootstrap() {
       'Authorization',
       'X-Requested-With',
       'Accept',
+      'x-razorpay-signature',
+      'x-razorpay-event-id',
     ],
   });
 

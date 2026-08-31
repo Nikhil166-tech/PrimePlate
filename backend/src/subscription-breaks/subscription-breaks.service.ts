@@ -10,7 +10,10 @@ import {
   SubscriptionBreakRequest,
   SubscriptionBreakStatus,
 } from './subscription-break-request.entity';
-import { Subscription, SubscriptionStatus } from '../subscriptions/subscription.entity';
+import {
+  Subscription,
+  SubscriptionStatus,
+} from '../subscriptions/subscription.entity';
 import { MealProvider } from '../providers/meal-provider.entity';
 import { User } from '../users/user.entity';
 import { CreateBreakRequestDto } from './dto/create-break-request.dto';
@@ -21,7 +24,10 @@ function addDaysToDateString(dateStr: string, days: number): string {
   return d.toISOString().split('T')[0];
 }
 
-function calculateInclusiveDays(fromDateStr: string, toDateStr: string): number {
+function calculateInclusiveDays(
+  fromDateStr: string,
+  toDateStr: string,
+): number {
   const from = new Date(fromDateStr + 'T00:00:00Z');
   const to = new Date(toDateStr + 'T00:00:00Z');
   const diffTime = to.getTime() - from.getTime();
@@ -46,7 +52,9 @@ export class SubscriptionBreaksService {
     studentUserId: string,
     dto: CreateBreakRequestDto,
   ): Promise<SubscriptionBreakRequest> {
-    const student = await this.userRepo.findOne({ where: { id: studentUserId } });
+    const student = await this.userRepo.findOne({
+      where: { id: studentUserId },
+    });
     if (!student) {
       throw new NotFoundException('Student user not found');
     }
@@ -61,20 +69,36 @@ export class SubscriptionBreaksService {
     }
 
     if (sub.student?.id !== studentUserId) {
-      throw new ForbiddenException('Cannot request break for a subscription belonging to another user');
+      throw new ForbiddenException(
+        'Cannot request break for a subscription belonging to another user',
+      );
     }
 
     if (sub.status !== SubscriptionStatus.ACTIVE) {
-      throw new BadRequestException('Subscription break can only be requested for active subscriptions');
+      throw new BadRequestException(
+        'Subscription break can only be requested for active subscriptions',
+      );
     }
 
     // 1-MONTH SUBSCRIPTION ELIGIBILITY CHECK
-    const totalInitialDuration = calculateInclusiveDays(sub.startDate, sub.endDate || sub.startDate);
+    const totalInitialDuration = calculateInclusiveDays(
+      sub.startDate,
+      sub.endDate || sub.startDate,
+    );
     const planTitleLower = (sub.mealPlan?.title || '').toLowerCase();
-    
-    const isHalfMonth = planTitleLower.includes('15 day') || planTitleLower.includes('half-month') || planTitleLower.includes('half month');
-    const isOneDay = planTitleLower.includes('1 day') || planTitleLower.includes('one day') || totalInitialDuration <= 3;
-    const isOneWeek = planTitleLower.includes('1 week') || planTitleLower.includes('one week') || planTitleLower.includes('7 day');
+
+    const isHalfMonth =
+      planTitleLower.includes('15 day') ||
+      planTitleLower.includes('half-month') ||
+      planTitleLower.includes('half month');
+    const isOneDay =
+      planTitleLower.includes('1 day') ||
+      planTitleLower.includes('one day') ||
+      totalInitialDuration <= 3;
+    const isOneWeek =
+      planTitleLower.includes('1 week') ||
+      planTitleLower.includes('one week') ||
+      planTitleLower.includes('7 day');
 
     const isOneMonthPlan =
       !isHalfMonth &&
@@ -86,18 +110,25 @@ export class SubscriptionBreaksService {
         (planTitleLower.includes('month') && !planTitleLower.includes('half')));
 
     if (!isOneMonthPlan) {
-      throw new BadRequestException('Subscription breaks are available only for 1-month subscriptions.');
+      throw new BadRequestException(
+        'Subscription breaks are available only for 1-month subscriptions.',
+      );
     }
-
 
     const provider = sub.mealPlan?.provider;
     if (!provider) {
-      throw new NotFoundException('Provider kitchen not found for this subscription');
+      throw new NotFoundException(
+        'Provider kitchen not found for this subscription',
+      );
     }
 
-    const providerRecord = await this.providerRepo.findOne({ where: { id: provider.id } });
+    const providerRecord = await this.providerRepo.findOne({
+      where: { id: provider.id },
+    });
     if (!providerRecord || !providerRecord.subscriptionBreaksEnabled) {
-      throw new BadRequestException('Subscription breaks are not available for this provider.');
+      throw new BadRequestException(
+        'Subscription breaks are not available for this provider.',
+      );
     }
 
     // Date range validation
@@ -110,13 +141,20 @@ export class SubscriptionBreaksService {
       throw new BadRequestException('End date must be on or after start date');
     }
 
-    if (dto.fromDate < sub.startDate || (sub.endDate && dto.toDate > sub.endDate)) {
-      throw new BadRequestException('Break dates must fall within the subscription active period');
+    if (
+      dto.fromDate < sub.startDate ||
+      (sub.endDate && dto.toDate > sub.endDate)
+    ) {
+      throw new BadRequestException(
+        'Break dates must fall within the subscription active period',
+      );
     }
 
     const breakDays = calculateInclusiveDays(dto.fromDate, dto.toDate);
     if (breakDays < 1 || breakDays > 4) {
-      throw new BadRequestException('Break duration must be between 1 and 4 days.');
+      throw new BadRequestException(
+        'Break duration must be between 1 and 4 days.',
+      );
     }
 
     // 4-Day allowance check (only APPROVED days count toward the limit)
@@ -129,11 +167,15 @@ export class SubscriptionBreaksService {
 
     const usedDays = approvedBreaks.reduce((sum, r) => sum + r.breakDays, 0);
     if (usedDays >= 4) {
-      throw new BadRequestException("You've used all 4 break days for this subscription.");
+      throw new BadRequestException(
+        "You've used all 4 break days for this subscription.",
+      );
     }
 
     if (usedDays + breakDays > 4) {
-      throw new BadRequestException(`Requested break of ${breakDays} days exceeds your remaining break allowance of ${4 - usedDays} days.`);
+      throw new BadRequestException(
+        `Requested break of ${breakDays} days exceeds your remaining break allowance of ${4 - usedDays} days.`,
+      );
     }
 
     // Overlapping request check (PENDING or APPROVED)
@@ -149,7 +191,9 @@ export class SubscriptionBreaksService {
     );
 
     if (hasOverlap) {
-      throw new BadRequestException('A break request already exists for an overlapping date range.');
+      throw new BadRequestException(
+        'A break request already exists for an overlapping date range.',
+      );
     }
 
     const breakReq = this.breakRepo.create({
@@ -181,7 +225,8 @@ export class SubscriptionBreaksService {
     const subMap: Record<string, number> = {};
     requests.forEach((r) => {
       if (r.status === SubscriptionBreakStatus.APPROVED) {
-        subMap[r.subscriptionId] = (subMap[r.subscriptionId] || 0) + r.breakDays;
+        subMap[r.subscriptionId] =
+          (subMap[r.subscriptionId] || 0) + r.breakDays;
       }
     });
 
@@ -195,7 +240,10 @@ export class SubscriptionBreaksService {
     };
   }
 
-  async getProviderBreakRequests(providerId: string, providerUserId: string): Promise<any[]> {
+  async getProviderBreakRequests(
+    providerId: string,
+    providerUserId: string,
+  ): Promise<any[]> {
     const provider = await this.providerRepo.findOne({
       where: { id: providerId },
       relations: { user: true },
@@ -205,8 +253,13 @@ export class SubscriptionBreaksService {
       throw new NotFoundException('Provider kitchen not found');
     }
 
-    if (provider.user?.id !== providerUserId && provider.userId !== providerUserId) {
-      throw new ForbiddenException('Cannot access break requests for another provider');
+    if (
+      provider.user?.id !== providerUserId &&
+      provider.userId !== providerUserId
+    ) {
+      throw new ForbiddenException(
+        'Cannot access break requests for another provider',
+      );
     }
 
     const requests = await this.breakRepo.find({
@@ -223,17 +276,22 @@ export class SubscriptionBreaksService {
       const allApproved = await this.breakRepo
         .createQueryBuilder('b')
         .where('b.subscriptionId IN (:...subIds)', { subIds })
-        .andWhere('b.status = :status', { status: SubscriptionBreakStatus.APPROVED })
+        .andWhere('b.status = :status', {
+          status: SubscriptionBreakStatus.APPROVED,
+        })
         .getMany();
 
       allApproved.forEach((b) => {
-        approvedUsageMap[b.subscriptionId] = (approvedUsageMap[b.subscriptionId] || 0) + b.breakDays;
+        approvedUsageMap[b.subscriptionId] =
+          (approvedUsageMap[b.subscriptionId] || 0) + b.breakDays;
       });
     }
 
     return requests.map((r) => {
       const currentEnd = r.subscription?.endDate;
-      const calculatedNewEnd = currentEnd ? addDaysToDateString(currentEnd, r.breakDays) : null;
+      const calculatedNewEnd = currentEnd
+        ? addDaysToDateString(currentEnd, r.breakDays)
+        : null;
       return {
         ...r,
         studentName: r.student?.name || r.student?.email || 'Subscriber',
@@ -252,7 +310,6 @@ export class SubscriptionBreaksService {
     return await this.dataSource.transaction(async (manager) => {
       const dbType = manager.connection?.options?.type;
       if (dbType === 'postgres') {
-
         await manager
           .createQueryBuilder(SubscriptionBreakRequest, 'r')
           .setLock('pessimistic_write')
@@ -265,21 +322,29 @@ export class SubscriptionBreaksService {
         relations: { subscription: true, provider: { user: true } },
       });
 
-
       if (!req) {
         throw new NotFoundException('Subscription break request not found');
       }
 
       if (req.status !== SubscriptionBreakStatus.PENDING) {
-        throw new BadRequestException(`Break request has already been ${req.status.toLowerCase()}`);
+        throw new BadRequestException(
+          `Break request has already been ${req.status.toLowerCase()}`,
+        );
       }
 
-      if (req.provider.user?.id !== providerUserId && req.provider.userId !== providerUserId) {
-        throw new ForbiddenException('Cannot approve break request for another provider');
+      if (
+        req.provider.user?.id !== providerUserId &&
+        req.provider.userId !== providerUserId
+      ) {
+        throw new ForbiddenException(
+          'Cannot approve break request for another provider',
+        );
       }
 
       if (!req.provider.subscriptionBreaksEnabled) {
-        throw new BadRequestException('Subscription breaks are not enabled for this provider');
+        throw new BadRequestException(
+          'Subscription breaks are not enabled for this provider',
+        );
       }
 
       // Check current approved days limit
@@ -290,9 +355,14 @@ export class SubscriptionBreaksService {
         },
       });
 
-      const currentApprovedDays = approvedBreaks.reduce((sum, b) => sum + b.breakDays, 0);
+      const currentApprovedDays = approvedBreaks.reduce(
+        (sum, b) => sum + b.breakDays,
+        0,
+      );
       if (currentApprovedDays + req.breakDays > 4) {
-        throw new BadRequestException('Approved break days for this subscription would exceed the 4-day maximum limit.');
+        throw new BadRequestException(
+          'Approved break days for this subscription would exceed the 4-day maximum limit.',
+        );
       }
 
       // Update status to APPROVED inside transaction
@@ -302,7 +372,9 @@ export class SubscriptionBreaksService {
       const savedReq = await manager.save(SubscriptionBreakRequest, req);
 
       // Extend subscription end date atomically
-      const sub = await manager.findOne(Subscription, { where: { id: req.subscriptionId } });
+      const sub = await manager.findOne(Subscription, {
+        where: { id: req.subscriptionId },
+      });
       if (!sub) {
         throw new NotFoundException('Associated subscription not found');
       }
@@ -329,11 +401,18 @@ export class SubscriptionBreaksService {
     }
 
     if (req.status !== SubscriptionBreakStatus.PENDING) {
-      throw new BadRequestException(`Break request has already been ${req.status.toLowerCase()}`);
+      throw new BadRequestException(
+        `Break request has already been ${req.status.toLowerCase()}`,
+      );
     }
 
-    if (req.provider.user?.id !== providerUserId && req.provider.userId !== providerUserId) {
-      throw new ForbiddenException('Cannot reject break request for another provider');
+    if (
+      req.provider.user?.id !== providerUserId &&
+      req.provider.userId !== providerUserId
+    ) {
+      throw new ForbiddenException(
+        'Cannot reject break request for another provider',
+      );
     }
 
     req.status = SubscriptionBreakStatus.REJECTED;
@@ -354,11 +433,15 @@ export class SubscriptionBreaksService {
     if (!provider) {
       throw new NotFoundException('Provider kitchen not found');
     }
-    if (provider.user?.id !== providerUserId && provider.userId !== providerUserId) {
-      throw new ForbiddenException('Cannot modify settings for another provider');
+    if (
+      provider.user?.id !== providerUserId &&
+      provider.userId !== providerUserId
+    ) {
+      throw new ForbiddenException(
+        'Cannot modify settings for another provider',
+      );
     }
     provider.subscriptionBreaksEnabled = enabled;
     return await this.providerRepo.save(provider);
   }
 }
-

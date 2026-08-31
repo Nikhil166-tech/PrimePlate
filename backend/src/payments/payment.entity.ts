@@ -29,7 +29,13 @@ export class Payment {
   razorpaySignature?: string;
 
   @Column({ default: 'created' })
-  status: string; // created, paid, failed
+  status: string; // created, processing, paid, failed, refunded
+
+  @Column({ nullable: true })
+  durationDays?: number;
+
+  @Column({ nullable: true })
+  mealPlanId?: string;
 
   @ManyToOne(() => User)
   student: User;

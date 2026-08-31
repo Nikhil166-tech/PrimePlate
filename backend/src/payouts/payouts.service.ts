@@ -6,7 +6,10 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, EntityManager } from 'typeorm';
-import { ProviderEarning, ProviderEarningStatus } from './provider-earning.entity';
+import {
+  ProviderEarning,
+  ProviderEarningStatus,
+} from './provider-earning.entity';
 import { MealProvider } from '../providers/meal-provider.entity';
 import { Payment } from '../payments/payment.entity';
 import { Subscription } from '../subscriptions/subscription.entity';
@@ -61,7 +64,10 @@ export class PayoutsService {
       totalGross += gAmt;
       platformFees += fee;
 
-      if (status === ProviderEarningStatus.PENDING || status === ProviderEarningStatus.ELIGIBLE) {
+      if (
+        status === ProviderEarningStatus.PENDING ||
+        status === ProviderEarningStatus.ELIGIBLE
+      ) {
         pendingAmount += pAmt;
       } else if (status === ProviderEarningStatus.PAID) {
         paidAmount += pAmt;
@@ -105,12 +111,16 @@ export class PayoutsService {
       };
 
       const planTitle = e.subscription?.mealPlan?.title || 'Subscription Plan';
-      const durationDays = (e.subscription?.mealPlan as any)?.durationDays || 30;
+      const durationDays =
+        (e.subscription?.mealPlan as any)?.durationDays || 30;
 
       return {
         id: e.id,
         date: e.earnedAt || e.createdAt,
-        paymentReference: e.payment?.razorpayPaymentId || e.payment?.razorpayOrderId || e.paymentId,
+        paymentReference:
+          e.payment?.razorpayPaymentId ||
+          e.payment?.razorpayOrderId ||
+          e.paymentId,
         subscription: {
           id: e.subscriptionId,
           planTitle,
@@ -134,12 +144,16 @@ export class PayoutsService {
     manager?: EntityManager,
   ): Promise<ProviderEarning | null> {
     if (!payment || payment.status !== 'paid') {
-      this.logger.warn(`Skipping provider earning creation for unverified/unpaid payment ${payment?.id}`);
+      this.logger.warn(
+        `Skipping provider earning creation for unverified/unpaid payment ${payment?.id}`,
+      );
       return null;
     }
 
     if (!payment.provider?.id || !payment.student?.id) {
-      this.logger.warn(`Payment ${payment.id} missing provider or student association.`);
+      this.logger.warn(
+        `Payment ${payment.id} missing provider or student association.`,
+      );
       return null;
     }
 
@@ -148,9 +162,13 @@ export class PayoutsService {
     const providerAmount = grossAmount - platformFee;
 
     if (manager) {
-      const existing = await manager.findOne(ProviderEarning, { where: { paymentId: payment.id } });
+      const existing = await manager.findOne(ProviderEarning, {
+        where: { paymentId: payment.id },
+      });
       if (existing) {
-        this.logger.log(`Provider earning for payment ${payment.id} already exists (Idempotent reuse).`);
+        this.logger.log(
+          `Provider earning for payment ${payment.id} already exists (Idempotent reuse).`,
+        );
         return existing;
       }
 
@@ -169,16 +187,26 @@ export class PayoutsService {
       try {
         return await manager.save(ProviderEarning, earning);
       } catch (err: any) {
-        if (err.code === '23505' || err.message?.includes('duplicate') || err.message?.includes('UNIQUE')) {
-          return await manager.findOne(ProviderEarning, { where: { paymentId: payment.id } });
+        if (
+          err.code === '23505' ||
+          err.message?.includes('duplicate') ||
+          err.message?.includes('UNIQUE')
+        ) {
+          return await manager.findOne(ProviderEarning, {
+            where: { paymentId: payment.id },
+          });
         }
         throw err;
       }
     }
 
-    const existing = await this.earningRepo.findOne({ where: { paymentId: payment.id } });
+    const existing = await this.earningRepo.findOne({
+      where: { paymentId: payment.id },
+    });
     if (existing) {
-      this.logger.log(`Provider earning for payment ${payment.id} already exists (Idempotent reuse).`);
+      this.logger.log(
+        `Provider earning for payment ${payment.id} already exists (Idempotent reuse).`,
+      );
       return existing;
     }
 
@@ -197,8 +225,14 @@ export class PayoutsService {
     try {
       return await this.earningRepo.save(earning);
     } catch (err: any) {
-      if (err.code === '23505' || err.message?.includes('duplicate') || err.message?.includes('UNIQUE')) {
-        return await this.earningRepo.findOne({ where: { paymentId: payment.id } });
+      if (
+        err.code === '23505' ||
+        err.message?.includes('duplicate') ||
+        err.message?.includes('UNIQUE')
+      ) {
+        return await this.earningRepo.findOne({
+          where: { paymentId: payment.id },
+        });
       }
       throw err;
     }
@@ -207,9 +241,14 @@ export class PayoutsService {
   /**
    * Updates provider earning status when payment is refunded.
    */
-  async handlePaymentRefund(paymentId: string, manager?: EntityManager): Promise<ProviderEarning | null> {
+  async handlePaymentRefund(
+    paymentId: string,
+    manager?: EntityManager,
+  ): Promise<ProviderEarning | null> {
     if (manager) {
-      const earning = await manager.findOne(ProviderEarning, { where: { paymentId } });
+      const earning = await manager.findOne(ProviderEarning, {
+        where: { paymentId },
+      });
       if (!earning) return null;
       earning.status = ProviderEarningStatus.REFUNDED;
       return await manager.save(ProviderEarning, earning);

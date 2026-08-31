@@ -1,8 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class AddSubscriptionBreaksSchema1786350000000
-  implements MigrationInterface
-{
+export class AddSubscriptionBreaksSchema1786350000000 implements MigrationInterface {
   name = 'AddSubscriptionBreaksSchema1786350000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {

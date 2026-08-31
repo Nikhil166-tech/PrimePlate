@@ -4,7 +4,10 @@ import { Repository, DataSource } from 'typeorm';
 import { AnalyticsService } from './analytics.service';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { Payment } from '../payments/payment.entity';
-import { Subscription, SubscriptionStatus } from '../subscriptions/subscription.entity';
+import {
+  Subscription,
+  SubscriptionStatus,
+} from '../subscriptions/subscription.entity';
 import { MealProvider } from '../providers/meal-provider.entity';
 import { User } from '../users/user.entity';
 import { MealPlan } from '../meal-plans/meal-plan.entity';
@@ -17,8 +20,16 @@ describe('Revenue Integrity Specification & Price-Change Isolation', () => {
   let providerRepo: Repository<MealProvider>;
   let planRepo: Repository<MealPlan>;
 
-  const mockUserStudent1: any = { id: 'student-1', role: 'STUDENT', name: 'Student One' };
-  const mockUserStudent2: any = { id: 'student-2', role: 'STUDENT', name: 'Student Two' };
+  const mockUserStudent1: any = {
+    id: 'student-1',
+    role: 'STUDENT',
+    name: 'Student One',
+  };
+  const mockUserStudent2: any = {
+    id: 'student-2',
+    role: 'STUDENT',
+    name: 'Student Two',
+  };
 
   const mockProviderA: any = {
     id: 'provider-A',
@@ -84,7 +95,6 @@ describe('Revenue Integrity Specification & Price-Change Isolation', () => {
       },
     ];
 
-
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         AnalyticsService,
@@ -98,10 +108,14 @@ describe('Revenue Integrity Specification & Price-Change Isolation', () => {
                 res = res.filter((p) => p.status === opts.where.status);
               }
               if (opts?.where?.provider?.id) {
-                res = res.filter((p) => p.provider?.id === opts.where.provider.id);
+                res = res.filter(
+                  (p) => p.provider?.id === opts.where.provider.id,
+                );
               }
               if (opts?.where?.student?.id) {
-                res = res.filter((p) => p.student?.id === opts.where.student.id);
+                res = res.filter(
+                  (p) => p.student?.id === opts.where.student.id,
+                );
               }
               return Promise.resolve(res);
             }),
@@ -124,7 +138,9 @@ describe('Revenue Integrity Specification & Price-Change Isolation', () => {
               let res = [...mockSubscriptions];
               if (opts?.where?.mealPlan?.provider?.id) {
                 res = res.filter(
-                  (s) => s.mealPlan?.provider?.id === opts.where.mealPlan.provider.id,
+                  (s) =>
+                    s.mealPlan?.provider?.id ===
+                    opts.where.mealPlan.provider.id,
                 );
               }
               return Promise.resolve(res);
@@ -134,7 +150,9 @@ describe('Revenue Integrity Specification & Price-Change Isolation', () => {
                 if (entity === Payment) {
                   let res = [...mockPayments];
                   if (opts?.where?.provider?.id) {
-                    res = res.filter((p) => p.provider?.id === opts.where.provider.id);
+                    res = res.filter(
+                      (p) => p.provider?.id === opts.where.provider.id,
+                    );
                   }
                   if (opts?.where?.status) {
                     res = res.filter((p) => p.status === opts.where.status);
@@ -162,7 +180,8 @@ describe('Revenue Integrity Specification & Price-Change Isolation', () => {
     }).compile();
 
     analyticsService = module.get<AnalyticsService>(AnalyticsService);
-    subscriptionsService = module.get<SubscriptionsService>(SubscriptionsService);
+    subscriptionsService =
+      module.get<SubscriptionsService>(SubscriptionsService);
     paymentRepo = module.get(getRepositoryToken(Payment));
     subRepo = module.get(getRepositoryToken(Subscription));
     providerRepo = module.get(getRepositoryToken(MealProvider));
@@ -182,7 +201,8 @@ describe('Revenue Integrity Specification & Price-Change Isolation', () => {
     const rev = await analyticsService.getTotalRevenue();
     expect(rev).toBe(3000);
 
-    const providerSubs = await subscriptionsService.findByProvider('provider-A');
+    const providerSubs =
+      await subscriptionsService.findByProvider('provider-A');
     expect(providerSubs.length).toBe(1);
     expect(providerSubs[0].amountPaid).toBe(3000);
   });
@@ -210,13 +230,15 @@ describe('Revenue Integrity Specification & Price-Change Isolation', () => {
     const rev = await analyticsService.getTotalRevenue();
     expect(rev).toBe(6500);
 
-    const providerSubs = await subscriptionsService.findByProvider('provider-A');
+    const providerSubs =
+      await subscriptionsService.findByProvider('provider-A');
     expect(providerSubs[0].amountPaid).toBe(3000); // Historical payment 1 preserved
     expect(providerSubs[1].amountPaid).toBe(3500); // New payment 2 at ₹3,500
   });
 
   it('4. Historical payment amounts retain original agreed values (₹3,000)', async () => {
-    const providerSubs = await subscriptionsService.findByProvider('provider-A');
+    const providerSubs =
+      await subscriptionsService.findByProvider('provider-A');
     expect(providerSubs[0].amountPaid).toBe(3000);
   });
 
@@ -245,7 +267,8 @@ describe('Revenue Integrity Specification & Price-Change Isolation', () => {
     // Provider A changes price to ₹4,000
     mockProviderA.monthlyPrice = 4000;
 
-    const providerBSubs = await subscriptionsService.findByProvider('provider-B');
+    const providerBSubs =
+      await subscriptionsService.findByProvider('provider-B');
     expect(providerBSubs.length).toBe(1);
     expect(providerBSubs[0].amountPaid).toBe(2500);
   });
@@ -254,13 +277,15 @@ describe('Revenue Integrity Specification & Price-Change Isolation', () => {
     mockProviderA.monthlyPrice = 3500;
     mockProviderA.monthlyPrice = 4000;
 
-    const providerSubs = await subscriptionsService.findByProvider('provider-A');
+    const providerSubs =
+      await subscriptionsService.findByProvider('provider-A');
     expect(providerSubs[0].amountPaid).toBe(3000);
   });
 
   it('8. Current plan price is NEVER used to reconstruct historical payment amounts', async () => {
     mockPlanA.pricePerMonth = 9999;
-    const providerSubs = await subscriptionsService.findByProvider('provider-A');
+    const providerSubs =
+      await subscriptionsService.findByProvider('provider-A');
     expect(providerSubs[0].amountPaid).toBe(3000);
   });
 });

@@ -107,9 +107,6 @@ export class MealProvider {
   @Column({ default: false })
   subscriptionBreaksEnabled: boolean = false;
 
-
-
-
   @CreateDateColumn()
   createdAt: Date;
 

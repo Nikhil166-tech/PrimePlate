@@ -11,7 +11,10 @@ import {
   SubscriptionBreakRequest,
   SubscriptionBreakStatus,
 } from './subscription-break-request.entity';
-import { Subscription, SubscriptionStatus } from '../subscriptions/subscription.entity';
+import {
+  Subscription,
+  SubscriptionStatus,
+} from '../subscriptions/subscription.entity';
 import { MealProvider } from '../providers/meal-provider.entity';
 import { User } from '../users/user.entity';
 
@@ -23,8 +26,16 @@ describe('SubscriptionBreaksService Specification & Business Rules', () => {
   let userRepo: Repository<User>;
   let dataSource: DataSource;
 
-  const mockUserStudent: any = { id: 'student-uuid-1', role: 'STUDENT', name: 'Nikhil' };
-  const mockUserStudent2: any = { id: 'student-uuid-2', role: 'STUDENT', name: 'Rahul' };
+  const mockUserStudent: any = {
+    id: 'student-uuid-1',
+    role: 'STUDENT',
+    name: 'Nikhil',
+  };
+  const mockUserStudent2: any = {
+    id: 'student-uuid-2',
+    role: 'STUDENT',
+    name: 'Rahul',
+  };
   const mockUserProvider: any = { id: 'provider-user-1', role: 'PROVIDER' };
   const mockUserProvider2: any = { id: 'provider-user-2', role: 'PROVIDER' };
 
@@ -51,7 +62,11 @@ describe('SubscriptionBreaksService Specification & Business Rules', () => {
     status: SubscriptionStatus.ACTIVE,
     startDate: '2026-09-01',
     endDate: '2026-09-30',
-    mealPlan: { id: 'plan-1', title: '1 Month Deluxe Mess Plan', provider: mockProvider },
+    mealPlan: {
+      id: 'plan-1',
+      title: '1 Month Deluxe Mess Plan',
+      provider: mockProvider,
+    },
   };
 
   // Short subscriptions (Not 1-Month)
@@ -61,7 +76,11 @@ describe('SubscriptionBreaksService Specification & Business Rules', () => {
     status: SubscriptionStatus.ACTIVE,
     startDate: '2026-09-01',
     endDate: '2026-09-01',
-    mealPlan: { id: 'plan-day', title: '1 Day Mess Pass', provider: mockProvider },
+    mealPlan: {
+      id: 'plan-day',
+      title: '1 Day Mess Pass',
+      provider: mockProvider,
+    },
   };
 
   const mockOneWeekSub: any = {
@@ -70,7 +89,11 @@ describe('SubscriptionBreaksService Specification & Business Rules', () => {
     status: SubscriptionStatus.ACTIVE,
     startDate: '2026-09-01',
     endDate: '2026-09-07',
-    mealPlan: { id: 'plan-week', title: '1 Week Trial Pass', provider: mockProvider },
+    mealPlan: {
+      id: 'plan-week',
+      title: '1 Week Trial Pass',
+      provider: mockProvider,
+    },
   };
 
   const mock15DaySub: any = {
@@ -79,7 +102,11 @@ describe('SubscriptionBreaksService Specification & Business Rules', () => {
     status: SubscriptionStatus.ACTIVE,
     startDate: '2026-09-01',
     endDate: '2026-09-15',
-    mealPlan: { id: 'plan-15', title: '15 Days Half-Month Pass', provider: mockProvider },
+    mealPlan: {
+      id: 'plan-15',
+      title: '15 Days Half-Month Pass',
+      provider: mockProvider,
+    },
   };
 
   beforeEach(async () => {
@@ -90,7 +117,9 @@ describe('SubscriptionBreaksService Specification & Business Rules', () => {
           provide: getRepositoryToken(SubscriptionBreakRequest),
           useValue: {
             create: jest.fn((dto) => ({ ...dto, id: 'break-req-uuid' })),
-            save: jest.fn((entity) => Promise.resolve({ ...entity, id: entity.id || 'break-req-uuid' })),
+            save: jest.fn((entity) =>
+              Promise.resolve({ ...entity, id: entity.id || 'break-req-uuid' }),
+            ),
             find: jest.fn().mockResolvedValue([]),
             findOne: jest.fn().mockResolvedValue(null),
             createQueryBuilder: jest.fn().mockReturnValue({
@@ -118,8 +147,10 @@ describe('SubscriptionBreaksService Specification & Business Rules', () => {
           provide: getRepositoryToken(User),
           useValue: {
             findOne: jest.fn().mockImplementation((opts) => {
-              if (opts.where.id === 'student-uuid-1') return Promise.resolve(mockUserStudent);
-              if (opts.where.id === 'student-uuid-2') return Promise.resolve(mockUserStudent2);
+              if (opts.where.id === 'student-uuid-1')
+                return Promise.resolve(mockUserStudent);
+              if (opts.where.id === 'student-uuid-2')
+                return Promise.resolve(mockUserStudent2);
               return Promise.resolve(null);
             }),
           },
@@ -144,7 +175,8 @@ describe('SubscriptionBreaksService Specification & Business Rules', () => {
                       provider: { ...mockProvider },
                     });
                   }
-                  if (entity === Subscription) return Promise.resolve({ ...mockOneMonthSub });
+                  if (entity === Subscription)
+                    return Promise.resolve({ ...mockOneMonthSub });
                   return null;
                 }),
                 find: jest.fn().mockResolvedValue([]),
@@ -189,7 +221,9 @@ describe('SubscriptionBreaksService Specification & Business Rules', () => {
         fromDate: '2026-09-01',
         toDate: '2026-09-01',
       }),
-    ).rejects.toThrow('Subscription breaks are available only for 1-month subscriptions.');
+    ).rejects.toThrow(
+      'Subscription breaks are available only for 1-month subscriptions.',
+    );
   });
 
   it('3. 1-Month eligibility check: Rejects 1-Week subscriptions', async () => {
@@ -201,7 +235,9 @@ describe('SubscriptionBreaksService Specification & Business Rules', () => {
         fromDate: '2026-09-02',
         toDate: '2026-09-04',
       }),
-    ).rejects.toThrow('Subscription breaks are available only for 1-month subscriptions.');
+    ).rejects.toThrow(
+      'Subscription breaks are available only for 1-month subscriptions.',
+    );
   });
 
   it('4. 1-Month eligibility check: Rejects 15-Day subscriptions', async () => {
@@ -213,7 +249,9 @@ describe('SubscriptionBreaksService Specification & Business Rules', () => {
         fromDate: '2026-09-05',
         toDate: '2026-09-08',
       }),
-    ).rejects.toThrow('Subscription breaks are available only for 1-month subscriptions.');
+    ).rejects.toThrow(
+      'Subscription breaks are available only for 1-month subscriptions.',
+    );
   });
 
   it('5. PrimeMate cannot request break for another user subscription (IDOR protection)', async () => {
@@ -231,7 +269,11 @@ describe('SubscriptionBreaksService Specification & Business Rules', () => {
   it('6. Request rejected if provider has subscription breaks disabled', async () => {
     const subDisabledProv = {
       ...mockOneMonthSub,
-      mealPlan: { id: 'plan-1', title: '1 Month Plan', provider: mockProviderDisabled },
+      mealPlan: {
+        id: 'plan-1',
+        title: '1 Month Plan',
+        provider: mockProviderDisabled,
+      },
     };
     jest.spyOn(subRepo, 'findOne').mockResolvedValue(subDisabledProv);
     jest.spyOn(providerRepo, 'findOne').mockResolvedValue(mockProviderDisabled);
@@ -242,7 +284,9 @@ describe('SubscriptionBreaksService Specification & Business Rules', () => {
         fromDate: '2026-09-10',
         toDate: '2026-09-12',
       }),
-    ).rejects.toThrow('Subscription breaks are not available for this provider.');
+    ).rejects.toThrow(
+      'Subscription breaks are not available for this provider.',
+    );
   });
 
   it('7. Rejects break duration > 4 days', async () => {
@@ -260,7 +304,10 @@ describe('SubscriptionBreaksService Specification & Business Rules', () => {
   it('8. Rejects if used approved break days already equals 4', async () => {
     jest.spyOn(subRepo, 'findOne').mockResolvedValue(mockOneMonthSub);
     jest.spyOn(breakRepo, 'find').mockImplementation((opts: any) => {
-      if (opts.where && opts.where.status === SubscriptionBreakStatus.APPROVED) {
+      if (
+        opts.where &&
+        opts.where.status === SubscriptionBreakStatus.APPROVED
+      ) {
         return Promise.resolve([
           { id: 'b1', breakDays: 2, status: SubscriptionBreakStatus.APPROVED },
           { id: 'b2', breakDays: 2, status: SubscriptionBreakStatus.APPROVED },
@@ -321,7 +368,9 @@ describe('SubscriptionBreaksService Specification & Business Rules', () => {
         fromDate: '2026-09-11',
         toDate: '2026-09-13', // Overlaps on 11th and 12th
       }),
-    ).rejects.toThrow('A break request already exists for an overlapping date range.');
+    ).rejects.toThrow(
+      'A break request already exists for an overlapping date range.',
+    );
   });
 
   it('11. Provider cannot view break requests of another provider (IDOR protection)', async () => {
@@ -333,7 +382,10 @@ describe('SubscriptionBreaksService Specification & Business Rules', () => {
   });
 
   it('12. Provider approval extends subscription endDate by exact breakDays in atomic transaction', async () => {
-    const res = await service.approveBreakRequest('pending-req-1', 'provider-user-1');
+    const res = await service.approveBreakRequest(
+      'pending-req-1',
+      'provider-user-1',
+    );
 
     expect(res).toBeDefined();
     expect(res.status).toBe(SubscriptionBreakStatus.APPROVED);
@@ -347,7 +399,10 @@ describe('SubscriptionBreaksService Specification & Business Rules', () => {
       provider: mockProvider,
     } as any);
 
-    const res = await service.rejectBreakRequest('pending-req-2', 'provider-user-1');
+    const res = await service.rejectBreakRequest(
+      'pending-req-2',
+      'provider-user-1',
+    );
 
     expect(res).toBeDefined();
     expect(res.status).toBe(SubscriptionBreakStatus.REJECTED);

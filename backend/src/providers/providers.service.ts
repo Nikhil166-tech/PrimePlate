@@ -259,12 +259,16 @@ export class ProvidersService {
       provider.contactPhone = dto.contactPhone;
     if (dto.latitude !== undefined) provider.latitude = dto.latitude;
     if (dto.subscriptionBreaksEnabled !== undefined)
-      provider.subscriptionBreaksEnabled = Boolean(dto.subscriptionBreaksEnabled);
+      provider.subscriptionBreaksEnabled = Boolean(
+        dto.subscriptionBreaksEnabled,
+      );
 
     if (dto.monthlyPrice !== undefined) {
       const parsedPrice = Number(dto.monthlyPrice);
       if (isNaN(parsedPrice) || parsedPrice <= 0) {
-        throw new BadRequestException('Monthly price must be a valid number greater than 0');
+        throw new BadRequestException(
+          'Monthly price must be a valid number greater than 0',
+        );
       }
       provider.monthlyPrice = parsedPrice;
       const plans = await this.providerRepo.manager.find(MealPlan, {
@@ -279,8 +283,6 @@ export class ProvidersService {
     const saved = await this.providerRepo.save(provider);
     return this.attachCapacityInfo(saved);
   }
-
-
 
   async approve(id: string): Promise<MealProvider> {
     const provider = await this.providerRepo.findOne({ where: { id } });
@@ -330,10 +332,11 @@ export class ProvidersService {
     });
     if (!provider) throw new NotFoundException('Provider not found');
     if (provider.user?.id !== userId && provider.userId !== userId) {
-      throw new ForbiddenException('Cannot modify settings for another provider');
+      throw new ForbiddenException(
+        'Cannot modify settings for another provider',
+      );
     }
     provider.subscriptionBreaksEnabled = enabled;
     return this.providerRepo.save(provider);
   }
 }
-

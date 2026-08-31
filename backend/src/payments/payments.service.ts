@@ -3,12 +3,14 @@ import {
   BadRequestException,
   NotFoundException,
   UnauthorizedException,
+  ForbiddenException,
   Logger,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Payment } from './payment.entity';
+import { PaymentWebhookEvent } from './webhook-event.entity';
 import { MealPlan } from '../meal-plans/meal-plan.entity';
 import { MealProvider } from '../providers/meal-provider.entity';
 import {
@@ -93,6 +95,8 @@ export class PaymentsService {
     private readonly config: ConfigService,
     @InjectRepository(Payment)
     private readonly paymentRepo: Repository<Payment>,
+    @InjectRepository(PaymentWebhookEvent)
+    private readonly webhookEventRepo: Repository<PaymentWebhookEvent>,
     @InjectRepository(MealPlan) private readonly planRepo: Repository<MealPlan>,
     @InjectRepository(User) private readonly userRepo: Repository<User>,
     private readonly subscriptionsService: SubscriptionsService,
@@ -151,16 +155,19 @@ export class PaymentsService {
     const receipt = `rcpt_${userId.slice(0, 8)}_${Date.now()}`;
     const isProduction = process.env.NODE_ENV === 'production';
 
+    let orderId: string;
+    let keyId = this.config.get<string>('RAZORPAY_KEY_ID') || 'rzp_test_key';
+    let orderResult: any;
+
     if (!this.razorpay) {
       if (isProduction) {
         throw new BadRequestException(
           'Razorpay production credentials (RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET) are missing or misconfigured. Order creation fail-closed.',
         );
       }
-      const keyId =
-        this.config.get<string>('RAZORPAY_KEY_ID') || 'rzp_test_key';
-      return {
-        id: `order_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+      orderId = `order_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+      orderResult = {
+        id: orderId,
         entity: 'order',
         amount: amountInPaise,
         amount_paid: 0,
@@ -171,43 +178,72 @@ export class PaymentsService {
         key_id: keyId,
         notes: { mealPlanId, userId, durationDays, authoritativeAmount },
       };
+    } else {
+      try {
+        const order = await this.razorpay.orders.create({
+          amount: amountInPaise,
+          currency: 'INR',
+          receipt,
+          notes: { mealPlanId, userId, durationDays, authoritativeAmount },
+        });
+        orderId = order.id;
+        orderResult = {
+          ...order,
+          key_id: this.config.get<string>('RAZORPAY_KEY_ID'),
+        };
+      } catch (err: any) {
+        if (isProduction) {
+          throw new BadRequestException(
+            `Razorpay Order creation failed in production: ${err.message || err}`,
+          );
+        }
+        this.logger.warn(
+          `Razorpay API warning (${err.message}). Falling back to development test order structure.`,
+        );
+        orderId = `order_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+        keyId =
+          this.config.get<string>('RAZORPAY_KEY_ID') ||
+          'rzp_test_TN9FfsEkkkjPHH';
+        orderResult = {
+          id: orderId,
+          entity: 'order',
+          amount: amountInPaise,
+          amount_paid: 0,
+          amount_due: amountInPaise,
+          currency: 'INR',
+          receipt,
+          status: 'created',
+          key_id: keyId,
+          notes: { mealPlanId, userId, durationDays, authoritativeAmount },
+        };
+      }
     }
 
+    // Pre-persist order in Payment table to establish authoritative ownership and duration metadata
     try {
-      const order = await this.razorpay.orders.create({
-        amount: amountInPaise,
-        currency: 'INR',
-        receipt,
-        notes: { mealPlanId, userId, durationDays, authoritativeAmount },
-      });
-      return { ...order, key_id: this.config.get<string>('RAZORPAY_KEY_ID') };
-    } catch (err: any) {
-      if (isProduction) {
-        throw new BadRequestException(
-          `Razorpay Order creation failed in production: ${err.message || err}`,
-        );
+      const student = await this.userRepo.findOne({ where: { id: userId } });
+      if (student) {
+        const prePayment = this.paymentRepo.create({
+          student,
+          provider: provider || undefined,
+          amount: authoritativeAmount,
+          razorpayOrderId: orderId,
+          status: 'created',
+          durationDays,
+          mealPlanId,
+        });
+        await this.paymentRepo.save(prePayment);
       }
+    } catch (saveErr: any) {
       this.logger.warn(
-        `Razorpay API warning (${err.message}). Falling back to development test order structure.`,
+        `Pre-payment persistence warning: ${saveErr.message || saveErr}`,
       );
-      const keyId =
-        this.config.get<string>('RAZORPAY_KEY_ID') || 'rzp_test_TN9FfsEkkkjPHH';
-      return {
-        id: `order_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
-        entity: 'order',
-        amount: amountInPaise,
-        amount_paid: 0,
-        amount_due: amountInPaise,
-        currency: 'INR',
-        receipt,
-        status: 'created',
-        key_id: keyId,
-        notes: { mealPlanId, userId, durationDays, authoritativeAmount },
-      };
     }
+
+    return orderResult;
   }
 
-  verifySignature(payload: string, signature: string): boolean {
+  verifyCheckoutSignature(payload: string, signature: string): boolean {
     if (!signature) return false;
     if (
       process.env.NODE_ENV !== 'production' &&
@@ -223,7 +259,17 @@ export class PaymentsService {
       .createHmac('sha256', secret)
       .update(payload)
       .digest('hex');
-    return generated === signature;
+
+    const genBuf = Buffer.from(generated, 'utf8');
+    const sigBuf = Buffer.from(signature, 'utf8');
+    return (
+      genBuf.length === sigBuf.length && crypto.timingSafeEqual(genBuf, sigBuf)
+    );
+  }
+
+  // Alias for backward compatibility with checkout callers/tests
+  verifySignature(payload: string, signature: string): boolean {
+    return this.verifyCheckoutSignature(payload, signature);
   }
 
   verifyWebhookSignature(rawBody: string | Buffer, signature: string): boolean {
@@ -236,27 +282,35 @@ export class PaymentsService {
     ) {
       return true;
     }
-    const webhookSecret =
-      this.config.get<string>('RAZORPAY_WEBHOOK_SECRET') ||
-      this.config.get<string>('RAZORPAY_KEY_SECRET');
+    const webhookSecret = this.config.get<string>('RAZORPAY_WEBHOOK_SECRET');
     if (!webhookSecret) return false;
+
     const expected = crypto
       .createHmac('sha256', webhookSecret)
       .update(rawBody)
       .digest('hex');
-    return expected === signature;
+
+    const expectedBuf = Buffer.from(expected, 'utf8');
+    const sigBuf = Buffer.from(signature, 'utf8');
+    return (
+      expectedBuf.length === sigBuf.length &&
+      crypto.timingSafeEqual(expectedBuf, sigBuf)
+    );
   }
 
   /**
-   * Idempotent payment verification and subscription activation within DB transaction.
+   * Internal authoritative payment reconciliation method.
+   * Reconciles captured payment, persists Payment status as paid, creates Subscription and ProviderEarning.
    */
-  async processVerifiedPayment(params: {
+  async reconcileCapturedPayment(params: {
     userId: string;
     razorpayOrderId: string;
     razorpayPaymentId: string;
-    razorpaySignature: string;
-    mealPlanId: string;
+    razorpaySignature?: string;
+    mealPlanId?: string;
     durationInput?: string | number;
+    skipSignatureCheck?: boolean;
+    paymentAmountInPaise?: number;
   }) {
     const {
       userId,
@@ -265,38 +319,58 @@ export class PaymentsService {
       razorpaySignature,
       mealPlanId,
       durationInput,
+      skipSignatureCheck,
+      paymentAmountInPaise,
     } = params;
 
-    const durationDays = parseDurationDays(durationInput);
-
-    // Idempotency check: Return existing payment record if already processed
-    const existingPayment = await this.paymentRepo.findOne({
+    // Retrieve pre-persisted order record if available
+    const preOrder = await this.paymentRepo.findOne({
       where: [{ razorpayOrderId }, { razorpayPaymentId }],
       relations: { student: true, provider: true },
     });
 
-    if (existingPayment && existingPayment.status === 'paid') {
+    // Enforce order-user binding ownership
+    if (preOrder && preOrder.student && preOrder.student.id !== userId) {
+      throw new ForbiddenException(
+        'Payment order does not belong to the authenticated student',
+      );
+    }
+
+    const targetPlanId = mealPlanId || preOrder?.mealPlanId;
+    if (!targetPlanId) {
+      throw new BadRequestException(
+        'Meal plan ID is required for verification',
+      );
+    }
+
+    const durationDays = parseDurationDays(
+      durationInput !== undefined ? durationInput : preOrder?.durationDays,
+    );
+
+    // Idempotency check: Return existing payment record if already processed
+    if (preOrder && preOrder.status === 'paid') {
       this.logger.log(
         `Payment ${razorpayPaymentId} already processed (Idempotent replay).`,
       );
       const existingSubs =
         await this.subscriptionsService.findByStudent(userId);
-      const sub = existingSubs.find((s) => s.mealPlan?.id === mealPlanId);
+      const sub = existingSubs.find((s) => s.mealPlan?.id === targetPlanId);
       return {
         success: true,
         verified: true,
         idempotent: true,
-        payment: existingPayment,
+        payment: preOrder,
         subscription: sub,
       };
     }
 
-    // Verify Checkout HMAC-SHA256 signature
-    const payload = `${razorpayOrderId}|${razorpayPaymentId}`;
-    const keySecret = this.config.get<string>('RAZORPAY_KEY_SECRET');
-
-    if (keySecret) {
-      const isValid = this.verifySignature(payload, razorpaySignature);
+    // Verify Checkout HMAC-SHA256 signature if not skipped (e.g. webhook pre-verified)
+    if (!skipSignatureCheck) {
+      const payload = `${razorpayOrderId}|${razorpayPaymentId}`;
+      const isValid = this.verifyCheckoutSignature(
+        payload,
+        razorpaySignature || '',
+      );
       if (!isValid) {
         throw new BadRequestException(
           'Invalid payment signature. Verification failed.',
@@ -317,7 +391,7 @@ export class PaymentsService {
         );
         const existingSubs =
           await this.subscriptionsService.findByStudent(userId);
-        const sub = existingSubs.find((s) => s.mealPlan?.id === mealPlanId);
+        const sub = existingSubs.find((s) => s.mealPlan?.id === targetPlanId);
         return {
           success: true,
           verified: true,
@@ -332,7 +406,7 @@ export class PaymentsService {
       if (!student) throw new NotFoundException('Student user not found');
 
       const mealPlan = await manager.findOne(MealPlan, {
-        where: { id: mealPlanId },
+        where: { id: targetPlanId },
         relations: { provider: true },
       });
       if (!mealPlan) throw new NotFoundException('Meal plan not found');
@@ -399,12 +473,58 @@ export class PaymentsService {
         durationDays,
       );
 
+      // Amount Integrity Validation
+      if (paymentAmountInPaise !== undefined && paymentAmountInPaise > 0) {
+        const paymentAmountInRupees = paymentAmountInPaise / 100;
+        if (Math.abs(paymentAmountInRupees - authoritativeAmount) > 0.01) {
+          throw new BadRequestException(
+            `Payment amount mismatch. Expected ₹${authoritativeAmount}, got ₹${paymentAmountInRupees}`,
+          );
+        }
+      }
+
+      if (
+        preOrder &&
+        preOrder.amount &&
+        Math.abs(Number(preOrder.amount) - authoritativeAmount) > 0.01
+      ) {
+        throw new BadRequestException(
+          `Payment amount mismatch with order authoritative amount`,
+        );
+      }
+
+      // 4. Save/Update Payment FIRST inside the transaction
+      let paymentToSave: Payment;
+      if (existingPayment) {
+        existingPayment.status = 'paid';
+        existingPayment.razorpayPaymentId = razorpayPaymentId;
+        existingPayment.razorpaySignature = razorpaySignature;
+        existingPayment.amount = authoritativeAmount;
+        existingPayment.durationDays = durationDays;
+        existingPayment.mealPlanId = targetPlanId;
+        paymentToSave = existingPayment;
+      } else {
+        paymentToSave = manager.create(Payment, {
+          student,
+          provider,
+          amount: authoritativeAmount,
+          razorpayOrderId,
+          razorpayPaymentId,
+          razorpaySignature,
+          status: 'paid',
+          durationDays,
+          mealPlanId: targetPlanId,
+        });
+      }
+
+      const savedPayment = await manager.save(Payment, paymentToSave);
+
+      // 5. Create and save Subscription AFTER Payment is persisted
       const startDate = new Date().toISOString().split('T')[0];
       const startObj = new Date(startDate);
       startObj.setDate(startObj.getDate() + durationDays);
       const endDate = startObj.toISOString().split('T')[0];
 
-      // 4. Create and save Subscription inside the transaction
       const subscriptionEntity = manager.create(Subscription, {
         student,
         mealPlan,
@@ -418,103 +538,295 @@ export class PaymentsService {
         subscriptionEntity,
       );
 
-      // 5. Create and save Payment record linked to student & provider with authoritative amount
-      const paymentEntity = manager.create(Payment, {
-        student,
-        provider,
-        amount: authoritativeAmount,
-        razorpayOrderId,
-        razorpayPaymentId,
-        razorpaySignature,
-        status: 'paid',
+      // 6. Create and save Provider Earning record atomically
+      const grossAmount = Number(savedPayment.amount);
+      const platformFee = 0;
+      const providerAmount = grossAmount - platformFee;
+
+      const earningEntity = manager.create(ProviderEarning, {
+        paymentId: savedPayment.id,
+        subscriptionId: savedSubscription.id,
+        providerId: provider.id,
+        studentId: student.id,
+        grossAmount,
+        platformFee,
+        providerAmount,
+        status: ProviderEarningStatus.PENDING,
+        earnedAt: new Date(),
       });
 
-      try {
-        const savedPayment = await manager.save(Payment, paymentEntity);
+      await manager.save(ProviderEarning, earningEntity);
 
-        // Create Provider Earning record atomically within the same transaction
-        const grossAmount = Number(savedPayment.amount);
-        const platformFee = 0;
-        const providerAmount = grossAmount - platformFee;
-
-        const earningEntity = manager.create(ProviderEarning, {
-          paymentId: savedPayment.id,
-          subscriptionId: savedSubscription.id,
-          providerId: provider.id,
-          studentId: student.id,
-          grossAmount,
-          platformFee,
-          providerAmount,
-          status: ProviderEarningStatus.PENDING,
-          earnedAt: new Date(),
-        });
-
-        await manager.save(ProviderEarning, earningEntity);
-
-        return {
-          success: true,
-          verified: true,
-          payment: savedPayment,
-          subscription: savedSubscription,
-        };
-      } catch (err: any) {
-        // Handle duplicate key / race condition gracefully
-        if (
-          err.code === '23505' ||
-          err.message?.includes('duplicate') ||
-          err.message?.includes('UNIQUE')
-        ) {
-          this.logger.warn(
-            `Duplicate payment key detected during transaction for order ${razorpayOrderId}. Returning idempotent state.`,
-          );
-          const existing = await manager.findOne(Payment, {
-            where: [{ razorpayOrderId }, { razorpayPaymentId }],
-            relations: { student: true, provider: true },
-          });
-          return {
-            success: true,
-            verified: true,
-            idempotent: true,
-            payment: existing || paymentEntity,
-            subscription: savedSubscription,
-          };
-        }
-        throw err;
-      }
+      return {
+        success: true,
+        verified: true,
+        payment: savedPayment,
+        subscription: savedSubscription,
+      };
     });
+  }
+
+  /**
+   * Public endpoint helper for payment verification. Delegated to reconcileCapturedPayment.
+   */
+  async processVerifiedPayment(params: {
+    userId: string;
+    razorpayOrderId: string;
+    razorpayPaymentId: string;
+    razorpaySignature?: string;
+    mealPlanId?: string;
+    durationInput?: string | number;
+    skipSignatureCheck?: boolean;
+    paymentAmountInPaise?: number;
+  }) {
+    return this.reconcileCapturedPayment(params);
   }
 
   async handleWebhook(
     rawBody: string | Buffer,
     signature: string,
     eventData: any,
+    headers?: Record<string, any>,
   ) {
     const isValid = this.verifyWebhookSignature(rawBody, signature);
     if (!isValid) {
-      throw new UnauthorizedException('Invalid webhook signature');
+      this.logger.warn(
+        `Razorpay webhook signature verification failed. Rejecting with HTTP 400 Bad Request.`,
+      );
+      throw new BadRequestException('Invalid Razorpay webhook signature');
     }
 
-    const event = eventData?.event;
-    if (event === 'payment.captured' || event === 'order.paid') {
-      const entity =
-        eventData.payload?.payment?.entity || eventData.payload?.order?.entity;
-      const notes = entity?.notes || {};
-      const { mealPlanId, userId } = notes;
+    const eventId =
+      headers?.['x-razorpay-event-id'] ||
+      (headers as any)?.['X-Razorpay-Event-Id'] ||
+      eventData?.id ||
+      `evt_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
 
-      if (mealPlanId && userId) {
-        const orderId = entity.order_id || entity.id;
-        const paymentId = entity.id;
-        await this.processVerifiedPayment({
+    const event = eventData?.event;
+    this.logger.log(
+      `Razorpay webhook received: eventType=${event}, eventId=${eventId}`,
+    );
+
+    if (event === 'payment.authorized') {
+      this.logger.log(
+        `Razorpay webhook received payment.authorized (eventId=${eventId}). Acknowledging intermediate state without subscription activation.`,
+      );
+      try {
+        const webhookEvent = this.webhookEventRepo.create({
+          eventId,
+          eventType: event || 'unknown',
+          processedAt: new Date(),
+        });
+        await this.webhookEventRepo.save(webhookEvent);
+      } catch (_) {}
+      return { status: 'OK', message: 'payment.authorized acknowledged' };
+    }
+
+    if (event === 'payment.captured' || event === 'order.paid') {
+      const paymentEntity = eventData.payload?.payment?.entity;
+      const orderEntity = eventData.payload?.order?.entity;
+      const entity = paymentEntity || orderEntity;
+
+      const orderId =
+        paymentEntity?.order_id ||
+        orderEntity?.id ||
+        entity?.order_id ||
+        entity?.id;
+      const paymentId =
+        paymentEntity?.id || (entity?.order_id ? entity?.id : null);
+      const notes = entity?.notes || {};
+      const amountInPaise =
+        paymentEntity?.amount ||
+        paymentEntity?.amount_paid ||
+        orderEntity?.amount_paid;
+
+      this.logger.log(
+        `Processing webhook event ${event}: orderId=${orderId}, paymentId=${paymentId}`,
+      );
+
+      // Look up pre-persisted order record to retrieve authoritative metadata
+      const preOrder = orderId
+        ? await this.paymentRepo.findOne({
+            where: { razorpayOrderId: orderId },
+            relations: { student: true },
+          })
+        : null;
+
+      const userId = notes.userId || preOrder?.student?.id;
+      const mealPlanId = notes.mealPlanId || preOrder?.mealPlanId;
+      const durationDays = notes.durationDays || preOrder?.durationDays || 30;
+
+      if (mealPlanId && userId && orderId) {
+        await this.reconcileCapturedPayment({
           userId,
           razorpayOrderId: orderId,
-          razorpayPaymentId: paymentId,
-          razorpaySignature: signature,
+          razorpayPaymentId: paymentId || orderId,
           mealPlanId,
+          durationInput: durationDays,
+          skipSignatureCheck: true, // Signature verified at webhook level
+          paymentAmountInPaise: amountInPaise ? Number(amountInPaise) : undefined,
         });
       }
+
+      // Record webhook event idempotency AFTER business operation succeeds
+      try {
+        const webhookEvent = this.webhookEventRepo.create({
+          eventId,
+          eventType: event || 'unknown',
+          processedAt: new Date(),
+        });
+        await this.webhookEventRepo.save(webhookEvent);
+      } catch (err: any) {
+        if (
+          err.code === '23505' ||
+          err.message?.includes('duplicate') ||
+          err.message?.includes('UNIQUE')
+        ) {
+          this.logger.log(
+            `Webhook event ${eventId} already processed (Idempotent replay).`,
+          );
+          return { status: 'OK', message: 'Event already processed' };
+        }
+        throw err;
+      }
+    } else if (event === 'payment.failed') {
+      const entity = eventData.payload?.payment?.entity;
+      const orderId = entity?.order_id;
+      if (orderId) {
+        const preOrder = await this.paymentRepo.findOne({
+          where: { razorpayOrderId: orderId },
+        });
+        if (preOrder && preOrder.status !== 'paid') {
+          preOrder.status = 'failed';
+          await this.paymentRepo.save(preOrder);
+        }
+      }
+
+      try {
+        const webhookEvent = this.webhookEventRepo.create({
+          eventId,
+          eventType: event || 'unknown',
+          processedAt: new Date(),
+        });
+        await this.webhookEventRepo.save(webhookEvent);
+      } catch (_) {}
     }
 
     return { status: 'OK' };
+  }
+
+  async getPaymentStatus(orderId: string, userId: string) {
+    if (!orderId) throw new BadRequestException('Order ID is required');
+
+    const payment = await this.paymentRepo.findOne({
+      where: { razorpayOrderId: orderId },
+      relations: { student: true, provider: true },
+    });
+
+    if (!payment) {
+      throw new NotFoundException('Payment order not found');
+    }
+
+    if (payment.student && payment.student.id !== userId) {
+      throw new ForbiddenException(
+        'Cannot check payment status belonging to another user',
+      );
+    }
+
+    if (payment.status === 'paid') {
+      const existingSubs =
+        await this.subscriptionsService.findByStudent(userId);
+      const sub = existingSubs.find(
+        (s) =>
+          s.mealPlan?.id === payment.mealPlanId ||
+          s.razorpayOrderId === orderId,
+      );
+      return {
+        status: 'SUCCESS',
+        paymentStatus: 'PAID',
+        orderId,
+        paymentId: payment.razorpayPaymentId,
+        amount: Number(payment.amount),
+        subscription: sub || null,
+      };
+    }
+
+    // Reconcile with Razorpay API if available, even if local status is 'created', 'processing', or 'failed'
+    if (this.razorpay) {
+      try {
+        const rzpOrder: any = await this.razorpay.orders.fetch(orderId);
+        if (
+          rzpOrder &&
+          (rzpOrder.status === 'paid' || rzpOrder.amount_paid > 0)
+        ) {
+          const paymentsObj: any =
+            await this.razorpay.orders.fetchPayments(orderId);
+          const capturedPayment = paymentsObj?.items?.find(
+            (p: any) => p.status === 'captured',
+          );
+          const paymentId = capturedPayment?.id || `pay_rzp_${Date.now()}`;
+          const amountInPaise = capturedPayment?.amount || rzpOrder.amount_paid;
+
+          const result = await this.reconcileCapturedPayment({
+            userId,
+            razorpayOrderId: orderId,
+            razorpayPaymentId: paymentId,
+            mealPlanId: payment.mealPlanId,
+            durationInput: payment.durationDays,
+            skipSignatureCheck: true,
+            paymentAmountInPaise: amountInPaise ? Number(amountInPaise) : undefined,
+          });
+
+          return {
+            status: 'SUCCESS',
+            paymentStatus: 'PAID',
+            orderId,
+            paymentId,
+            amount: Number(payment.amount),
+            subscription: result.subscription,
+          };
+        } else if (
+          rzpOrder &&
+          (rzpOrder.status === 'attempted' || rzpOrder.status === 'expired')
+        ) {
+          const paymentsObj: any =
+            await this.razorpay.orders.fetchPayments(orderId);
+          const allFailed =
+            paymentsObj?.items?.length > 0 &&
+            paymentsObj.items.every((p: any) => p.status === 'failed');
+          if (allFailed || rzpOrder.status === 'expired') {
+            if (payment.status !== 'paid') {
+              payment.status = 'failed';
+              await this.paymentRepo.save(payment);
+            }
+            return {
+              status: 'FAILED',
+              paymentStatus: 'FAILED',
+              orderId,
+              message: 'Payment attempts failed.',
+            };
+          }
+        }
+      } catch (err: any) {
+        this.logger.warn(`Razorpay order status fetch error: ${err.message}`);
+      }
+    }
+
+    if (payment.status === 'failed') {
+      return {
+        status: 'FAILED',
+        paymentStatus: 'FAILED',
+        orderId,
+        message: 'Payment attempt was failed or cancelled.',
+      };
+    }
+
+    return {
+      status: 'PROCESSING',
+      paymentStatus: (payment.status || 'PENDING').toUpperCase(),
+      orderId,
+      message: 'Payment confirmation is pending. Please check again shortly.',
+    };
   }
 
   async processRefund(paymentId: string): Promise<Payment> {

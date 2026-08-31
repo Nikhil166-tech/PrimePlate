@@ -197,16 +197,127 @@ export async function renderCheckout(planId: string) {
   const payBtn = document.getElementById('payBtn') as HTMLButtonElement;
   const instantDemoBtn = document.getElementById('instantDemoPayBtn') as HTMLButtonElement;
 
+  const setConfirmationPendingState = (orderId: string) => {
+    sessionStorage.setItem('pendingPaymentOrderId', orderId);
+    if (payBtn) {
+      payBtn.innerHTML = `<i class="fa-solid fa-clock-rotate-left"></i> <span>Check Payment Status</span>`;
+      payBtn.removeAttribute('disabled');
+      payBtn.className = 'btn-primary-action';
+      payBtn.style.backgroundColor = '#d97706';
+      payBtn.onclick = () => pollStatus(orderId, true);
+    }
+    if (instantDemoBtn) {
+      instantDemoBtn.style.display = 'none';
+    }
+
+    const detailsBox = document.getElementById('checkoutPlanDetails');
+    if (detailsBox && !document.getElementById('pendingRecoveryNotice')) {
+      const notice = document.createElement('div');
+      notice.id = 'pendingRecoveryNotice';
+      notice.style.background = '#fffbeb';
+      notice.style.border = '1px solid #fde68a';
+      notice.style.borderRadius = '12px';
+      notice.style.padding = '16px';
+      notice.style.marginBottom = '16px';
+      notice.innerHTML = `
+        <div style="display: flex; align-items: flex-start; gap: 12px;">
+          <i class="fa-solid fa-hourglass-half" style="color: #d97706; font-size: 20px; margin-top: 2px;"></i>
+          <div>
+            <strong style="color: #92400e; font-size: 15px; display: block; margin-bottom: 4px;">Payment Confirmation Pending</strong>
+            <p style="color: #b45309; font-size: 13px; margin: 0; line-height: 1.4;">
+              Your transaction was submitted. We're confirming the payment status with Razorpay. <strong>Please do not pay again</strong> while we reconcile your order.
+            </p>
+          </div>
+        </div>
+      `;
+      detailsBox.prepend(notice);
+    }
+  };
+
   const resetPayBtns = () => {
+    sessionStorage.removeItem('pendingPaymentOrderId');
+    const notice = document.getElementById('pendingRecoveryNotice');
+    if (notice) notice.remove();
+
     if (payBtn) {
       payBtn.innerHTML = `<i class="fa-solid fa-lock"></i> <span id="payBtnText">Pay with Razorpay (₹${calcPrice(selectedDays).toLocaleString('en-IN')})</span>`;
       payBtn.removeAttribute('disabled');
+      payBtn.style.backgroundColor = '';
+      payBtn.onclick = null;
     }
     if (instantDemoBtn) {
       instantDemoBtn.innerHTML = `<i class="fa-solid fa-bolt" style="color: #ea580c;"></i> Instant Test Checkout (Sandbox Mode)`;
       instantDemoBtn.removeAttribute('disabled');
+      instantDemoBtn.style.display = '';
     }
   };
+
+  const pollStatus = async (orderId: string, manual = false) => {
+    if (payBtn) {
+      payBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Checking Status...`;
+      payBtn.setAttribute('disabled', 'true');
+    }
+
+    try {
+      const res: any = await api.get(`/payments/${orderId}/status`);
+      if (res && res.status === 'SUCCESS') {
+        sessionStorage.removeItem('pendingPaymentOrderId');
+        showToast('Payment verified successfully! Your subscription is now ACTIVE 🎉', 'success');
+        navigate('#/student/dashboard');
+        return true;
+      } else if (res && res.status === 'FAILED') {
+        sessionStorage.removeItem('pendingPaymentOrderId');
+        showToast(res.message || 'Payment failed. Please try again.', 'error');
+        resetPayBtns();
+        return false;
+      } else {
+        if (manual) {
+          showToast('Payment confirmation is still in progress. Please check again in a few seconds.', 'info');
+        }
+        setConfirmationPendingState(orderId);
+        return null;
+      }
+    } catch (err: any) {
+      if (manual) {
+        showToast(err.message || 'Unable to confirm payment status yet. Please try again shortly.', 'info');
+      }
+      setConfirmationPendingState(orderId);
+      return null;
+    }
+  };
+
+  const startBoundedStatusPolling = async (orderId: string) => {
+    setConfirmationPendingState(orderId);
+    showToast('Network glitch encountered. Checking payment confirmation with server...', 'info');
+
+    let attempts = 0;
+    const maxAttempts = 4;
+    const intervals = [2000, 3000, 4000, 5000];
+
+    const runPoll = async () => {
+      if (attempts >= maxAttempts) {
+        setConfirmationPendingState(orderId);
+        return;
+      }
+      const delay = intervals[attempts] || 3000;
+      attempts++;
+      setTimeout(async () => {
+        const result = await pollStatus(orderId, false);
+        if (result === null && attempts < maxAttempts) {
+          runPoll();
+        }
+      }, delay);
+    };
+
+    runPoll();
+  };
+
+  // Check for unresolved pending order on page load / refresh
+  const savedPendingOrderId = sessionStorage.getItem('pendingPaymentOrderId');
+  if (savedPendingOrderId) {
+    setConfirmationPendingState(savedPendingOrderId);
+    pollStatus(savedPendingOrderId, false);
+  }
 
   const processDirectVerification = async (orderId: string) => {
     try {
@@ -220,15 +331,14 @@ export async function renderCheckout(planId: string) {
 
       const isVerified = result && result.success === true && result.verified === true && Boolean(result.subscription || result.payment);
       if (isVerified) {
+        sessionStorage.removeItem('pendingPaymentOrderId');
         showToast('Payment verified successfully! Your subscription is now ACTIVE 🎉', 'success');
         navigate('#/student/dashboard');
       } else {
-        showToast('Payment verification failed on server. Subscription was not activated.', 'error');
-        resetPayBtns();
+        startBoundedStatusPolling(orderId);
       }
     } catch (err: any) {
-      showToast(err.message || 'Payment verification failed.', 'error');
-      resetPayBtns();
+      startBoundedStatusPolling(orderId);
     }
   };
 
@@ -252,6 +362,12 @@ export async function renderCheckout(planId: string) {
   payBtn.addEventListener('click', async () => {
     if (payBtn.hasAttribute('disabled')) return;
 
+    const pendingId = sessionStorage.getItem('pendingPaymentOrderId');
+    if (pendingId) {
+      await pollStatus(pendingId, true);
+      return;
+    }
+
     payBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Initializing Payment...`;
     payBtn.setAttribute('disabled', 'true');
     if (instantDemoBtn) instantDemoBtn.setAttribute('disabled', 'true');
@@ -262,6 +378,9 @@ export async function renderCheckout(planId: string) {
         mealPlanId: actualPlanId,
         durationDays: selectedDays,
       });
+
+      sessionStorage.setItem('pendingPaymentOrderId', order.id);
+      let paymentAttempted = false;
 
       const userEmail = localStorage.getItem('userEmail') || '';
       const keyId = order.key_id || import.meta.env.VITE_RAZORPAY_KEY_ID;
@@ -297,7 +416,10 @@ export async function renderCheckout(planId: string) {
           color: '#ea580c',
         },
         handler: async function (response: any) {
+          paymentAttempted = true;
           payBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Verifying Payment...`;
+          sessionStorage.setItem('pendingPaymentOrderId', response.razorpay_order_id);
+
           try {
             // 4. Verify payment signature on backend & activate subscription
             const result: any = await api.post('/payments/verify', {
@@ -311,21 +433,25 @@ export async function renderCheckout(planId: string) {
             const isVerified = result && result.success === true && result.verified === true && Boolean(result.subscription || result.payment);
 
             if (isVerified) {
+              sessionStorage.removeItem('pendingPaymentOrderId');
               showToast('Payment verified successfully! Your subscription is now ACTIVE 🎉', 'success');
               navigate('#/student/dashboard');
             } else {
-              showToast('Payment verification failed on server. Subscription was not activated.', 'error');
-              resetPayBtns();
+              startBoundedStatusPolling(response.razorpay_order_id);
             }
           } catch (verifyErr: any) {
-            showToast(verifyErr.message || 'Payment verification failed. Subscription was not activated.', 'error');
-            resetPayBtns();
+            startBoundedStatusPolling(response.razorpay_order_id);
           }
         },
         modal: {
           ondismiss: function () {
-            showToast('Payment window closed.', 'info');
-            resetPayBtns();
+            if (!paymentAttempted) {
+              showToast('Payment window closed.', 'info');
+              resetPayBtns();
+            } else {
+              setConfirmationPendingState(order.id);
+              pollStatus(order.id, false);
+            }
           },
         },
       };

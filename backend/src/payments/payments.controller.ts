@@ -3,6 +3,7 @@ import {
   Get,
   Post,
   Body,
+  Param,
   UseGuards,
   Req,
   Headers,
@@ -90,14 +91,52 @@ export class PaymentsController {
   @Post('webhook')
   @ApiOperation({ summary: 'Razorpay Webhook Listener' })
   async handleWebhook(
-    @Headers('x-razorpay-signature') signature: string,
+    @Headers('x-razorpay-signature') headerSignature: string,
     @Body() body: Record<string, any>,
     @Req() req: Request,
   ) {
-    const rawBody = (req as Record<string, any>).rawBody
-      ? String((req as Record<string, any>).rawBody)
-      : JSON.stringify(body);
-    return this.paymentsService.handleWebhook(rawBody, signature, body);
+    const eventId =
+      (req.headers['x-razorpay-event-id'] as string) || body?.id || 'unknown';
+    const eventType = body?.event || 'unknown';
+
+    console.log(
+      `RAZORPAY WEBHOOK ENTERED: eventId=${eventId}, eventType=${eventType}`,
+    );
+
+    const rawBody = (req as Record<string, any>).rawBody;
+    const signature =
+      headerSignature ||
+      (req.headers['x-razorpay-signature'] as string) ||
+      '';
+
+    if (!rawBody) {
+      throw new BadRequestException(
+        'Raw request body is required for webhook signature verification',
+      );
+    }
+
+    if (!signature) {
+      throw new BadRequestException('Missing x-razorpay-signature header');
+    }
+
+    return this.paymentsService.handleWebhook(
+      rawBody,
+      signature,
+      body,
+      req.headers,
+    );
+  }
+
+  @Get(':orderId/status')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.STUDENT)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get Payment Status for an Order' })
+  async getPaymentStatus(
+    @Req() req: AuthenticatedRequest,
+    @Param('orderId') orderId: string,
+  ) {
+    return this.paymentsService.getPaymentStatus(orderId, req.user.userId);
   }
 
   @Get('history')

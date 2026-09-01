@@ -267,6 +267,27 @@ describe('PrimePlate Payment Security & Recovery Specification', () => {
       module.get<SubscriptionsService>(SubscriptionsService);
   });
 
+  describe('0. Order Creation Pre-Persistence (createOrder)', () => {
+    it('pre-persists pending local payment record with status created during createOrder', async () => {
+      const order = await paymentsService.createOrder(
+        mockMealPlan.id,
+        mockStudent1.id,
+        30,
+      );
+
+      expect(order).toBeDefined();
+      expect(order.id).toBeDefined();
+
+      const savedPayment = mockPaymentsStore.find(
+        (p) => p.razorpayOrderId === order.id,
+      );
+      expect(savedPayment).toBeDefined();
+      expect(savedPayment.status).toBe('created');
+      expect(savedPayment.durationDays).toBe(30);
+      expect(savedPayment.mealPlanId).toBe(mockMealPlan.id);
+    });
+  });
+
   describe('1. Webhook Signature Validation (Raw Body HMAC-SHA256)', () => {
     it('successfully validates exact raw request body against RAZORPAY_WEBHOOK_SECRET', () => {
       const rawPayload = JSON.stringify({
@@ -306,6 +327,29 @@ describe('PrimePlate Payment Security & Recovery Specification', () => {
         paymentsService.handleWebhook('{"fake":"body"}', 'invalid_sig', {
           event: 'payment.captured',
         }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('throws BadRequestException in handleWebhook if order metadata is missing and unresolvable', async () => {
+      const rawBody = JSON.stringify({
+        event: 'payment.captured',
+        payload: {
+          payment: {
+            entity: {
+              id: 'pay_no_meta',
+              order_id: 'order_no_meta',
+            },
+          },
+        },
+      });
+
+      const sig = crypto
+        .createHmac('sha256', webhookSecret)
+        .update(rawBody)
+        .digest('hex');
+
+      await expect(
+        paymentsService.handleWebhook(rawBody, sig, JSON.parse(rawBody)),
       ).rejects.toThrow(BadRequestException);
     });
   });

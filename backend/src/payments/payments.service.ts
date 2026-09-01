@@ -119,6 +119,10 @@ export class PaymentsService {
     if (!mealPlanId) throw new BadRequestException('Meal plan ID is required');
     const durationDays = parseDurationDays(durationInput);
 
+    this.logger.log(
+      `CREATE_ORDER_STARTED: userId=${userId}, mealPlanId=${mealPlanId}, durationDays=${durationDays}`,
+    );
+
     const plan = await this.planRepo.findOne({
       where: { id: mealPlanId },
       relations: { provider: true },
@@ -219,24 +223,36 @@ export class PaymentsService {
       }
     }
 
+    this.logger.log(
+      `CREATE_RAZORPAY_ORDER_SUCCESS: orderId=${orderId}, userId=${userId}, amount=${authoritativeAmount}`,
+    );
+
     // Pre-persist order in Payment table to establish authoritative ownership and duration metadata
+    const student = await this.userRepo.findOne({ where: { id: userId } });
+    if (!student) {
+      throw new NotFoundException('Student user not found for order creation');
+    }
+
     try {
-      const student = await this.userRepo.findOne({ where: { id: userId } });
-      if (student) {
-        const prePayment = this.paymentRepo.create({
-          student,
-          provider: provider || undefined,
-          amount: authoritativeAmount,
-          razorpayOrderId: orderId,
-          status: 'created',
-          durationDays,
-          mealPlanId,
-        });
-        await this.paymentRepo.save(prePayment);
-      }
+      const prePayment = this.paymentRepo.create({
+        student,
+        provider: provider || undefined,
+        amount: authoritativeAmount,
+        razorpayOrderId: orderId,
+        status: 'created',
+        durationDays,
+        mealPlanId,
+      });
+      await this.paymentRepo.save(prePayment);
+      this.logger.log(
+        `LOCAL_PAYMENT_CREATED: orderId=${orderId}, userId=${userId}, mealPlanId=${mealPlanId}, durationDays=${durationDays}, status=created`,
+      );
     } catch (saveErr: any) {
-      this.logger.warn(
-        `Pre-payment persistence warning: ${saveErr.message || saveErr}`,
+      this.logger.error(
+        `Failed to pre-persist pending order record: ${saveErr.message || saveErr}`,
+      );
+      throw new BadRequestException(
+        `Failed to persist order record locally: ${saveErr.message || saveErr}`,
       );
     }
 
@@ -603,8 +619,21 @@ export class PaymentsService {
       `evt_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
 
     const event = eventData?.event;
+    const paymentEntity = eventData.payload?.payment?.entity;
+    const orderEntity = eventData.payload?.order?.entity;
+    const entity = paymentEntity || orderEntity;
+
+    const orderId =
+      paymentEntity?.order_id ||
+      orderEntity?.id ||
+      entity?.order_id ||
+      entity?.id ||
+      'unknown';
+    const paymentId =
+      paymentEntity?.id || (entity?.order_id ? entity?.id : null) || 'unknown';
+
     this.logger.log(
-      `Razorpay webhook received: eventType=${event}, eventId=${eventId}`,
+      `RAZORPAY_WEBHOOK_RECEIVED: eventId=${eventId}, eventType=${event}, orderId=${orderId}, paymentId=${paymentId}`,
     );
 
     if (event === 'payment.authorized') {
@@ -623,49 +652,79 @@ export class PaymentsService {
     }
 
     if (event === 'payment.captured' || event === 'order.paid') {
-      const paymentEntity = eventData.payload?.payment?.entity;
-      const orderEntity = eventData.payload?.order?.entity;
-      const entity = paymentEntity || orderEntity;
-
-      const orderId =
-        paymentEntity?.order_id ||
-        orderEntity?.id ||
-        entity?.order_id ||
-        entity?.id;
-      const paymentId =
-        paymentEntity?.id || (entity?.order_id ? entity?.id : null);
       const notes = entity?.notes || {};
       const amountInPaise =
         paymentEntity?.amount ||
         paymentEntity?.amount_paid ||
         orderEntity?.amount_paid;
 
+      // Look up pre-persisted order record to retrieve authoritative metadata
+      let preOrder =
+        orderId && orderId !== 'unknown'
+          ? await this.paymentRepo.findOne({
+              where: { razorpayOrderId: orderId },
+              relations: { student: true },
+            })
+          : null;
+
+      let userId = notes.userId || preOrder?.student?.id;
+      let mealPlanId = notes.mealPlanId || preOrder?.mealPlanId;
+      let durationDays = notes.durationDays || preOrder?.durationDays || 30;
+
+      // If metadata missing, attempt recovery from Razorpay API
+      if (
+        (!userId || !mealPlanId) &&
+        this.razorpay &&
+        orderId &&
+        orderId !== 'unknown'
+      ) {
+        try {
+          const rzpOrder: any = await this.razorpay.orders.fetch(orderId);
+          const rzpNotes = rzpOrder?.notes || {};
+          if (!userId) userId = rzpNotes.userId;
+          if (!mealPlanId) mealPlanId = rzpNotes.mealPlanId;
+          if (!durationDays) durationDays = rzpNotes.durationDays;
+        } catch (fetchErr: any) {
+          this.logger.warn(
+            `Failed to fetch order notes from Razorpay API for ${orderId}: ${fetchErr.message}`,
+          );
+        }
+      }
+
+      if (!mealPlanId || !userId || !orderId || orderId === 'unknown') {
+        this.logger.error(
+          `RAZORPAY_PAYMENT_RECONCILIATION_FAILED: orderId=${orderId}, paymentId=${paymentId}, reason="Missing required order metadata (userId or mealPlanId)"`,
+        );
+        throw new BadRequestException(
+          `Cannot reconcile webhook: missing required order metadata for order ${orderId}`,
+        );
+      }
+
       this.logger.log(
-        `Processing webhook event ${event}: orderId=${orderId}, paymentId=${paymentId}`,
+        `RAZORPAY_PAYMENT_RECONCILIATION_STARTED: orderId=${orderId}, paymentId=${paymentId}, userId=${userId}`,
       );
 
-      // Look up pre-persisted order record to retrieve authoritative metadata
-      const preOrder = orderId
-        ? await this.paymentRepo.findOne({
-            where: { razorpayOrderId: orderId },
-            relations: { student: true },
-          })
-        : null;
-
-      const userId = notes.userId || preOrder?.student?.id;
-      const mealPlanId = notes.mealPlanId || preOrder?.mealPlanId;
-      const durationDays = notes.durationDays || preOrder?.durationDays || 30;
-
-      if (mealPlanId && userId && orderId) {
+      try {
         await this.reconcileCapturedPayment({
           userId,
           razorpayOrderId: orderId,
           razorpayPaymentId: paymentId || orderId,
           mealPlanId,
           durationInput: durationDays,
-          skipSignatureCheck: true, // Signature verified at webhook level
-          paymentAmountInPaise: amountInPaise ? Number(amountInPaise) : undefined,
+          skipSignatureCheck: true,
+          paymentAmountInPaise: amountInPaise
+            ? Number(amountInPaise)
+            : undefined,
         });
+
+        this.logger.log(
+          `RAZORPAY_PAYMENT_RECONCILIATION_SUCCESS: orderId=${orderId}, paymentId=${paymentId}`,
+        );
+      } catch (reconcileErr: any) {
+        this.logger.error(
+          `RAZORPAY_PAYMENT_RECONCILIATION_FAILED: orderId=${orderId}, paymentId=${paymentId}, reason="${reconcileErr.message || reconcileErr}"`,
+        );
+        throw reconcileErr;
       }
 
       // Record webhook event idempotency AFTER business operation succeeds

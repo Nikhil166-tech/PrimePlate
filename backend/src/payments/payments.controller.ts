@@ -18,6 +18,8 @@ import { Role } from '../common/roles.enum';
 import type { AuthenticatedRequest } from '../auth/interfaces/authenticated-request.interface';
 import type { Request } from 'express';
 
+import { Public } from '../auth/public.decorator';
+
 @ApiTags('Payments')
 @Controller('payments')
 export class PaymentsController {
@@ -88,6 +90,7 @@ export class PaymentsController {
     });
   }
 
+  @Public()
   @Post('webhook')
   @ApiOperation({ summary: 'Razorpay Webhook Listener' })
   async handleWebhook(
@@ -99,8 +102,14 @@ export class PaymentsController {
       (req.headers['x-razorpay-event-id'] as string) || body?.id || 'unknown';
     const eventType = body?.event || 'unknown';
 
+    const payloadEntity =
+      body?.payload?.payment?.entity || body?.payload?.order?.entity;
+    const orderId =
+      payloadEntity?.order_id || payloadEntity?.id || 'unknown';
+    const paymentId = payloadEntity?.id || 'unknown';
+
     console.log(
-      `RAZORPAY WEBHOOK ENTERED: eventId=${eventId}, eventType=${eventType}`,
+      `RAZORPAY_WEBHOOK_CONTROLLER_ENTERED: eventId=${eventId}, eventType=${eventType}, orderId=${orderId}, paymentId=${paymentId}`,
     );
 
     const rawBody = (req as Record<string, any>).rawBody;

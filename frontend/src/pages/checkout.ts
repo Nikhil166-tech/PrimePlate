@@ -302,6 +302,16 @@ export async function renderCheckout(planId: string) {
         return 'PROCESSING';
       }
     } catch (err: any) {
+      const isNotFound = err?.response?.status === 404 || err?.status === 404 || (err?.message && (err.message.includes('not found') || err.message.includes('404')));
+      if (isNotFound) {
+        console.log(`PAYMENT_STATUS_CHECK orderId=${orderId} status=NOT_FOUND`);
+        if (pollingTimerId) clearTimeout(pollingTimerId);
+        pollingTimerId = null;
+        sessionStorage.removeItem('pendingPaymentOrderId');
+        showToast('Order record not found on server. Please try placing your order again.', 'info');
+        resetPayBtns();
+        return 'FAILED';
+      }
       if (manual) {
         showToast(err.message || 'Payment confirmation is pending. Please check again shortly.', 'info');
       }

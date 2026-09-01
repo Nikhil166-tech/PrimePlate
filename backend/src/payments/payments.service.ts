@@ -883,7 +883,13 @@ export class PaymentsService {
     }
 
     if (!payment) {
-      throw new NotFoundException('Payment order not found');
+      this.logger.log(`PAYMENT_STATUS_CHECK: orderId=${orderId}, status=FAILED (not found)`);
+      return {
+        status: 'FAILED',
+        paymentStatus: 'FAILED',
+        orderId,
+        message: 'Order record not found on server.',
+      };
     }
 
     if (payment.status === 'failed') {

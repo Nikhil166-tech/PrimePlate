@@ -293,37 +293,44 @@ export class PaymentsService {
       this.logger.warn('Webhook signature check failed: signature header is missing');
       return false;
     }
+    const cleanSignature = signature.trim();
+
     if (
       process.env.NODE_ENV !== 'production' &&
-      (signature.startsWith('sig_test_') ||
-        signature.startsWith('sig_sandbox_') ||
-        signature.startsWith('sig_e2e_'))
+      (cleanSignature.startsWith('sig_test_') ||
+        cleanSignature.startsWith('sig_sandbox_') ||
+        cleanSignature.startsWith('sig_e2e_'))
     ) {
       this.logger.log('Webhook signature bypass matched non-production test signature pattern');
       return true;
     }
-    const webhookSecret = this.config.get<string>('RAZORPAY_WEBHOOK_SECRET');
-    if (!webhookSecret) {
+    const rawSecret = this.config.get<string>('RAZORPAY_WEBHOOK_SECRET');
+    if (!rawSecret) {
       this.logger.error(
         'RAZORPAY_WEBHOOK_SECRET environment variable is missing in configuration!',
       );
       return false;
     }
+    const webhookSecret = rawSecret.trim();
+
+    const bodyBuffer = Buffer.isBuffer(rawBody)
+      ? rawBody
+      : Buffer.from(typeof rawBody === 'string' ? rawBody : JSON.stringify(rawBody), 'utf8');
 
     const expected = crypto
       .createHmac('sha256', webhookSecret)
-      .update(rawBody)
+      .update(bodyBuffer)
       .digest('hex');
 
     const expectedBuf = Buffer.from(expected, 'utf8');
-    const sigBuf = Buffer.from(signature, 'utf8');
+    const sigBuf = Buffer.from(cleanSignature, 'utf8');
     const isValid =
       expectedBuf.length === sigBuf.length &&
       crypto.timingSafeEqual(expectedBuf, sigBuf);
 
     if (!isValid) {
       this.logger.warn(
-        `Webhook signature HMAC verification failed. Secret configured=${Boolean(webhookSecret)}, signatureLength=${signature.length}`,
+        `Webhook signature HMAC verification failed. Secret configured=true, signatureLength=${cleanSignature.length}`,
       );
     }
     return isValid;

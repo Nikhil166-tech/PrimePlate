@@ -2662,3 +2662,63 @@ input:checked + .toggle-slider:before {
   border-color: var(--color-primary-300);
   transform: translateY(-1px);
 }
+
+/* ==========================================================================
+   Global Mobile Touch Smoothness & GPU Hardware Acceleration
+   ========================================================================== */
+
+html, body {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Momentum scrolling for all scroll containers on mobile */
+*,
+.overflow-y-auto,
+.overflow-x-auto {
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Instant micro-animation tap feedback on interactive elements */
+button:active,
+.btn-primary-action:active,
+.btn-secondary-action:active,
+.btn-outline-action:active,
+.compact-action-card:active,
+.slide-take-photo-btn:active,
+.slide-choose-gallery-btn:active,
+.change-main-hostel-image-btn:active {
+  transform: scale(0.97) translateZ(0);
+  transition: transform 0.08s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* GPU acceleration for modals, bottom sheets, and overlays */
+.mobile-bottom-sheet-content,
+.modal-content,
+#liveCameraModal > div,
+#replaceImageModal > div,
+#deleteImageModal > div,
+#lightboxModal > div {
+  will-change: transform, opacity;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
+/* Smooth Pulse animation for processing states */
+@keyframes smoothPulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.85;
+    transform: scale(0.98);
+  }
+}
+
+.payment-processing-badge {
+  animation: smoothPulse 1.8s ease-in-out infinite;
+}

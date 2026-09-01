@@ -609,7 +609,7 @@ export class PaymentsService {
       this.logger.warn(
         `Razorpay webhook signature verification failed. Rejecting with HTTP 400 Bad Request.`,
       );
-      throw new BadRequestException('Invalid Razorpay webhook signature');
+      throw new BadRequestException('Invalid webhook signature');
     }
 
     const eventId =

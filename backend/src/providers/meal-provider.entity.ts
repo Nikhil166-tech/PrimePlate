@@ -11,6 +11,7 @@ import {
 } from 'typeorm';
 import { User } from '../users/user.entity';
 import { MealPlan } from '../meal-plans/meal-plan.entity';
+import { ProviderImage } from './provider-image.entity';
 import { ProviderStatus } from '../common/enums/provider-status.enum';
 import { Category } from '../common/enums/category.enum';
 import { ProviderApprovalStatus } from '../common/enums/provider-approval-status.enum';
@@ -118,6 +119,9 @@ export class MealProvider {
 
   @OneToMany(() => MealPlan, (plan) => plan.provider)
   mealPlans: MealPlan[];
+
+  @OneToMany(() => ProviderImage, (img) => img.provider, { cascade: true })
+  images: ProviderImage[];
 }
 
 export { MealProvider as Provider };

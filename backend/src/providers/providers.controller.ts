@@ -6,10 +6,14 @@ import {
   Body,
   Put,
   Patch,
+  Delete,
   UseGuards,
   Req,
   Query,
+  UseInterceptors,
+  UploadedFile,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { ProvidersService } from './providers.service';
 import { ProviderDto } from './dto/provider.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -48,6 +52,72 @@ export class ProvidersController {
     return this.providersService.findByUserId(req.user.userId);
   }
 
+  @Post('me/images')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.PROVIDER)
+  @UseInterceptors(FileInterceptor('file'))
+  async uploadMyImage(
+    @Req() req: AuthenticatedRequest,
+    @UploadedFile() file: any,
+    @Query('providerId') providerId?: string,
+    @Body('providerId') bodyProviderId?: string,
+    @Query('imageCategory') queryCategory?: string,
+    @Body('imageCategory') bodyCategory?: string,
+    @Query('category') qCat?: string,
+    @Body('category') bCat?: string,
+  ) {
+    const targetProviderId = providerId || bodyProviderId;
+    const category = queryCategory || bodyCategory || qCat || bCat;
+    return this.providersService.uploadImage(
+      req.user.userId,
+      file,
+      targetProviderId,
+      category,
+    );
+  }
+
+  @Put('me/images/:imageId')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.PROVIDER)
+  @UseInterceptors(FileInterceptor('file'))
+  async replaceMyImage(
+    @Req() req: AuthenticatedRequest,
+    @Param('imageId') imageId: string,
+    @UploadedFile() file: any,
+    @Query('imageCategory') queryCategory?: string,
+    @Body('imageCategory') bodyCategory?: string,
+    @Query('category') qCat?: string,
+    @Body('category') bCat?: string,
+  ) {
+    const category = queryCategory || bodyCategory || qCat || bCat;
+    return this.providersService.replaceImage(
+      req.user.userId,
+      imageId,
+      file,
+      category,
+    );
+  }
+
+  @Get('me/images')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.PROVIDER)
+  async getMyImages(
+    @Req() req: AuthenticatedRequest,
+    @Query('providerId') providerId?: string,
+  ) {
+    return this.providersService.getMyImages(req.user.userId, providerId);
+  }
+
+  @Delete('me/images/:imageId')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.PROVIDER)
+  async deleteMyImage(
+    @Req() req: AuthenticatedRequest,
+    @Param('imageId') imageId: string,
+  ) {
+    return this.providersService.deleteImage(req.user.userId, imageId);
+  }
+
   @Get('search')
   async search(
     @Query('name') name?: string,
@@ -79,6 +149,11 @@ export class ProvidersController {
   @Get(':id')
   async findOne(@Param('id') id: string) {
     return this.providersService.findById(id);
+  }
+
+  @Get(':id/images')
+  async findImages(@Param('id') id: string) {
+    return this.providersService.getProviderImages(id);
   }
 
   @Put(':id')

@@ -64,12 +64,13 @@ export async function renderProviderDetail(providerId: string) {
     const userRole = (localStorage.getItem('userRole') || '').toUpperCase();
     const currentUserId = getCurrentUserId();
 
-    const [providerRes, plansRes, menuRes, revRes, subRes] = await Promise.allSettled([
+    const [providerRes, plansRes, menuRes, revRes, subRes, imgRes] = await Promise.allSettled([
       api.get(`/providers/${providerId}`),
       api.get(`/meal-plans/provider/${providerId}`),
       api.get(`/weekly-menus/provider/${providerId}`),
       api.get(`/reviews/provider/${providerId}`),
       token && userRole === 'STUDENT' ? api.get('/subscriptions') : Promise.resolve([]),
+      api.get(`/providers/${providerId}/images`),
     ]);
 
     const provider: any = providerRes.status === 'fulfilled' ? providerRes.value : null;
@@ -82,6 +83,12 @@ export async function renderProviderDetail(providerId: string) {
     const weeklyMenus: any[] = menuRes.status === 'fulfilled' && Array.isArray(menuRes.value) ? menuRes.value : [];
     const reviews: any[] = revRes.status === 'fulfilled' && Array.isArray(revRes.value) ? revRes.value : [];
     const userSubs: any[] = subRes.status === 'fulfilled' && Array.isArray(subRes.value) ? subRes.value : [];
+    const hostelImages: any[] =
+      imgRes.status === 'fulfilled' && Array.isArray(imgRes.value)
+        ? imgRes.value
+        : Array.isArray(provider.images)
+          ? provider.images
+          : [];
 
     const isSubscribed = userSubs.some((s: any) => s.mealPlan?.provider?.id === providerId);
     const myReview = currentUserId ? reviews.find((r: any) => r.student?.id === currentUserId) : null;
@@ -316,6 +323,41 @@ export async function renderProviderDetail(providerId: string) {
       }
     }
 
+    const hostelImagesHtml = hostelImages.length > 0
+      ? `
+        <div id="hostel-gallery-container" style="display: flex; flex-direction: column; gap: 14px;">
+          <!-- Main Selected Image -->
+          <div id="galleryMainImageWrapper" style="position: relative; width: 100%; aspect-ratio: 16/9; max-height: 420px; border-radius: 18px; overflow: hidden; background: #0f172a; cursor: pointer; border: 1px solid var(--color-neutral-200); box-shadow: 0 4px 14px rgba(0,0,0,0.06);">
+            <img id="galleryMainImage" src="${getSafeImageUrl(hostelImages[0].imageUrl)}" alt="Hostel photo" style="width: 100%; height: 100%; object-fit: cover; transition: opacity 0.2s ease;" />
+            <div style="position: absolute; bottom: 12px; right: 12px; background: rgba(0,0,0,0.7); color: #fff; padding: 4px 12px; border-radius: 999px; font-size: 12px; font-weight: 700; display: inline-flex; align-items: center; gap: 6px; backdrop-filter: blur(4px);">
+              <i class="fa-solid fa-expand"></i> Click to enlarge
+            </div>
+            <span id="galleryCounterBadge" style="position: absolute; top: 12px; left: 12px; background: rgba(0,0,0,0.7); color: #fff; padding: 4px 10px; border-radius: 999px; font-size: 11px; font-weight: 700; backdrop-filter: blur(4px);">
+              1 / ${hostelImages.length}
+            </span>
+          </div>
+
+          <!-- Horizontal Thumbnails Strip (Scrollable on mobile & desktop) -->
+          <div id="galleryThumbnailsStrip" style="display: flex; gap: 10px; overflow-x: auto; padding-bottom: 6px; scrollbar-width: thin; -webkit-overflow-scrolling: touch;">
+            ${hostelImages
+              .map(
+                (img, idx) => `
+              <button type="button" class="gallery-thumb-btn" data-img-idx="${idx}" style="flex-shrink: 0; width: 80px; height: 60px; border-radius: 10px; overflow: hidden; border: ${idx === 0 ? '2px solid var(--color-primary-600)' : '2px solid transparent'}; padding: 0; background: var(--color-neutral-100); cursor: pointer; transition: all 0.2s ease;">
+                <img src="${getSafeImageUrl(img.imageUrl)}" alt="Thumbnail ${idx + 1}" style="width: 100%; height: 100%; object-fit: cover;" />
+              </button>
+            `,
+              )
+              .join('')}
+          </div>
+        </div>
+      `
+      : `
+        <div style="text-align: center; padding: 24px; background: var(--color-neutral-50); border: 1px dashed var(--color-neutral-300); border-radius: 16px; color: var(--color-neutral-500); font-size: 14px;">
+          <i class="fa-solid fa-images" style="font-size: 24px; color: var(--color-neutral-400); margin-bottom: 6px; display: block;"></i>
+          No hostel images available.
+        </div>
+      `;
+
     detailView.innerHTML = `
       <div>
         <button id="backBtn" class="btn-outline-action" style="margin-bottom: 24px; padding: 8px 16px;">
@@ -360,6 +402,17 @@ export async function renderProviderDetail(providerId: string) {
         <div class="provider-detail-grid">
           <!-- Left Main Column -->
           <div style="display: flex; flex-direction: column; gap: 24px;">
+            <!-- Hostel Images Gallery (Student Read-Only) -->
+            <div id="hostelImagesSection" style="background: #fff; border: 1px solid var(--color-neutral-200); border-radius: 20px; padding: 24px; box-shadow: 0 4px 12px rgba(0,0,0,0.03);">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 8px;">
+                <h2 class="font-display" style="font-size: 20px; font-weight: 700; color: var(--color-neutral-900); margin: 0;">
+                  <i class="fa-solid fa-images" style="color: var(--color-primary-600); margin-right: 6px;"></i> Hostel Images
+                </h2>
+                ${hostelImages.length > 0 ? `<span style="font-size: 13px; font-weight: 700; color: var(--color-primary-700); background: var(--color-primary-50); padding: 4px 12px; border-radius: 999px;">${hostelImages.length} Photos</span>` : ''}
+              </div>
+              ${hostelImagesHtml}
+            </div>
+
             <!-- 1. About Mess -->
             <div style="background: #fff; border: 1px solid var(--color-neutral-200); border-radius: 20px; padding: 28px; box-shadow: 0 4px 12px rgba(0,0,0,0.03);">
               <h2 class="font-display" style="font-size: 20px; font-weight: 700; margin-bottom: 12px;">About this Kitchen</h2>
@@ -511,9 +564,85 @@ export async function renderProviderDetail(providerId: string) {
           </div>
         </div>
       </div>
+
+      <!-- Image Lightbox Viewer Modal (Student Read-Only) -->
+      <div id="imageLightboxModal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.92); z-index: 99999; align-items: center; justify-content: center; padding: 16px; backdrop-filter: blur(8px);">
+        <button id="closeLightboxBtn" style="position: absolute; top: 20px; right: 20px; background: rgba(255,255,255,0.2); border: none; color: #fff; width: 44px; height: 44px; border-radius: 50%; font-size: 22px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.2s;">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+        <div style="max-width: 90vw; max-height: 85vh; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+          <img id="lightboxImage" src="" alt="Hostel photo enlarged" style="max-width: 100%; max-height: 80vh; object-fit: contain; border-radius: 12px; box-shadow: 0 20px 50px rgba(0,0,0,0.5);" />
+          <span id="lightboxCaption" style="color: rgba(255,255,255,0.85); font-size: 14px; font-weight: 600; margin-top: 14px;"></span>
+        </div>
+      </div>
     `;
 
     document.getElementById('backBtn')?.addEventListener('click', () => navigate('#/providers'));
+
+    // Gallery Thumbnail & Lightbox View Handlers (Read-Only)
+    let currentGalleryIdx = 0;
+    const updateGalleryMain = (idx: number) => {
+      if (!hostelImages[idx]) return;
+      currentGalleryIdx = idx;
+      const mainImg = document.getElementById('galleryMainImage') as HTMLImageElement;
+      if (mainImg) {
+        mainImg.src = getSafeImageUrl(hostelImages[idx].imageUrl);
+      }
+      const counterBadge = document.getElementById('galleryCounterBadge');
+      if (counterBadge) {
+        counterBadge.innerText = `${idx + 1} / ${hostelImages.length}`;
+      }
+      document.querySelectorAll('.gallery-thumb-btn').forEach((btn) => {
+        const btnIdx = Number(btn.getAttribute('data-img-idx'));
+        if (btnIdx === idx) {
+          (btn as HTMLElement).style.border = '2px solid var(--color-primary-600)';
+        } else {
+          (btn as HTMLElement).style.border = '2px solid transparent';
+        }
+      });
+    };
+
+    document.querySelectorAll('.gallery-thumb-btn').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        const idx = Number((e.currentTarget as HTMLElement).getAttribute('data-img-idx'));
+        updateGalleryMain(idx);
+      });
+    });
+
+    const lightboxModal = document.getElementById('imageLightboxModal');
+    const lightboxImg = document.getElementById('lightboxImage') as HTMLImageElement;
+    const lightboxCaption = document.getElementById('lightboxCaption');
+
+    const openLightbox = (idx: number) => {
+      if (!hostelImages[idx] || !lightboxModal || !lightboxImg) return;
+      lightboxImg.src = getSafeImageUrl(hostelImages[idx].imageUrl);
+      if (lightboxCaption) {
+        lightboxCaption.innerText = `Photo ${idx + 1} of ${hostelImages.length}`;
+      }
+      lightboxModal.style.display = 'flex';
+      document.body.style.overflow = 'hidden';
+    };
+
+    const closeLightbox = () => {
+      if (lightboxModal) {
+        lightboxModal.style.display = 'none';
+        document.body.style.overflow = '';
+      }
+    };
+
+    document.getElementById('galleryMainImageWrapper')?.addEventListener('click', () => {
+      openLightbox(currentGalleryIdx);
+    });
+
+    document.getElementById('closeLightboxBtn')?.addEventListener('click', closeLightbox);
+    lightboxModal?.addEventListener('click', (e) => {
+      if (e.target === lightboxModal) closeLightbox();
+    });
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && lightboxModal && lightboxModal.style.display === 'flex') {
+        closeLightbox();
+      }
+    });
 
     // See Menu Modal Toggle & Smooth Scroll Handlers
     const menuModal = document.getElementById('weeklyMenuModal');

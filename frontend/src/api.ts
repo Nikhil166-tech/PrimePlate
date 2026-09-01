@@ -133,6 +133,45 @@ export const updateProviderBreakSettings = async (
 export const getProviderEarningsSummary = () => api.get('/payouts/provider/summary');
 export const getProviderEarningsHistory = () => api.get('/payouts/provider/history');
 
+export const uploadProviderHostelImage = (
+  formData: FormData,
+  providerId?: string,
+  onUploadProgress?: (progressEvent: any) => void,
+) =>
+  api.post(
+    `/providers/me/images${providerId ? `?providerId=${encodeURIComponent(providerId)}` : ''}`,
+    formData,
+    {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      onUploadProgress,
+    },
+  );
+
+export const replaceProviderHostelImage = (
+  imageId: string,
+  formData: FormData,
+  onUploadProgress?: (progressEvent: any) => void,
+) =>
+  api.put(
+    `/providers/me/images/${encodeURIComponent(imageId)}`,
+    formData,
+    {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      onUploadProgress,
+    },
+  );
+
+export const getMyHostelImages = (providerId?: string) =>
+  api.get(
+    `/providers/me/images${providerId ? `?providerId=${encodeURIComponent(providerId)}` : ''}`,
+  );
+
+export const deleteProviderHostelImage = (imageId: string) =>
+  api.delete(`/providers/me/images/${encodeURIComponent(imageId)}`);
+
+export const getPublicHostelImages = (providerId: string) =>
+  api.get(`/providers/${encodeURIComponent(providerId)}/images`);
+
 export default api;
 
 

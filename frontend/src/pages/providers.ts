@@ -115,10 +115,11 @@ export async function renderProviders() {
 
         const ratingDisplay = (h.rating ?? 0) > 0 ? Number(h.rating).toFixed(1) : 'New';
 
+        const providerMainImg = (h.hostelImages && h.hostelImages.length > 0) ? (h.hostelImages[0]?.imageUrl || h.imageUrl) : h.imageUrl;
         return `
         <div class="hostel-card" data-id="${h.id}">
           <div class="hostel-card-image">
-            <img src="${getSafeImageUrl(h.imageUrl)}" alt="${escapeHtml(h.name)}" />
+            <img src="${getSafeImageUrl(providerMainImg)}" alt="${escapeHtml(h.name)}" />
             <div class="hostel-badge-rating">
               <i class="fa-solid fa-star" style="color: var(--color-accent-500);"></i>
               <span>${ratingDisplay}</span>

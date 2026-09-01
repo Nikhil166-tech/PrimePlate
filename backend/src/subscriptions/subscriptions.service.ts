@@ -11,7 +11,7 @@ import { User } from '../users/user.entity';
 import { MealPlan } from '../meal-plans/meal-plan.entity';
 import { MealProvider } from '../providers/meal-provider.entity';
 import { Payment } from '../payments/payment.entity';
-import { ProviderEarning } from '../payouts/provider-earning.entity';
+import { ProviderEarning, ProviderEarningStatus } from '../payouts/provider-earning.entity';
 
 @Injectable()
 export class SubscriptionsService {
@@ -131,6 +131,8 @@ export class SubscriptionsService {
 
   async findByStudent(studentId: string): Promise<any[]> {
     if (!studentId) return [];
+    await this.autoRecoverStudentPendingPayments(studentId);
+
     const subs = await this.subRepo.find({
       where: { student: { id: studentId } },
       relations: { mealPlan: { provider: true } },
@@ -162,9 +164,18 @@ export class SubscriptionsService {
 
     const validCustomerSubs: any[] = [];
 
+    const todayStr = new Date().toISOString().split('T')[0];
+
     for (const sub of subs) {
-      // Must be active subscription
-      if (sub.status !== SubscriptionStatus.ACTIVE) {
+      if (sub.endDate && sub.endDate < todayStr && sub.status === SubscriptionStatus.ACTIVE) {
+        sub.status = SubscriptionStatus.EXPIRED;
+        if (this.subRepo.manager && typeof this.subRepo.manager.save === 'function') {
+          await this.subRepo.manager.save(Subscription, sub);
+        }
+      }
+
+      // Allow ACTIVE and EXPIRED subscriptions in history view
+      if (sub.status !== SubscriptionStatus.ACTIVE && sub.status !== SubscriptionStatus.EXPIRED) {
         continue;
       }
 
@@ -349,5 +360,104 @@ export class SubscriptionsService {
     sub.status = SubscriptionStatus.CANCELLED;
     sub.cancelledAt = new Date();
     return this.subRepo.save(sub);
+  }
+
+  private async autoRecoverStudentPendingPayments(studentId: string) {
+    try {
+      const pendingPayments = await this.subRepo.manager.find(Payment, {
+        where: {
+          student: { id: studentId },
+          status: 'created',
+        },
+        take: 5,
+      });
+
+      if (!pendingPayments || pendingPayments.length === 0) return;
+
+      const keyId = process.env.RAZORPAY_KEY_ID;
+      const keySecret = process.env.RAZORPAY_KEY_SECRET;
+      if (!keyId || !keySecret || keyId === 'rzp_test_key') return;
+
+      const Razorpay = require('razorpay');
+      const rzp = new Razorpay({ key_id: keyId, key_secret: keySecret });
+
+      for (const payment of pendingPayments) {
+        if (!payment.razorpayOrderId) continue;
+        try {
+          const rzpOrder: any = await rzp.orders.fetch(payment.razorpayOrderId);
+          if (rzpOrder && (rzpOrder.status === 'paid' || rzpOrder.amount_paid > 0)) {
+            const paymentsObj: any = await rzp.orders.fetchPayments(payment.razorpayOrderId);
+            const captured = paymentsObj?.items?.find((p: any) => p.status === 'captured');
+            const paymentId = captured?.id || `pay_rzp_${Date.now()}`;
+            const amountInPaise = captured?.amount || rzpOrder.amount_paid;
+            const rzpNotes = rzpOrder.notes || {};
+            const mealPlanId = payment.mealPlanId || rzpNotes.mealPlanId;
+            const durationDays = payment.durationDays || rzpNotes.durationDays || 30;
+
+            if (mealPlanId) {
+              await this.reconcilePaymentRecord(studentId, payment, paymentId, mealPlanId, durationDays, amountInPaise);
+            }
+          }
+        } catch (_) {}
+      }
+    } catch (_) {}
+  }
+
+  private async reconcilePaymentRecord(
+    studentId: string,
+    preOrder: Payment,
+    razorpayPaymentId: string,
+    mealPlanId: string,
+    durationDays: number,
+    amountInPaise?: number,
+  ) {
+    await this.subRepo.manager.transaction(async (manager) => {
+      const existingPayment = await manager.findOne(Payment, { where: { id: preOrder.id } });
+      if (!existingPayment || existingPayment.status === 'paid') return;
+
+      const student = await manager.findOne(User, { where: { id: studentId } });
+      const mealPlan = await manager.findOne(MealPlan, {
+        where: { id: mealPlanId },
+        relations: { provider: true },
+      });
+      if (!student || !mealPlan || !mealPlan.provider) return;
+
+      const grossAmount = existingPayment.amount
+        ? Number(existingPayment.amount)
+        : (amountInPaise ? amountInPaise / 100 : Number(mealPlan.pricePerMonth || 0));
+
+      existingPayment.status = 'paid';
+      existingPayment.razorpayPaymentId = razorpayPaymentId;
+      const savedPayment = await manager.save(Payment, existingPayment);
+
+      const startDate = new Date().toISOString().split('T')[0];
+      const startObj = new Date(startDate);
+      startObj.setDate(startObj.getDate() + durationDays);
+      const endDate = startObj.toISOString().split('T')[0];
+
+      const subscriptionEntity = manager.create(Subscription, {
+        student,
+        mealPlan,
+        status: SubscriptionStatus.ACTIVE,
+        startDate,
+        endDate,
+      });
+
+      const savedSubscription = await manager.save(Subscription, subscriptionEntity);
+
+      const earningEntity = manager.create(ProviderEarning, {
+        paymentId: savedPayment.id,
+        subscriptionId: savedSubscription.id,
+        providerId: mealPlan.provider.id,
+        studentId: student.id,
+        grossAmount,
+        platformFee: 0,
+        providerAmount: grossAmount,
+        status: ProviderEarningStatus.PENDING,
+        earnedAt: new Date(),
+      });
+
+      await manager.save(ProviderEarning, earningEntity);
+    });
   }
 }

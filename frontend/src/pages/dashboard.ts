@@ -375,7 +375,13 @@ export async function renderDashboard() {
     if (!subsGrid) return;
 
     const subs = loadedSubs;
-    const activeSubs = subs.filter((s) => s.status === 'ACTIVE' && s.paymentStatus === 'PAID');
+    const activeSubs = subs.filter((s) => {
+      const isStatusActive = (s.status || '').toUpperCase() === 'ACTIVE' && (s.paymentStatus || 'PAID').toUpperCase() === 'PAID';
+      if (!isStatusActive) return false;
+      if (s.daysLeft !== undefined && s.daysLeft <= 0) return false;
+      if (s.endDate && s.endDate < todayStr) return false;
+      return true;
+    });
     const validPaidSubs = subs.filter((s) => s.parsedPaid !== null && s.paymentStatus === 'PAID');
     const totalSpent = validPaidSubs.reduce((sum, s) => sum + (s.parsedPaid ?? 0), 0);
 
@@ -731,7 +737,7 @@ export async function renderDashboard() {
 
       const amountPaidDisplay = parsedPaid !== null ? `₹${parsedPaid.toLocaleString('en-IN')}` : 'Amount unavailable';
 
-      const rawStatus = (s.status || 'ACTIVE').toUpperCase();
+      let rawStatus = (s.status || 'ACTIVE').toUpperCase();
       const startDate = s.startDate || (s.createdAt ? new Date(s.createdAt).toISOString().split('T')[0] : '');
       const endDate = s.endDate || '';
 
@@ -747,6 +753,10 @@ export async function renderDashboard() {
         const endMs = new Date(endDate).getTime();
         const diffMs = endMs - Date.now();
         daysLeft = Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
+      }
+
+      if (rawStatus === 'ACTIVE' && (daysLeft <= 0 || (endDate && endDate < todayStr))) {
+        rawStatus = 'EXPIRED';
       }
 
       const safeRef = s.razorpayOrderId || s.razorpayPaymentId || s.id || 'REF-ACTIVE';

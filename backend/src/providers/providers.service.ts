@@ -471,6 +471,12 @@ export class ProvidersService {
       file,
       'primeplate/hostels',
     );
+
+    if (currentCount === 0 || !provider.imageUrl || provider.imageUrl.includes('pexels.com')) {
+      provider.imageUrl = uploadResult.secure_url;
+      await this.providerRepo.save(provider);
+    }
+
     const newImage = this.providerImageRepo.create({
       providerId: provider.id,
       imageUrl: uploadResult.secure_url,
@@ -519,6 +525,11 @@ export class ProvidersService {
     image.imageType = file.mimetype || image.imageType || 'image/jpeg';
     if (imageCategory && imageCategory.trim()) {
       image.imageCategory = imageCategory.trim();
+    }
+
+    if (image.provider && (image.sortOrder === 0 || !image.provider.imageUrl || image.provider.imageUrl.includes('pexels.com'))) {
+      image.provider.imageUrl = uploadResult.secure_url;
+      await this.providerRepo.save(image.provider);
     }
 
     return this.providerImageRepo.save(image);

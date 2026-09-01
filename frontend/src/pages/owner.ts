@@ -702,12 +702,12 @@ export async function renderOwnerPortal() {
             <!-- Mobile Quick Buttons (Only visible on mobile devices <769px) -->
             <div class="mobile-only-section">
               <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-                <button type="button" class="mobile-take-photo-btn btn-primary-action" style="padding: 14px 16px; font-size: 14px; font-weight: 700; border-radius: 14px; justify-content: center; background: linear-gradient(135deg, var(--color-primary-600), var(--color-primary-700)); box-shadow: 0 4px 12px rgba(234, 88, 12, 0.2); cursor: pointer;">
+                <label for="hostelCameraInput" class="mobile-take-photo-btn btn-primary-action" style="padding: 14px 16px; font-size: 14px; font-weight: 700; border-radius: 14px; justify-content: center; background: linear-gradient(135deg, var(--color-primary-600), var(--color-primary-700)); box-shadow: 0 4px 12px rgba(234, 88, 12, 0.2); cursor: pointer; display: flex; align-items: center; gap: 8px;">
                   <i class="fa-solid fa-camera" style="font-size: 16px;"></i> 📷 Take Photo
-                </button>
-                <button type="button" class="mobile-gallery-btn btn-outline-action" style="padding: 14px 16px; font-size: 14px; font-weight: 700; border-radius: 14px; justify-content: center; background: #fff; border: 2px solid var(--color-primary-600); color: var(--color-primary-700); cursor: pointer;">
+                </label>
+                <label for="hostelGalleryInput" class="mobile-gallery-btn btn-outline-action" style="padding: 14px 16px; font-size: 14px; font-weight: 700; border-radius: 14px; justify-content: center; background: #fff; border: 2px solid var(--color-primary-600); color: var(--color-primary-700); cursor: pointer; display: flex; align-items: center; gap: 8px;">
                   <i class="fa-solid fa-images" style="font-size: 16px;"></i> 🖼️ Choose from Gallery
-                </button>
+                </label>
               </div>
             </div>
 
@@ -848,10 +848,21 @@ export async function renderOwnerPortal() {
                       #${carouselActiveIndex + 1}
                     </span>
 
-                    <!-- Lightbox Trigger -->
-                    <button type="button" class="gallery-photo-click" data-img-id="${escapeHtml(hostelImages[carouselActiveIndex]?.id)}" style="position: absolute; top: 12px; right: 12px; background: rgba(0,0,0,0.65); color: #fff; border: none; padding: 6px 12px; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; backdrop-filter: blur(4px); display: inline-flex; align-items: center; gap: 6px;">
-                      <i class="fa-solid fa-expand"></i> Enlarge
-                    </button>
+                    <!-- Slide Action Triggers -->
+                    <div style="position: absolute; top: 12px; right: 12px; display: flex; gap: 6px; z-index: 6; flex-wrap: wrap; justify-content: flex-end;">
+                      <button type="button" class="slide-take-photo-btn" data-img-id="${escapeHtml(hostelImages[carouselActiveIndex]?.id)}" style="background: rgba(234, 88, 12, 0.9); color: #fff; border: none; padding: 6px 10px; border-radius: 8px; font-size: 11px; font-weight: 700; cursor: pointer; backdrop-filter: blur(4px); display: inline-flex; align-items: center; gap: 4px;" title="Take new photo with camera">
+                        <i class="fa-solid fa-camera"></i> Camera
+                      </button>
+                      <button type="button" class="slide-choose-gallery-btn" data-img-id="${escapeHtml(hostelImages[carouselActiveIndex]?.id)}" style="background: rgba(255, 255, 255, 0.9); color: #1e293b; border: none; padding: 6px 10px; border-radius: 8px; font-size: 11px; font-weight: 700; cursor: pointer; backdrop-filter: blur(4px); display: inline-flex; align-items: center; gap: 4px;" title="Choose replacement from gallery">
+                        <i class="fa-solid fa-images"></i> Gallery
+                      </button>
+                      <button type="button" class="gallery-photo-click" data-img-id="${escapeHtml(hostelImages[carouselActiveIndex]?.id)}" style="background: rgba(0,0,0,0.65); color: #fff; border: none; padding: 6px 10px; border-radius: 8px; font-size: 11px; font-weight: 700; cursor: pointer; backdrop-filter: blur(4px); display: inline-flex; align-items: center; gap: 4px;" title="Enlarge photo">
+                        <i class="fa-solid fa-expand"></i> Enlarge
+                      </button>
+                      <button type="button" class="delete-hostel-image-btn" data-img-id="${escapeHtml(hostelImages[carouselActiveIndex]?.id)}" style="background: rgba(220, 38, 38, 0.9); color: #fff; border: none; padding: 6px 10px; border-radius: 8px; font-size: 11px; font-weight: 700; cursor: pointer; backdrop-filter: blur(4px); display: inline-flex; align-items: center; gap: 4px;" title="Delete this photo">
+                        <i class="fa-solid fa-trash-can"></i> Delete
+                      </button>
+                    </div>
 
                     <!-- Navigation Arrow: Previous -->
                     ${hostelImages.length > 1 ? `
@@ -883,12 +894,15 @@ export async function renderOwnerPortal() {
                         Visible in public mess showcase
                       </span>
                     </div>
-                    <div style="display: flex; gap: 8px;">
-                      <button type="button" class="replace-hostel-image-btn btn-outline-action" data-img-id="${escapeHtml(hostelImages[carouselActiveIndex]?.id)}" style="padding: 8px 14px; font-size: 12px; font-weight: 700; border-radius: 10px; background: #fff;">
-                        <i class="fa-solid fa-arrows-rotate"></i> Replace Photo
+                    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                      <button type="button" class="slide-take-photo-btn btn-primary-action" data-img-id="${escapeHtml(hostelImages[carouselActiveIndex]?.id)}" style="padding: 8px 12px; font-size: 12px; font-weight: 700; border-radius: 10px;">
+                        <i class="fa-solid fa-camera"></i> 📷 Take Photo
                       </button>
-                      <button type="button" class="delete-hostel-image-btn" data-img-id="${escapeHtml(hostelImages[carouselActiveIndex]?.id)}" style="background: #fee2e2; color: #dc2626; border: 1px solid #fca5a5; font-size: 12px; font-weight: 700; padding: 8px 14px; border-radius: 10px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
-                        <i class="fa-solid fa-trash-can"></i> Delete Photo
+                      <button type="button" class="slide-choose-gallery-btn btn-outline-action" data-img-id="${escapeHtml(hostelImages[carouselActiveIndex]?.id)}" style="padding: 8px 12px; font-size: 12px; font-weight: 700; border-radius: 10px; background: #fff;">
+                        <i class="fa-solid fa-images"></i> 🖼️ From Gallery
+                      </button>
+                      <button type="button" class="delete-hostel-image-btn" data-img-id="${escapeHtml(hostelImages[carouselActiveIndex]?.id)}" style="background: #fee2e2; color: #dc2626; border: 1px solid #fca5a5; font-size: 12px; font-weight: 700; padding: 8px 12px; border-radius: 10px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
+                        <i class="fa-solid fa-trash-can"></i> Delete
                       </button>
                     </div>
                   </div>
@@ -1088,17 +1102,29 @@ export async function renderOwnerPortal() {
               <!-- ==========================================================
                    1. MOBILE COMPACT DASHBOARD VIEW (<=768px)
                    ========================================================== -->
-              <div class="mobile-only-section" style="margin-bottom: 24px;">
-                <!-- Primary PG Card -->
-                <div style="background: #fff; border: 1px solid var(--color-neutral-200); border-radius: 20px; padding: 18px; margin-bottom: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.03);">
-                  <div style="display: flex; align-items: flex-start; gap: 12px; margin-bottom: 14px;">
-                    <img src="${getSafeImageUrl(selectedHostel.imageUrl)}" alt="${escapeHtml(selectedHostel.name)}" style="width: 64px; height: 64px; border-radius: 12px; object-fit: cover; flex-shrink: 0; border: 1px solid var(--color-neutral-200);" />
-                    <div style="flex: 1; min-width: 0;">
-                      <h2 class="font-display" style="font-size: 18px; font-weight: 800; color: var(--color-neutral-900); margin: 0 0 2px 0;">${escapeHtml(selectedHostel.name)}</h2>
-                      <p style="font-size: 12px; color: var(--color-neutral-600); margin: 0 0 2px 0;"><i class="fa-solid fa-location-dot" style="color: var(--color-primary-600);"></i> ${escapeHtml(selectedHostel.address || selectedHostel.city || 'Location not set')}</p>
-                      <p style="font-size: 12px; color: var(--color-neutral-500); margin: 0;"><i class="fa-solid fa-phone"></i> ${escapeHtml(selectedHostel.contactPhone || 'No phone')}</p>
-                    </div>
-                  </div>
+              ${(() => {
+                const effectiveMainImage = (hostelImages && hostelImages.length > 0)
+                  ? (hostelImages[0]?.imageUrl || selectedHostel?.imageUrl)
+                  : (selectedHostel?.imageUrl || '');
+                return `
+                  <div class="mobile-only-section" style="margin-bottom: 24px;">
+                    <!-- Primary PG Card -->
+                    <div style="background: #fff; border: 1px solid var(--color-neutral-200); border-radius: 20px; padding: 18px; margin-bottom: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.03);">
+                      <div style="display: flex; align-items: flex-start; gap: 12px; margin-bottom: 14px;">
+                        <div style="position: relative; width: 64px; height: 64px; flex-shrink: 0; cursor: pointer;" class="change-main-hostel-image-btn" title="Click to Replace Hostel Main Photo">
+                          <img src="${getSafeImageUrl(effectiveMainImage)}" alt="${escapeHtml(selectedHostel.name)}" style="width: 64px; height: 64px; border-radius: 12px; object-fit: cover; border: 1px solid var(--color-neutral-200);" />
+                          <div style="position: absolute; bottom: -2px; right: -2px; width: 22px; height: 22px; border-radius: 50%; background: var(--color-primary-600); color: #fff; border: 2px solid #fff; font-size: 10px; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 6px rgba(0,0,0,0.25);">
+                            <i class="fa-solid fa-camera"></i>
+                          </div>
+                        </div>
+                        <div style="flex: 1; min-width: 0;">
+                          <h2 class="font-display" style="font-size: 18px; font-weight: 800; color: var(--color-neutral-900); margin: 0 0 2px 0;">${escapeHtml(selectedHostel.name)}</h2>
+                          <p style="font-size: 12px; color: var(--color-neutral-600); margin: 0 0 2px 0;"><i class="fa-solid fa-location-dot" style="color: var(--color-primary-600);"></i> ${escapeHtml(selectedHostel.address || selectedHostel.city || 'Location not set')}</p>
+                          <p style="font-size: 12px; color: var(--color-neutral-500); margin: 0;"><i class="fa-solid fa-phone"></i> ${escapeHtml(selectedHostel.contactPhone || 'No phone')}</p>
+                        </div>
+                      </div>
+                `;
+              })()}
 
                   <div style="background: var(--color-neutral-50); border: 1px solid var(--color-neutral-200); border-radius: 14px; padding: 10px 14px; margin-bottom: 14px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
                     <div>
@@ -1221,7 +1247,12 @@ export async function renderOwnerPortal() {
                 <!-- Mess Profile Management Card -->
                 <div id="messProfileSection" class="owner-section-card" style="background: #fff; border: 1px solid var(--color-neutral-200); border-radius: 20px; padding: 20px; margin-bottom: 24px; box-shadow: 0 4px 12px rgba(0,0,0,0.03);">
                   <div style="display: flex; align-items: flex-start; gap: 14px; margin-bottom: 16px;">
-                    <img src="${getSafeImageUrl(selectedHostel.imageUrl)}" alt="${escapeHtml(selectedHostel.name)}" style="width: 80px; height: 80px; border-radius: 14px; object-fit: cover; flex-shrink: 0; border: 1px solid var(--color-neutral-200);" />
+                    <div style="position: relative; width: 80px; height: 80px; flex-shrink: 0; cursor: pointer;" class="change-main-hostel-image-btn" title="Click to Replace Hostel Main Photo">
+                      <img src="${getSafeImageUrl((hostelImages && hostelImages.length > 0) ? (hostelImages[0]?.imageUrl || selectedHostel?.imageUrl) : (selectedHostel?.imageUrl || ''))}" alt="${escapeHtml(selectedHostel.name)}" style="width: 80px; height: 80px; border-radius: 14px; object-fit: cover; border: 1px solid var(--color-neutral-200);" />
+                      <div style="position: absolute; bottom: -2px; right: -2px; width: 26px; height: 26px; border-radius: 50%; background: var(--color-primary-600); color: #fff; border: 2px solid #fff; font-size: 11px; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 6px rgba(0,0,0,0.25);">
+                        <i class="fa-solid fa-camera"></i>
+                      </div>
+                    </div>
                     <div style="flex: 1; min-width: 0;">
                       <h2 class="font-display" style="font-size: 20px; font-weight: 800; color: var(--color-neutral-900); margin: 0 0 4px 0;">${escapeHtml(selectedHostel.name)}</h2>
                       <p style="font-size: 13px; color: var(--color-neutral-700); margin: 0 0 4px 0;"><i class="fa-solid fa-location-dot" style="color: var(--color-primary-600);"></i> ${escapeHtml(selectedHostel.address || selectedHostel.city || 'Location not specified')}</p>
@@ -1642,10 +1673,43 @@ export async function renderOwnerPortal() {
       </div>
 
       <!-- Hidden Inputs for Native Mobile Camera, Gallery, and Replacement Pickers -->
-      <input type="file" id="hostelCameraInput" accept="image/*" capture="environment" style="display: none;" />
+      <input type="file" id="hostelCameraInput" accept="image/*" capture="camera" style="display: none;" />
       <input type="file" id="hostelGalleryInput" accept="image/*" multiple style="display: none;" />
-      <input type="file" id="hostelReplaceCameraInput" accept="image/*" capture="environment" style="display: none;" />
+      <input type="file" id="hostelReplaceCameraInput" accept="image/*" capture="camera" style="display: none;" />
       <input type="file" id="hostelReplaceGalleryInput" accept="image/*" style="display: none;" />
+
+      <!-- HTML5 Live Camera Viewfinder Modal -->
+      <div id="liveCameraModal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.9); align-items: center; justify-content: center; z-index: 3000; padding: 16px;">
+        <div style="background: #111827; border-radius: 24px; max-width: 500px; width: 100%; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); border: 1px solid #374151; display: flex; flex-direction: column;">
+          <div style="padding: 16px 20px; display: flex; justify-content: space-between; align-items: center; background: #1f2937; border-bottom: 1px solid #374151;">
+            <h3 style="margin: 0; color: #fff; font-size: 16px; font-weight: 700; display: flex; align-items: center; gap: 8px;">
+              <i class="fa-solid fa-camera" style="color: #f97316;"></i> Live Camera Viewfinder
+            </h3>
+            <button id="closeLiveCameraBtn" type="button" style="background: none; border: none; color: #9ca3af; font-size: 24px; cursor: pointer; padding: 0 4px;">&times;</button>
+          </div>
+          
+          <div style="position: relative; width: 100%; aspect-ratio: 4/3; background: #000; display: flex; align-items: center; justify-content: center; overflow: hidden;">
+            <video id="liveCameraVideo" autoplay playsinline style="width: 100%; height: 100%; object-fit: cover;"></video>
+            <canvas id="liveCameraCanvas" style="display: none;"></canvas>
+            <div id="cameraLoadingSpinner" style="position: absolute; color: #fff; font-size: 14px; font-weight: 600; display: flex; flex-direction: column; align-items: center; gap: 8px;">
+              <i class="fa-solid fa-spinner fa-spin" style="font-size: 28px; color: #f97316;"></i>
+              Starting Camera...
+            </div>
+          </div>
+          
+          <div style="padding: 16px 20px; background: #1f2937; display: flex; justify-content: space-between; align-items: center;">
+            <button id="switchCameraFacingBtn" type="button" style="background: #374151; border: none; color: #fff; padding: 10px 16px; border-radius: 12px; font-size: 13px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 6px;">
+              <i class="fa-solid fa-camera-rotate"></i> Flip
+            </button>
+            <button id="snapCameraButton" type="button" style="background: #ea580c; border: none; color: #fff; width: 60px; height: 60px; border-radius: 50%; font-size: 22px; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 0 4px rgba(234,88,12,0.3);">
+              <i class="fa-solid fa-camera"></i>
+            </button>
+            <button id="cancelLiveCameraBtn" type="button" style="background: #374151; border: none; color: #fff; padding: 10px 16px; border-radius: 12px; font-size: 13px; font-weight: 600; cursor: pointer;">
+              Cancel
+            </button>
+          </div>
+        </div>
+      </div>
 
       <!-- Modal: Replace Hostel Image -->
       <div id="replaceImageModal" style="display: ${imageToReplace ? 'flex' : 'none'}; position: fixed; inset: 0; background: rgba(0,0,0,0.65); align-items: center; justify-content: center; z-index: 2200; padding: 16px;">
@@ -1678,18 +1742,18 @@ export async function renderOwnerPortal() {
           <!-- Action Buttons to Choose / Take New Photo -->
           <div class="mobile-only-section" style="margin-bottom: 16px;">
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-              <button type="button" class="replace-take-photo-btn btn-primary-action" style="padding: 10px; font-size: 13px; font-weight: 700; border-radius: 12px; justify-content: center; cursor: pointer;" ${isReplacingImage ? 'disabled' : ''}>
+              <label for="hostelReplaceCameraInput" class="replace-take-photo-btn btn-primary-action" style="padding: 10px; font-size: 13px; font-weight: 700; border-radius: 12px; justify-content: center; cursor: pointer; display: flex; align-items: center; gap: 6px;">
                 <i class="fa-solid fa-camera"></i> 📷 Take Photo
-              </button>
-              <button type="button" class="replace-gallery-btn btn-outline-action" style="padding: 10px; font-size: 13px; font-weight: 700; border-radius: 12px; justify-content: center; background: #fff; cursor: pointer;" ${isReplacingImage ? 'disabled' : ''}>
+              </label>
+              <label for="hostelReplaceGalleryInput" class="replace-gallery-btn btn-outline-action" style="padding: 10px; font-size: 13px; font-weight: 700; border-radius: 12px; justify-content: center; background: #fff; cursor: pointer; display: flex; align-items: center; gap: 6px;">
                 <i class="fa-solid fa-images"></i> 🖼️ From Gallery
-              </button>
+              </label>
             </div>
           </div>
           <div class="desktop-only-section" style="margin-bottom: 16px;">
-            <button type="button" class="replace-gallery-btn btn-primary-action" style="width: 100%; padding: 12px; font-size: 13px; font-weight: 700; border-radius: 12px; justify-content: center; cursor: pointer;" ${isReplacingImage ? 'disabled' : ''}>
+            <label for="hostelReplaceGalleryInput" class="replace-gallery-btn btn-primary-action" style="width: 100%; padding: 12px; font-size: 13px; font-weight: 700; border-radius: 12px; justify-content: center; cursor: pointer; display: flex; align-items: center; gap: 8px;">
               <i class="fa-solid fa-cloud-arrow-up"></i> Choose Replacement Image
-            </button>
+            </label>
           </div>
 
           ${replaceFile ? `
@@ -1913,6 +1977,7 @@ export async function renderOwnerPortal() {
 
       if (added > 0) {
         render();
+        processUploadQueue();
       }
     };
 
@@ -1973,16 +2038,117 @@ export async function renderOwnerPortal() {
       }, 1000);
     };
 
-    // Mobile Take Photo & Gallery triggers (works in main layout & mobile bottom sheet)
+    let currentCameraStream: MediaStream | null = null;
+    let currentFacingMode: 'environment' | 'user' = 'environment';
+    let targetCameraQueueCallback: ((file: File) => void) | null = null;
+
+    const stopCameraStream = () => {
+      if (currentCameraStream) {
+        currentCameraStream.getTracks().forEach((track) => track.stop());
+        currentCameraStream = null;
+      }
+      const modal = document.getElementById('liveCameraModal');
+      if (modal) modal.style.display = 'none';
+    };
+
+    const openLiveCameraView = async (onPhotoCaptured: (file: File) => void, fallbackInputId = 'hostelCameraInput') => {
+      targetCameraQueueCallback = onPhotoCaptured;
+      const modal = document.getElementById('liveCameraModal');
+      const video = document.getElementById('liveCameraVideo') as HTMLVideoElement;
+      const spinner = document.getElementById('cameraLoadingSpinner');
+
+      const getUserMediaFn =
+        navigator.mediaDevices && navigator.mediaDevices.getUserMedia
+          ? (c: MediaStreamConstraints) => navigator.mediaDevices.getUserMedia(c)
+          : (navigator as any).webkitGetUserMedia || (navigator as any).mozGetUserMedia;
+
+      if (!getUserMediaFn) {
+        const input = document.getElementById(fallbackInputId) as HTMLInputElement;
+        if (input) {
+          input.value = '';
+          input.click();
+        }
+        return;
+      }
+
+      if (modal) modal.style.display = 'flex';
+      if (spinner) spinner.style.display = 'flex';
+
+      try {
+        if (currentCameraStream) {
+          currentCameraStream.getTracks().forEach((t) => t.stop());
+        }
+
+        try {
+          currentCameraStream = await getUserMediaFn.call(
+            navigator.mediaDevices || navigator,
+            { video: { facingMode: { ideal: currentFacingMode } }, audio: false },
+          );
+        } catch (_) {
+          currentCameraStream = await getUserMediaFn.call(
+            navigator.mediaDevices || navigator,
+            { video: true, audio: false },
+          );
+        }
+
+        if (video) {
+          video.srcObject = currentCameraStream;
+          await video.play();
+        }
+        if (spinner) spinner.style.display = 'none';
+      } catch (err: any) {
+        console.warn('Camera stream permission error, using native picker:', err);
+        stopCameraStream();
+        const input = document.getElementById(fallbackInputId) as HTMLInputElement;
+        if (input) {
+          input.value = '';
+          input.click();
+        }
+      }
+    };
+
+    const snapPhotoFromCamera = () => {
+      const video = document.getElementById('liveCameraVideo') as HTMLVideoElement;
+      const canvas = document.getElementById('liveCameraCanvas') as HTMLCanvasElement;
+      if (!video || !canvas || !video.videoWidth) return;
+
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      canvas.toBlob(
+        (blob) => {
+          if (blob && targetCameraQueueCallback) {
+            const photoFile = new File([blob], `photo_${Date.now()}.jpg`, { type: 'image/jpeg' });
+            targetCameraQueueCallback(photoFile);
+          }
+          stopCameraStream();
+          showToast('Photo captured successfully! 📸', 'success');
+        },
+        'image/jpeg',
+        0.9,
+      );
+    };
+
+    // Live Camera Viewfinder Event Listeners
+    document.getElementById('closeLiveCameraBtn')?.addEventListener('click', stopCameraStream);
+    document.getElementById('cancelLiveCameraBtn')?.addEventListener('click', stopCameraStream);
+    document.getElementById('snapCameraButton')?.addEventListener('click', snapPhotoFromCamera);
+    document.getElementById('switchCameraFacingBtn')?.addEventListener('click', () => {
+      currentFacingMode = currentFacingMode === 'environment' ? 'user' : 'environment';
+      if (targetCameraQueueCallback) {
+        openLiveCameraView(targetCameraQueueCallback);
+      }
+    });
+
+    // Mobile Take Photo & Gallery triggers
     document.querySelectorAll('.mobile-take-photo-btn').forEach((btn) => {
       btn.addEventListener('click', (e) => {
         e.preventDefault();
         e.stopPropagation();
-        const cameraInput = document.getElementById('hostelCameraInput') as HTMLInputElement;
-        if (cameraInput) {
-          cameraInput.value = '';
-          cameraInput.click();
-        }
+        openLiveCameraView((file) => addFilesToQueue([file]));
       });
     });
 
@@ -2147,6 +2313,69 @@ export async function renderOwnerPortal() {
       });
     });
 
+    document.querySelectorAll('.slide-take-photo-btn').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const imgId = (e.currentTarget as HTMLElement).getAttribute('data-img-id');
+        const found = hostelImages.find((img) => img.id === imgId);
+        if (found) {
+          imageToReplace = found;
+          replaceFile = null;
+          replacePreviewUrl = null;
+          replaceCategory = found.imageCategory || 'Hostel';
+          isReplacingImage = false;
+          replaceProgress = 0;
+          replaceErrorMessage = null;
+          openLiveCameraView((file) => onReplaceFileSelected(file));
+        }
+      });
+    });
+
+    document.querySelectorAll('.slide-choose-gallery-btn').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const imgId = (e.currentTarget as HTMLElement).getAttribute('data-img-id');
+        const found = hostelImages.find((img) => img.id === imgId);
+        if (found) {
+          imageToReplace = found;
+          replaceFile = null;
+          replacePreviewUrl = null;
+          replaceCategory = found.imageCategory || 'Hostel';
+          isReplacingImage = false;
+          replaceProgress = 0;
+          replaceErrorMessage = null;
+          render();
+          const replaceInput = document.getElementById('hostelReplaceGalleryInput') as HTMLInputElement;
+          if (replaceInput) {
+            replaceInput.value = '';
+            replaceInput.click();
+          }
+        }
+      });
+    });
+
+    document.querySelectorAll('.change-main-hostel-image-btn').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (hostelImages && hostelImages.length > 0) {
+          imageToReplace = hostelImages[0];
+          replaceFile = null;
+          replacePreviewUrl = null;
+          replaceCategory = hostelImages[0].imageCategory || 'Hostel';
+          isReplacingImage = false;
+          replaceProgress = 0;
+          replaceErrorMessage = null;
+          showEditProfileModal = false;
+          render();
+        } else {
+          openLiveCameraView((file) => addFilesToQueue([file]));
+        }
+      });
+    });
+
     document.getElementById('closeLightboxBtn')?.addEventListener('click', () => {
       lightboxImage = null;
       render();
@@ -2196,12 +2425,10 @@ export async function renderOwnerPortal() {
     });
 
     document.querySelectorAll('.replace-take-photo-btn').forEach((btn) => {
-      btn.addEventListener('click', () => {
-        const input = document.getElementById('hostelReplaceCameraInput') as HTMLInputElement;
-        if (input) {
-          input.value = '';
-          input.click();
-        }
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        openLiveCameraView((file) => onReplaceFileSelected(file));
       });
     });
 
@@ -2215,7 +2442,7 @@ export async function renderOwnerPortal() {
       });
     });
 
-    const onReplaceFileSelected = (file: File) => {
+    const onReplaceFileSelected = async (file: File) => {
       const err = validateImageFile(file);
       if (err) {
         showToast(err, 'error');
@@ -2224,7 +2451,45 @@ export async function renderOwnerPortal() {
       replaceFile = file;
       replacePreviewUrl = URL.createObjectURL(file);
       replaceErrorMessage = null;
-      render();
+
+      if (imageToReplace) {
+        isReplacingImage = true;
+        replaceProgress = 15;
+        render();
+
+        try {
+          const formData = new FormData();
+          formData.append('file', replaceFile);
+          formData.append('imageCategory', replaceCategory || 'Hostel');
+
+          const res: any = await replaceProviderHostelImage(imageToReplace.id, formData, (progressEvent) => {
+            if (progressEvent.total) {
+              const percent = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+              replaceProgress = Math.min(99, Math.max(15, percent));
+              const bar = document.getElementById('replaceProgressBar');
+              if (bar) bar.style.width = `${replaceProgress}%`;
+            }
+          });
+
+          showToast('Hostel photo updated successfully! 📸', 'success');
+          imageToReplace = null;
+          replaceFile = null;
+          replacePreviewUrl = null;
+          isReplacingImage = false;
+          await fetchHostelImages();
+          if (res && res.imageUrl && selectedHostel) {
+            selectedHostel.imageUrl = res.imageUrl;
+          }
+          render();
+        } catch (uploadErr: any) {
+          isReplacingImage = false;
+          replaceErrorMessage = uploadErr.message || 'Failed to replace image. Please try again.';
+          showToast(replaceErrorMessage || 'Failed to replace image', 'error');
+          render();
+        }
+      } else {
+        render();
+      }
     };
 
     const replaceCameraInput = document.getElementById('hostelReplaceCameraInput') as HTMLInputElement;

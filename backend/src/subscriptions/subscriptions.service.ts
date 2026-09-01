@@ -3,6 +3,9 @@ import {
   NotFoundException,
   ForbiddenException,
   BadRequestException,
+  Inject,
+  Optional,
+  forwardRef,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -12,6 +15,7 @@ import { MealPlan } from '../meal-plans/meal-plan.entity';
 import { MealProvider } from '../providers/meal-provider.entity';
 import { Payment } from '../payments/payment.entity';
 import { ProviderEarning, ProviderEarningStatus } from '../payouts/provider-earning.entity';
+import { PaymentsService } from '../payments/payments.service';
 
 @Injectable()
 export class SubscriptionsService {
@@ -22,6 +26,9 @@ export class SubscriptionsService {
     private readonly userRepo: Repository<User>,
     @InjectRepository(MealPlan)
     private readonly planRepo: Repository<MealPlan>,
+    @Optional()
+    @Inject(forwardRef(() => PaymentsService))
+    private readonly paymentsService?: PaymentsService,
   ) {}
 
   async create(
@@ -394,70 +401,20 @@ export class SubscriptionsService {
             const mealPlanId = payment.mealPlanId || rzpNotes.mealPlanId;
             const durationDays = payment.durationDays || rzpNotes.durationDays || 30;
 
-            if (mealPlanId) {
-              await this.reconcilePaymentRecord(studentId, payment, paymentId, mealPlanId, durationDays, amountInPaise);
+            if (mealPlanId && this.paymentsService && typeof this.paymentsService.reconcileCapturedPayment === 'function') {
+              await this.paymentsService.reconcileCapturedPayment({
+                userId: studentId,
+                razorpayOrderId: payment.razorpayOrderId,
+                razorpayPaymentId: paymentId,
+                mealPlanId,
+                durationInput: durationDays,
+                skipSignatureCheck: true,
+                paymentAmountInPaise: amountInPaise,
+              });
             }
           }
         } catch (_) {}
       }
     } catch (_) {}
-  }
-
-  private async reconcilePaymentRecord(
-    studentId: string,
-    preOrder: Payment,
-    razorpayPaymentId: string,
-    mealPlanId: string,
-    durationDays: number,
-    amountInPaise?: number,
-  ) {
-    await this.subRepo.manager.transaction(async (manager) => {
-      const existingPayment = await manager.findOne(Payment, { where: { id: preOrder.id } });
-      if (!existingPayment || existingPayment.status === 'paid') return;
-
-      const student = await manager.findOne(User, { where: { id: studentId } });
-      const mealPlan = await manager.findOne(MealPlan, {
-        where: { id: mealPlanId },
-        relations: { provider: true },
-      });
-      if (!student || !mealPlan || !mealPlan.provider) return;
-
-      const grossAmount = existingPayment.amount
-        ? Number(existingPayment.amount)
-        : (amountInPaise ? amountInPaise / 100 : Number(mealPlan.pricePerMonth || 0));
-
-      existingPayment.status = 'paid';
-      existingPayment.razorpayPaymentId = razorpayPaymentId;
-      const savedPayment = await manager.save(Payment, existingPayment);
-
-      const startDate = new Date().toISOString().split('T')[0];
-      const startObj = new Date(startDate);
-      startObj.setDate(startObj.getDate() + durationDays);
-      const endDate = startObj.toISOString().split('T')[0];
-
-      const subscriptionEntity = manager.create(Subscription, {
-        student,
-        mealPlan,
-        status: SubscriptionStatus.ACTIVE,
-        startDate,
-        endDate,
-      });
-
-      const savedSubscription = await manager.save(Subscription, subscriptionEntity);
-
-      const earningEntity = manager.create(ProviderEarning, {
-        paymentId: savedPayment.id,
-        subscriptionId: savedSubscription.id,
-        providerId: mealPlan.provider.id,
-        studentId: student.id,
-        grossAmount,
-        platformFee: 0,
-        providerAmount: grossAmount,
-        status: ProviderEarningStatus.PENDING,
-        earnedAt: new Date(),
-      });
-
-      await manager.save(ProviderEarning, earningEntity);
-    });
   }
 }

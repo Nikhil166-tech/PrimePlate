@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Payment } from './payment.entity';
 import { PaymentWebhookEvent } from './webhook-event.entity';
@@ -19,7 +19,7 @@ import { PaymentsController } from './payments.controller';
       ProviderEarning,
       PaymentWebhookEvent,
     ]),
-    SubscriptionsModule,
+    forwardRef(() => SubscriptionsModule),
     PayoutsModule,
   ],
   controllers: [PaymentsController],

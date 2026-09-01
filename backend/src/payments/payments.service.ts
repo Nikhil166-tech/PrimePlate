@@ -5,6 +5,8 @@ import {
   UnauthorizedException,
   ForbiddenException,
   Logger,
+  Inject,
+  forwardRef,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -99,6 +101,7 @@ export class PaymentsService {
     private readonly webhookEventRepo: Repository<PaymentWebhookEvent>,
     @InjectRepository(MealPlan) private readonly planRepo: Repository<MealPlan>,
     @InjectRepository(User) private readonly userRepo: Repository<User>,
+    @Inject(forwardRef(() => SubscriptionsService))
     private readonly subscriptionsService: SubscriptionsService,
   ) {
     const keyId = this.config.get<string>('RAZORPAY_KEY_ID');
@@ -557,49 +560,83 @@ export class PaymentsService {
 
       const savedPayment = await manager.save(Payment, paymentToSave);
 
-      // 5. Create and save Subscription AFTER Payment is persisted
-      const startDate = new Date().toISOString().split('T')[0];
-      const startObj = new Date(startDate);
-      startObj.setDate(startObj.getDate() + durationDays);
-      const endDate = startObj.toISOString().split('T')[0];
-
-      const subscriptionEntity = manager.create(Subscription, {
-        student,
-        mealPlan,
-        status: SubscriptionStatus.ACTIVE,
-        startDate,
-        endDate,
+      // 5. Idempotency Check: Check if ProviderEarning / Subscription already exists for savedPayment
+      let earning = await manager.findOne(ProviderEarning, {
+        where: { paymentId: savedPayment.id },
+        relations: { subscription: true },
       });
 
-      const savedSubscription = await manager.save(
-        Subscription,
-        subscriptionEntity,
-      );
+      if (earning && earning.subscription) {
+        return {
+          success: true,
+          verified: true,
+          idempotent: true,
+          payment: savedPayment,
+          subscription: earning.subscription,
+          earning,
+        };
+      }
+
+      // Check if an active Subscription already exists for this student & meal plan
+      const existingActiveSub = await manager.findOne(Subscription, {
+        where: {
+          student: { id: student.id },
+          mealPlan: { id: mealPlan.id },
+          status: SubscriptionStatus.ACTIVE,
+        },
+        order: { createdAt: 'DESC' },
+      });
+
+      let savedSubscription: Subscription;
+
+      if (existingActiveSub) {
+        savedSubscription = existingActiveSub;
+      } else {
+        const startDate = new Date().toISOString().split('T')[0];
+        const startObj = new Date(startDate);
+        startObj.setDate(startObj.getDate() + durationDays);
+        const endDate = startObj.toISOString().split('T')[0];
+
+        const subscriptionEntity = manager.create(Subscription, {
+          student,
+          mealPlan,
+          status: SubscriptionStatus.ACTIVE,
+          startDate,
+          endDate,
+        });
+
+        savedSubscription = await manager.save(
+          Subscription,
+          subscriptionEntity,
+        );
+      }
 
       // 6. Create and save Provider Earning record atomically
       const grossAmount = Number(savedPayment.amount);
       const platformFee = 0;
       const providerAmount = grossAmount - platformFee;
 
-      const earningEntity = manager.create(ProviderEarning, {
-        paymentId: savedPayment.id,
-        subscriptionId: savedSubscription.id,
-        providerId: provider.id,
-        studentId: student.id,
-        grossAmount,
-        platformFee,
-        providerAmount,
-        status: ProviderEarningStatus.PENDING,
-        earnedAt: new Date(),
-      });
-
-      await manager.save(ProviderEarning, earningEntity);
+      if (!earning) {
+        earning = manager.create(ProviderEarning, {
+          paymentId: savedPayment.id,
+          subscriptionId: savedSubscription.id,
+          providerId: provider.id,
+          studentId: student.id,
+          grossAmount,
+          platformFee,
+          providerAmount,
+          status: ProviderEarningStatus.PENDING,
+          earnedAt: new Date(),
+        });
+        await manager.save(ProviderEarning, earning);
+      }
 
       return {
         success: true,
         verified: true,
         payment: savedPayment,
         subscription: savedSubscription,
+        earning,
       };
     });
   }

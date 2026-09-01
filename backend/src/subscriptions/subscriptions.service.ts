@@ -148,36 +148,72 @@ export class SubscriptionsService {
       order: { createdAt: 'DESC' },
     });
 
-    return subs.map((sub: any) => {
-      // 1. Direct link via ProviderEarning
-      const earning = earnings.find((e) => e.subscriptionId === sub.id);
-      let matchingPayment: any = earning?.payment;
+    const matchedPaymentIds = new Set<string>();
 
-      // 2. Direct match by created timestamp & provider if earning not present
-      if (!matchingPayment) {
-        matchingPayment = payments.find((p: any) => {
-          if (p.provider?.id !== sub.mealPlan?.provider?.id) return false;
-          const pTime = new Date(p.createdAt).getTime();
-          const sTime = new Date(sub.createdAt).getTime();
-          return Math.abs(pTime - sTime) <= 120000;
-        });
+    const subPaymentMap = new Map<string, any>();
+    for (const earning of earnings) {
+      if (earning.subscriptionId && earning.payment) {
+        subPaymentMap.set(earning.subscriptionId, earning.payment);
+        if (earning.payment.id) {
+          matchedPaymentIds.add(earning.payment.id);
+        }
+      }
+    }
+
+    const validCustomerSubs: any[] = [];
+
+    for (const sub of subs) {
+      // Must be active subscription
+      if (sub.status !== SubscriptionStatus.ACTIVE) {
+        continue;
       }
 
-      const rawAmount = matchingPayment ? Number(matchingPayment.amount) : null;
+      // 1. Direct link via ProviderEarning
+      let matchingPayment: any = subPaymentMap.get(sub.id);
 
-      return {
+      // 2. Direct match by order / mealPlan / provider & timestamp if earning not present
+      if (!matchingPayment) {
+        matchingPayment = payments.find((p: any) => {
+          if (matchedPaymentIds.has(p.id)) return false;
+          if (p.student?.id !== studentId) return false;
+          if (p.mealPlanId && p.mealPlanId !== sub.mealPlan?.id) return false;
+          if (p.provider?.id && p.provider.id !== sub.mealPlan?.provider?.id) return false;
+          if (p.createdAt && sub.createdAt) {
+            const pTime = new Date(p.createdAt).getTime();
+            const sTime = new Date(sub.createdAt).getTime();
+            return Math.abs(pTime - sTime) <= 120000;
+          }
+          return false;
+        });
+
+        if (matchingPayment && matchingPayment.id) {
+          matchedPaymentIds.add(matchingPayment.id);
+        }
+      }
+
+      // AUTHORITATIVE CONDITION: Payment MUST exist and Payment.status MUST be 'paid'
+      if (
+        !matchingPayment ||
+        !matchingPayment.status ||
+        String(matchingPayment.status).toLowerCase() !== 'paid'
+      ) {
+        // Unsuccessful (created, processing, failed, refunded) or no payment record -> EXCLUDE
+        continue;
+      }
+
+      const rawAmount = Number(matchingPayment.amount);
+
+      validCustomerSubs.push({
         ...sub,
         amountPaid: rawAmount,
-        razorpayOrderId: matchingPayment?.razorpayOrderId || null,
-        razorpayPaymentId: matchingPayment?.razorpayPaymentId || null,
-        paymentStatus: matchingPayment?.status
-          ? String(matchingPayment.status).toUpperCase()
-          : rawAmount !== null
-            ? 'PAID'
-            : 'UNKNOWN',
-        paymentDate: matchingPayment?.createdAt || sub.createdAt,
-      };
-    });
+        razorpayOrderId: matchingPayment.razorpayOrderId || null,
+        razorpayPaymentId: matchingPayment.razorpayPaymentId || null,
+        paymentStatus: 'PAID',
+        paymentDate: matchingPayment.createdAt || sub.createdAt,
+      });
+    }
+
+    return validCustomerSubs;
   }
 
   async verifyProviderOwnership(

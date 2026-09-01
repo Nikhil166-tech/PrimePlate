@@ -375,8 +375,8 @@ export async function renderDashboard() {
     if (!subsGrid) return;
 
     const subs = loadedSubs;
-    const activeSubs = subs.filter((s) => s.status === 'ACTIVE');
-    const validPaidSubs = subs.filter((s) => s.parsedPaid !== null);
+    const activeSubs = subs.filter((s) => s.status === 'ACTIVE' && s.paymentStatus === 'PAID');
+    const validPaidSubs = subs.filter((s) => s.parsedPaid !== null && s.paymentStatus === 'PAID');
     const totalSpent = validPaidSubs.reduce((sum, s) => sum + (s.parsedPaid ?? 0), 0);
 
     const activeCardsEl = document.getElementById('activeCardsCount');

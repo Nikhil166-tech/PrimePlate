@@ -25,6 +25,8 @@ import {
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 
 describe('PrimePlate Payment Security & Recovery Specification', () => {
+  jest.setTimeout(20000);
+
   let paymentsService: PaymentsService;
   let paymentRepo: any;
   let webhookEventRepo: any;

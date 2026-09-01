@@ -201,6 +201,7 @@ export async function renderCheckout(planId: string) {
 
   const setConfirmationPendingState = (orderId: string, isMaxAttemptsReached = false) => {
     sessionStorage.setItem('pendingPaymentOrderId', orderId);
+    sessionStorage.setItem('pendingPaymentPlanId', actualPlanId);
     console.log(`PAYMENT_PENDING_ORDER orderId=${orderId}`);
 
     if (payBtn) {
@@ -237,13 +238,21 @@ export async function renderCheckout(planId: string) {
       notice.innerHTML = `
         <div style="display: flex; align-items: flex-start; gap: 12px;">
           <i class="fa-solid fa-hourglass-half" style="color: #d97706; font-size: 20px; margin-top: 2px;"></i>
-          <div>
+          <div style="flex: 1;">
             <strong style="color: #92400e; font-size: 15px; display: block; margin-bottom: 4px;">${noticeTitle}</strong>
-            <p style="color: #b45309; font-size: 13px; margin: 0; line-height: 1.4;">${noticeDesc}</p>
+            <p style="color: #b45309; font-size: 13px; margin: 0 0 12px 0; line-height: 1.4;">${noticeDesc}</p>
+            <button id="clearAndPayAgainBtn" type="button" class="btn-outline-action" style="padding: 6px 14px; font-size: 12px; font-weight: 700; color: #b45309; border-color: #fcd34d; background: #ffffff; cursor: pointer;">
+              <i class="fa-solid fa-rotate-left"></i> Cancel Pending Check & Try New Payment
+            </button>
           </div>
         </div>
       `;
       detailsBox.prepend(notice);
+
+      document.getElementById('clearAndPayAgainBtn')?.addEventListener('click', () => {
+        resetPayBtns();
+        showToast('Pending check cleared. You can now place a new payment.', 'info');
+      });
     }
   };
 
@@ -251,6 +260,7 @@ export async function renderCheckout(planId: string) {
     if (pollingTimerId) clearTimeout(pollingTimerId);
     pollingTimerId = null;
     sessionStorage.removeItem('pendingPaymentOrderId');
+    sessionStorage.removeItem('pendingPaymentPlanId');
     const notice = document.getElementById('pendingRecoveryNotice');
     if (notice) notice.remove();
 
@@ -284,6 +294,7 @@ export async function renderCheckout(planId: string) {
         if (pollingTimerId) clearTimeout(pollingTimerId);
         pollingTimerId = null;
         sessionStorage.removeItem('pendingPaymentOrderId');
+        sessionStorage.removeItem('pendingPaymentPlanId');
         showToast('Payment verified successfully! Your subscription is now ACTIVE 🎉', 'success');
         navigate('#/student/dashboard');
         return 'SUCCESS';
@@ -291,6 +302,7 @@ export async function renderCheckout(planId: string) {
         if (pollingTimerId) clearTimeout(pollingTimerId);
         pollingTimerId = null;
         sessionStorage.removeItem('pendingPaymentOrderId');
+        sessionStorage.removeItem('pendingPaymentPlanId');
         showToast(res.message || 'Payment failed. You can try again.', 'error');
         resetPayBtns();
         return 'FAILED';
@@ -308,6 +320,7 @@ export async function renderCheckout(planId: string) {
         if (pollingTimerId) clearTimeout(pollingTimerId);
         pollingTimerId = null;
         sessionStorage.removeItem('pendingPaymentOrderId');
+        sessionStorage.removeItem('pendingPaymentPlanId');
         showToast('Order record not found on server. Please try placing your order again.', 'info');
         resetPayBtns();
         return 'FAILED';
@@ -354,10 +367,17 @@ export async function renderCheckout(planId: string) {
 
   // Check for unresolved pending order on page load / refresh
   const savedPendingOrderId = sessionStorage.getItem('pendingPaymentOrderId');
+  const savedPendingPlanId = sessionStorage.getItem('pendingPaymentPlanId');
   if (savedPendingOrderId) {
-    console.log(`PAYMENT_PENDING_ORDER orderId=${savedPendingOrderId}`);
-    setConfirmationPendingState(savedPendingOrderId, false);
-    startBoundedStatusPolling(savedPendingOrderId);
+    if (savedPendingPlanId && savedPendingPlanId !== actualPlanId) {
+      // Pending order belongs to a different plan; do not block checkout for new plan
+      sessionStorage.removeItem('pendingPaymentOrderId');
+      sessionStorage.removeItem('pendingPaymentPlanId');
+    } else {
+      console.log(`PAYMENT_PENDING_ORDER orderId=${savedPendingOrderId}`);
+      setConfirmationPendingState(savedPendingOrderId, false);
+      startBoundedStatusPolling(savedPendingOrderId);
+    }
   }
 
   const processDirectVerification = async (orderId: string) => {

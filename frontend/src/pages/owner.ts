@@ -30,6 +30,7 @@ export async function renderOwnerPortal() {
   let showModal = false;
   let showEditPriceModal = false;
   let showEditLocationModal = false;
+  let showEditProfileModal = false;
   let showSubscriberDetailsModal = false;
   let selectedSubscriberForDetails: any = null;
   let showManagePanel = false;
@@ -38,6 +39,50 @@ export async function renderOwnerPortal() {
   let editingMenuValue = '';
   let modalEditLat: number | null = null;
   let modalEditLng: number | null = null;
+  const COMMON_AMENITIES = ['WIFI', 'TV', 'HOT WATER', 'PARKING', 'GYM', 'COOL WATER'];
+
+  const createCustomAmenityRow = (containerId: string, initialValue = '') => {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    const row = document.createElement('div');
+    row.className = 'custom-amenity-row';
+    row.style.cssText = 'display: flex; gap: 8px; align-items: center;';
+    row.innerHTML = `
+      <input type="text" class="custom-amenity-input btn-outline-action" style="flex: 1; background: #fff; padding: 10px 14px; font-size: 13px; min-width: 0;" placeholder="e.g. 24/7 Security" maxlength="50" value="${escapeHtml(initialValue)}" />
+      <button type="button" class="remove-amenity-btn btn-outline-action" style="padding: 10px 14px; font-size: 12px; font-weight: 700; color: #dc2626; border-color: #fca5a5; background: #fff; white-space: nowrap;">
+        <i class="fa-solid fa-trash"></i> Remove
+      </button>
+    `;
+    row.querySelector('.remove-amenity-btn')?.addEventListener('click', () => {
+      row.remove();
+    });
+    container.appendChild(row);
+  };
+
+  const collectAmenitiesFromForm = (formElement: HTMLElement, checkboxName: string, customContainerId: string): string[] => {
+    const selected: string[] = [];
+    const seen = new Set<string>();
+
+    const checkboxes = formElement.querySelectorAll<HTMLInputElement>(`input[name="${checkboxName}"]:checked`);
+    checkboxes.forEach((cb) => {
+      const val = cb.value.trim();
+      if (val && !seen.has(val.toLowerCase())) {
+        seen.add(val.toLowerCase());
+        selected.push(val);
+      }
+    });
+
+    const customInputs = formElement.querySelectorAll<HTMLInputElement>(`#${customContainerId} .custom-amenity-input`);
+    customInputs.forEach((inp) => {
+      const val = inp.value.trim();
+      if (val && !seen.has(val.toLowerCase())) {
+        seen.add(val.toLowerCase());
+        selected.push(val);
+      }
+    });
+
+    return selected;
+  };
   let earningsSummary: any = {
     totalGross: 0,
     platformFees: 0,
@@ -90,7 +135,7 @@ export async function renderOwnerPortal() {
 
   let weeklyMenus: any[] = [];
   const fetchWeeklyMenus = async () => {
-    if (!selectedHostel || selectedHostel.approvalStatus !== 'APPROVED') {
+    if (!selectedHostel) {
       weeklyMenus = [];
       return;
     }
@@ -221,6 +266,16 @@ export async function renderOwnerPortal() {
     // Reusable Content Generators for Sections & Modals
     const renderManagePgContent = () => `
       <div style="display: flex; flex-direction: column; gap: 12px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 12px 14px; background: var(--color-neutral-50); border: 1px solid var(--color-neutral-200); border-radius: 14px; flex-wrap: wrap;">
+          <div>
+            <span style="font-size: 11px; font-weight: 700; color: var(--color-neutral-500); text-transform: uppercase; display: block; margin-bottom: 2px;">Kitchen Description & Amenities</span>
+            <span style="font-size: 13px; font-weight: 600; color: var(--color-neutral-800);">${(selectedHostel?.amenities?.length || 0)} Amenities · ${selectedHostel?.description ? 'Description set' : 'No description'}</span>
+          </div>
+          <button type="button" class="open-edit-profile-btn btn-outline-action" style="padding: 8px 14px; font-size: 12px; font-weight: 700; background: #fff; border-radius: 8px; min-height: 40px; cursor: pointer;">
+            <i class="fa-solid fa-pen-to-square"></i> Edit Profile & Amenities
+          </button>
+        </div>
+
         <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 12px 14px; background: var(--color-neutral-50); border: 1px solid var(--color-neutral-200); border-radius: 14px; flex-wrap: wrap;">
           <div>
             <span style="font-size: 11px; font-weight: 700; color: var(--color-neutral-500); text-transform: uppercase; display: block; margin-bottom: 2px;">GPS Location</span>
@@ -431,9 +486,9 @@ export async function renderOwnerPortal() {
                     </div>
                     ${isEditing ? `
                       <div style="display: flex; gap: 6px; align-items: center; margin-top: 4px;">
-                        <input type="text" id="inlineMenuInput" class="menu-inline-input" value="${escapeHtml(editingMenuValue)}" placeholder="Enter menu items..." autoFocus />
-                        <button id="saveInlineMenuBtn" class="btn-icon-save"><i class="fa-solid fa-check"></i></button>
-                        <button id="cancelInlineMenuBtn" class="btn-icon-cancel"><i class="fa-solid fa-xmark"></i></button>
+                        <input type="text" class="menu-inline-input" value="${escapeHtml(editingMenuValue)}" placeholder="Enter menu items..." autoFocus />
+                        <button class="save-inline-menu-btn btn-icon-save" title="Save"><i class="fa-solid fa-check"></i></button>
+                        <button class="cancel-inline-menu-btn btn-icon-cancel" title="Cancel"><i class="fa-solid fa-xmark"></i></button>
                       </div>
                     ` : `
                       <p style="font-size: 12px; color: var(--color-neutral-700); margin: 0;">
@@ -651,6 +706,35 @@ export async function renderOwnerPortal() {
                     </div>
                   </div>
 
+                  <div>
+                    <label for="cDescription" style="font-size: 13px; font-weight: 700; color: var(--color-neutral-800); display: block; margin-bottom: 6px;">About This Kitchen / Mess</label>
+                    <textarea id="cDescription" rows="4" maxlength="1000" class="btn-outline-action" style="width: 100%; background: #fff; padding: 12px 16px; font-size: 14px; resize: vertical; min-height: 90px; text-align: left;" placeholder="Tell students about your hostel/mess, food quality, timings, dining environment, and anything else they should know."></textarea>
+                    <div style="display: flex; justify-content: flex-end; margin-top: 4px;">
+                      <span id="cDescriptionCount" style="font-size: 11px; color: var(--color-neutral-400);">0 / 1000 characters</span>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label style="font-size: 13px; font-weight: 700; color: var(--color-neutral-800); display: block; margin-bottom: 6px;">Hostel Amenities & Facilities</label>
+                    <p style="font-size: 12px; color: var(--color-neutral-500); margin: 0 0 10px 0;">Select common amenities or add custom facilities provided at your mess/hostel:</p>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 8px; margin-bottom: 12px;">
+                      ${COMMON_AMENITIES.map((amenity, idx) => `
+                        <label for="cAmenity_${idx}" style="display: flex; align-items: center; gap: 8px; padding: 8px 12px; border: 1px solid var(--color-neutral-200); border-radius: 10px; cursor: pointer; background: #fff; font-size: 13px; font-weight: 600; color: var(--color-neutral-800);">
+                          <input type="checkbox" id="cAmenity_${idx}" name="cAmenities" value="${escapeHtml(amenity)}" style="width: 16px; height: 16px; accent-color: var(--color-primary-600); cursor: pointer;" />
+                          <span>${escapeHtml(amenity)}</span>
+                        </label>
+                      `).join('')}
+                    </div>
+
+                    <div style="margin-top: 8px;">
+                      <span style="font-size: 12px; font-weight: 700; color: var(--color-neutral-700); display: block; margin-bottom: 6px;">Custom Amenities</span>
+                      <div id="cCustomAmenitiesList" style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 8px;"></div>
+                      <button type="button" id="cAddCustomAmenityBtn" class="btn-outline-action" style="font-size: 13px; font-weight: 700; padding: 8px 14px; background: #fff; border-radius: 8px;">
+                        <i class="fa-solid fa-plus"></i> Add Another Amenity
+                      </button>
+                    </div>
+                  </div>
+
                   <button type="submit" class="btn-primary-action" style="width: 100%; justify-content: center; padding: 14px; font-size: 16px; margin-top: 8px;">
                     Submit Kitchen Registration
                   </button>
@@ -736,6 +820,19 @@ export async function renderOwnerPortal() {
                       ${selectedHostel.acceptingSubscriptions !== false ? '🟢 Kitchen OPEN' : '🔴 Kitchen CLOSED'}
                     </span>
                     <span style="font-size: 12px; font-weight: 600; color: var(--color-neutral-700);">👥 ${totalSubscribersCount} / ${selectedHostel.totalCapacity ?? 50}</span>
+                  </div>
+
+                  <div style="margin-bottom: 14px; padding-top: 10px; border-top: 1px solid var(--color-neutral-100);">
+                    <h4 style="font-size: 13px; font-weight: 700; color: var(--color-neutral-900); margin: 0 0 4px 0;">About This Kitchen</h4>
+                    <p style="color: var(--color-neutral-700); font-size: 13px; line-height: 1.5; margin: 0 0 10px 0;">${selectedHostel.description ? escapeHtml(selectedHostel.description) : '<span style="color: var(--color-neutral-400); font-style: italic;">No description added yet.</span>'}</p>
+
+                    <h4 style="font-size: 13px; font-weight: 700; color: var(--color-neutral-900); margin: 0 0 6px 0;">Hostel Amenities & Facilities</h4>
+                    <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                      ${selectedHostel.amenities && selectedHostel.amenities.length > 0
+                        ? selectedHostel.amenities.map((a: string) => `<span style="background: var(--color-neutral-100); color: var(--color-neutral-800); border: 1px solid var(--color-neutral-200); font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 999px; display: inline-flex; align-items: center; gap: 4px;"><i class="fa-solid fa-circle-check" style="color: var(--color-primary-600); font-size: 10px;"></i> ${escapeHtml(a)}</span>`).join('')
+                        : '<span style="color: var(--color-neutral-400); font-size: 12px; font-style: italic;">No amenities added yet.</span>'
+                      }
+                    </div>
                   </div>
 
                   <button class="open-manage-pg-sheet-btn btn-primary-action" style="width: 100%; justify-content: center; padding: 12px; font-size: 14px; font-weight: 700; border-radius: 12px; min-height: 44px;">
@@ -842,6 +939,19 @@ export async function renderOwnerPortal() {
                       <div style="display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: 999px; font-size: 12px; font-weight: 700; background: ${selectedHostel.acceptingSubscriptions !== false ? '#d1fae5' : '#fee2e2'}; color: ${selectedHostel.acceptingSubscriptions !== false ? '#047857' : '#b91c1c'}; border: 1px solid ${selectedHostel.acceptingSubscriptions !== false ? '#a7f3d0' : '#fca5a5'};">
                         <span>${selectedHostel.acceptingSubscriptions !== false ? 'Kitchen OPEN' : 'Kitchen CLOSED'}</span>
                       </div>
+                    </div>
+                  </div>
+
+                  <div style="margin-bottom: 16px; padding: 14px 0; border-top: 1px solid var(--color-neutral-100); border-bottom: 1px solid var(--color-neutral-100);">
+                    <h3 class="font-display" style="font-size: 15px; font-weight: 700; color: var(--color-neutral-900); margin: 0 0 6px 0;">About This Kitchen</h3>
+                    <p style="color: var(--color-neutral-700); font-size: 14px; line-height: 1.6; margin: 0 0 12px 0;">${selectedHostel.description ? escapeHtml(selectedHostel.description) : '<span style="color: var(--color-neutral-400); font-style: italic;">No description added yet.</span>'}</p>
+
+                    <h3 class="font-display" style="font-size: 15px; font-weight: 700; color: var(--color-neutral-900); margin: 0 0 8px 0;">Hostel Amenities & Facilities</h3>
+                    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                      ${selectedHostel.amenities && selectedHostel.amenities.length > 0
+                        ? selectedHostel.amenities.map((a: string) => `<span style="background: var(--color-neutral-100); color: var(--color-neutral-800); border: 1px solid var(--color-neutral-200); font-size: 12px; font-weight: 700; padding: 5px 12px; border-radius: 999px; display: inline-flex; align-items: center; gap: 6px;"><i class="fa-solid fa-circle-check" style="color: var(--color-primary-600); font-size: 11px;"></i> ${escapeHtml(a)}</span>`).join('')
+                        : '<span style="color: var(--color-neutral-400); font-size: 13px; font-style: italic;">No amenities added yet.</span>'
+                      }
                     </div>
                   </div>
 
@@ -1007,9 +1117,85 @@ export async function renderOwnerPortal() {
               <input type="text" id="hPhone" class="btn-outline-action" style="width: 100%; background: #fff;" placeholder="Phone" required />
             </div>
 
+            <div>
+              <label for="hDescription" style="font-size: 12px; font-weight: 700; display: block; margin-bottom: 4px;">About This Kitchen / Description</label>
+              <textarea id="hDescription" rows="3" maxlength="1000" class="btn-outline-action" style="width: 100%; background: #fff; padding: 10px 14px; font-size: 13px; resize: vertical; min-height: 80px; text-align: left;" placeholder="Tell students about your hostel/mess..."></textarea>
+              <div style="display: flex; justify-content: flex-end; margin-top: 2px;">
+                <span id="hDescriptionCount" style="font-size: 11px; color: var(--color-neutral-400);">0 / 1000 characters</span>
+              </div>
+            </div>
+
+            <div>
+              <label style="font-size: 12px; font-weight: 700; display: block; margin-bottom: 4px;">Hostel Amenities & Facilities</label>
+              <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 6px; margin-bottom: 8px;">
+                ${COMMON_AMENITIES.map((amenity, idx) => `
+                  <label for="hAmenity_${idx}" style="display: flex; align-items: center; gap: 6px; padding: 6px 10px; border: 1px solid var(--color-neutral-200); border-radius: 8px; cursor: pointer; background: #fff; font-size: 12px; font-weight: 600; color: var(--color-neutral-800);">
+                    <input type="checkbox" id="hAmenity_${idx}" name="hAmenities" value="${escapeHtml(amenity)}" style="width: 15px; height: 15px; accent-color: var(--color-primary-600); cursor: pointer;" />
+                    <span>${escapeHtml(amenity)}</span>
+                  </label>
+                `).join('')}
+              </div>
+
+              <div style="margin-top: 6px;">
+                <span style="font-size: 11px; font-weight: 700; color: var(--color-neutral-700); display: block; margin-bottom: 4px;">Custom Amenities</span>
+                <div id="hCustomAmenitiesList" style="display: flex; flex-direction: column; gap: 6px; margin-bottom: 6px;"></div>
+                <button type="button" id="hAddCustomAmenityBtn" class="btn-outline-action" style="font-size: 12px; font-weight: 700; padding: 6px 12px; background: #fff; border-radius: 8px;">
+                  <i class="fa-solid fa-plus"></i> Add Another Amenity
+                </button>
+              </div>
+            </div>
+
             <button type="submit" class="btn-primary-action" style="width: 100%; justify-content: center; padding: 12px; font-size: 15px; margin-top: 8px;">
               Submit for Admin Approval
             </button>
+          </form>
+        </div>
+      </div>
+
+      <!-- Modal: Edit Mess Profile & Amenities -->
+      <div id="editProfileModal" style="display: ${showEditProfileModal ? 'flex' : 'none'}; position: fixed; inset: 0; background: rgba(0,0,0,0.55); align-items: center; justify-content: center; z-index: 2000; padding: 20px;">
+        <div style="background: #fff; border-radius: 24px; max-width: 560px; width: 100%; padding: 28px; box-shadow: 0 20px 40px rgba(0,0,0,0.2); max-height: 90vh; overflow-y: auto;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <h3 class="font-display" style="font-size: 20px; font-weight: 800; color: var(--color-neutral-900);">Edit Kitchen Profile & Amenities</h3>
+            <button id="closeEditProfileModalBtn" style="background: none; border: none; font-size: 22px; cursor: pointer; color: var(--color-neutral-500);">&times;</button>
+          </div>
+
+          <form id="editProfileForm" style="display: flex; flex-direction: column; gap: 16px;">
+            <div>
+              <label for="editProfileDescription" style="font-size: 13px; font-weight: 700; color: var(--color-neutral-800); display: block; margin-bottom: 6px;">About This Kitchen / Description</label>
+              <textarea id="editProfileDescription" rows="4" maxlength="1000" class="btn-outline-action" style="width: 100%; background: #fff; padding: 12px 16px; font-size: 14px; resize: vertical; min-height: 90px; text-align: left;" placeholder="Tell students about your hostel/mess, food quality, timings, dining environment, and anything else they should know.">${escapeHtml(selectedHostel?.description || '')}</textarea>
+              <div style="display: flex; justify-content: flex-end; margin-top: 4px;">
+                <span id="editProfileDescriptionCount" style="font-size: 11px; color: var(--color-neutral-400);">${(selectedHostel?.description || '').length} / 1000 characters</span>
+              </div>
+            </div>
+
+            <div>
+              <label style="font-size: 13px; font-weight: 700; color: var(--color-neutral-800); display: block; margin-bottom: 6px;">Hostel Amenities & Facilities</label>
+              <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 8px; margin-bottom: 12px;">
+                ${COMMON_AMENITIES.map((amenity, idx) => {
+                  const isChecked = (selectedHostel?.amenities || []).some((a: string) => a.trim().toLowerCase() === amenity.toLowerCase());
+                  return `
+                    <label for="editAmenity_${idx}" style="display: flex; align-items: center; gap: 8px; padding: 8px 12px; border: 1px solid var(--color-neutral-200); border-radius: 10px; cursor: pointer; background: #fff; font-size: 13px; font-weight: 600; color: var(--color-neutral-800);">
+                      <input type="checkbox" id="editAmenity_${idx}" name="editAmenities" value="${escapeHtml(amenity)}" ${isChecked ? 'checked' : ''} style="width: 16px; height: 16px; accent-color: var(--color-primary-600); cursor: pointer;" />
+                      <span>${escapeHtml(amenity)}</span>
+                    </label>
+                  `;
+                }).join('')}
+              </div>
+
+              <div style="margin-top: 8px;">
+                <span style="font-size: 12px; font-weight: 700; color: var(--color-neutral-700); display: block; margin-bottom: 6px;">Custom Amenities</span>
+                <div id="editProfileCustomAmenitiesList" style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 8px;"></div>
+                <button type="button" id="editProfileAddCustomAmenityBtn" class="btn-outline-action" style="font-size: 13px; font-weight: 700; padding: 8px 14px; background: #fff; border-radius: 8px;">
+                  <i class="fa-solid fa-plus"></i> Add Another Amenity
+                </button>
+              </div>
+            </div>
+
+            <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 12px;">
+              <button type="button" id="cancelEditProfileBtn" class="btn-outline-action" style="padding: 10px 18px; font-size: 14px;">Cancel</button>
+              <button type="submit" class="btn-primary-action" style="padding: 10px 20px; font-size: 14px;">Save Changes</button>
+            </div>
           </form>
         </div>
       </div>
@@ -1488,41 +1674,86 @@ export async function renderOwnerPortal() {
       });
     });
 
-    const cancelInlineMenuBtn = document.getElementById('cancelInlineMenuBtn');
-    if (cancelInlineMenuBtn) {
-      cancelInlineMenuBtn.addEventListener('click', () => {
+    document.querySelectorAll('.cancel-inline-menu-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
         editingMenu = null;
         editingMenuValue = '';
         render();
       });
-    }
+    });
 
-    const saveInlineMenuBtn = document.getElementById('saveInlineMenuBtn');
-    if (saveInlineMenuBtn) {
-      saveInlineMenuBtn.addEventListener('click', async () => {
-        if (!selectedHostel || !editingMenu) return;
-        const newVal = (document.getElementById('inlineMenuInput') as HTMLInputElement)?.value.trim() ?? '';
-        try {
-          await api.post('/weekly-menus', {
-            providerId: selectedHostel.id,
-            items: [
-              {
-                dayOfWeek: editingMenu.dayIdx,
-                mealType: editingMenu.mealType,
-                menuItems: newVal || 'No menu available',
-              },
-            ],
-          });
-          showToast('Menu updated successfully!', 'success');
+    const handleSaveMenu = async (inputElement?: HTMLInputElement | null) => {
+      if (!selectedHostel || !editingMenu) return;
+      const newVal = inputElement?.value?.trim() ?? editingMenuValue.trim();
+      try {
+        await api.post('/weekly-menus', {
+          providerId: selectedHostel.id,
+          items: [
+            {
+              dayOfWeek: editingMenu.dayIdx,
+              mealType: editingMenu.mealType,
+              menuItems: newVal || 'No menu available',
+            },
+          ],
+        });
+        showToast('Menu updated successfully!', 'success');
+        editingMenu = null;
+        editingMenuValue = '';
+        await fetchWeeklyMenus();
+        render();
+      } catch (err: any) {
+        showToast(err.message || 'Failed to update menu', 'error');
+      }
+    };
+
+    document.querySelectorAll('.save-inline-menu-btn').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        const card = (e.currentTarget as HTMLElement).closest('.menu-meal-card');
+        const input = card?.querySelector('.menu-inline-input') as HTMLInputElement;
+        handleSaveMenu(input);
+      });
+    });
+
+    document.querySelectorAll('.menu-inline-input').forEach((input) => {
+      input.addEventListener('keydown', (e) => {
+        const keyEvent = e as KeyboardEvent;
+        if (keyEvent.key === 'Enter') {
+          keyEvent.preventDefault();
+          handleSaveMenu(input as HTMLInputElement);
+        } else if (keyEvent.key === 'Escape') {
           editingMenu = null;
           editingMenuValue = '';
-          await fetchWeeklyMenus();
           render();
-        } catch (err: any) {
-          showToast(err.message || 'Failed to update menu', 'error');
         }
       });
-    }
+    });
+
+    // Character counter helper
+    const setupCharCounter = (textareaId: string, counterId: string, maxLen = 1000) => {
+      const ta = document.getElementById(textareaId) as HTMLTextAreaElement;
+      const cnt = document.getElementById(counterId);
+      if (ta && cnt) {
+        const update = () => {
+          cnt.textContent = `${ta.value.length} / ${maxLen} characters`;
+        };
+        ta.addEventListener('input', update);
+        update();
+      }
+    };
+    setupCharCounter('cDescription', 'cDescriptionCount');
+    setupCharCounter('hDescription', 'hDescriptionCount');
+    setupCharCounter('editProfileDescription', 'editProfileDescriptionCount');
+
+    // Add Custom Amenity Button Listeners
+    document.getElementById('cAddCustomAmenityBtn')?.addEventListener('click', () => {
+      createCustomAmenityRow('cCustomAmenitiesList');
+    });
+    document.getElementById('hAddCustomAmenityBtn')?.addEventListener('click', () => {
+      createCustomAmenityRow('hCustomAmenitiesList');
+    });
+    document.getElementById('editProfileAddCustomAmenityBtn')?.addEventListener('click', () => {
+      createCustomAmenityRow('editProfileCustomAmenitiesList');
+    });
 
     // Center Hostel Registration Form Submit (for first-time providers)
     const centerHostelForm = document.getElementById('centerHostelForm') as HTMLFormElement;
@@ -1537,6 +1768,8 @@ export async function renderOwnerPortal() {
         const capacity = parseInt((centerHostelForm.querySelector('#cCapacity') as HTMLInputElement)?.value, 10) || 50;
         const phone = (centerHostelForm.querySelector('#cPhone') as HTMLInputElement)?.value?.trim();
         const category = (centerHostelForm.querySelector('#cCategory') as HTMLSelectElement)?.value || 'Veg';
+        const description = (centerHostelForm.querySelector('#cDescription') as HTMLTextAreaElement)?.value?.trim() || undefined;
+        const amenities = collectAmenitiesFromForm(centerHostelForm, 'cAmenities', 'cCustomAmenitiesList');
 
         if (!name || !city || !address || !phone) {
           showToast('Please fill in all required fields.', 'error');
@@ -1552,6 +1785,8 @@ export async function renderOwnerPortal() {
             totalCapacity: capacity,
             contactPhone: phone,
             category,
+            description,
+            amenities,
           });
           showToast('Kitchen registered successfully! Welcome to your provider portal.', 'success');
           await fetchHostels();
@@ -1598,6 +1833,8 @@ export async function renderOwnerPortal() {
         const price = parseFloat((addHostelForm.querySelector('#hPrice') as HTMLInputElement).value) || 0;
         const capacity = parseInt((addHostelForm.querySelector('#hCapacity') as HTMLInputElement).value) || 0;
         const phone = (addHostelForm.querySelector('#hPhone') as HTMLInputElement).value;
+        const description = (addHostelForm.querySelector('#hDescription') as HTMLTextAreaElement)?.value?.trim() || undefined;
+        const amenities = collectAmenitiesFromForm(addHostelForm, 'hAmenities', 'hCustomAmenitiesList');
 
         try {
           await api.post('/providers', {
@@ -1607,6 +1844,8 @@ export async function renderOwnerPortal() {
             monthlyPrice: price,
             totalCapacity: capacity,
             contactPhone: phone,
+            description,
+            amenities,
           });
           showToast('New hostel listing submitted for Admin approval.', 'success');
           showModal = false;
@@ -1614,6 +1853,61 @@ export async function renderOwnerPortal() {
           render();
         } catch (err: any) {
           showToast(err.message || 'Failed to add hostel', 'error');
+        }
+      });
+    }
+
+    // Edit Mess Profile & Amenities Modal Triggers & Form
+    document.querySelectorAll('.open-edit-profile-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        showEditProfileModal = true;
+        render();
+
+        // Populate custom amenities container with non-common amenities
+        const customAmenities = (selectedHostel?.amenities || []).filter(
+          (a: string) => !COMMON_AMENITIES.some((ca) => ca.toLowerCase() === a.trim().toLowerCase())
+        );
+        const customContainer = document.getElementById('editProfileCustomAmenitiesList');
+        if (customContainer) {
+          customContainer.innerHTML = '';
+          customAmenities.forEach((ca: string) => {
+            createCustomAmenityRow('editProfileCustomAmenitiesList', ca);
+          });
+        }
+      });
+    });
+
+    document.getElementById('closeEditProfileModalBtn')?.addEventListener('click', () => {
+      showEditProfileModal = false;
+      render();
+    });
+
+    document.getElementById('cancelEditProfileBtn')?.addEventListener('click', () => {
+      showEditProfileModal = false;
+      render();
+    });
+
+    const editProfileForm = document.getElementById('editProfileForm') as HTMLFormElement;
+    if (editProfileForm) {
+      editProfileForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        if (!selectedHostel) return;
+        const descVal = (editProfileForm.querySelector('#editProfileDescription') as HTMLTextAreaElement)?.value?.trim();
+        const amenities = collectAmenitiesFromForm(editProfileForm, 'editAmenities', 'editProfileCustomAmenitiesList');
+
+        try {
+          const updated: any = await api.put(`/providers/${selectedHostel.id}`, {
+            description: descVal || '',
+            amenities,
+          });
+          selectedHostel.description = updated.description !== undefined ? updated.description : (descVal || '');
+          selectedHostel.amenities = updated.amenities !== undefined ? updated.amenities : amenities;
+          showToast('Kitchen profile & amenities updated successfully!', 'success');
+          showEditProfileModal = false;
+          await fetchHostels();
+          render();
+        } catch (err: any) {
+          showToast(err.message || 'Failed to update kitchen profile', 'error');
         }
       });
     }

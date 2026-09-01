@@ -118,11 +118,22 @@ export async function renderAdminPortal() {
               PENDING APPROVAL
             </span>
             <h3 class="font-display" style="font-size: 18px; font-weight: 700; margin-bottom: 4px;">${escapeHtml(p.name)}</h3>
-            <p style="font-size: 13px; color: var(--color-neutral-600); margin-bottom: 12px;">
+            <p style="font-size: 13px; color: var(--color-neutral-600); margin-bottom: 8px;">
               <i class="fa-solid fa-location-dot"></i> ${escapeHtml(p.address || p.city || '')}
             </p>
+            ${p.description ? `
+              <p style="font-size: 12px; color: var(--color-neutral-700); margin-bottom: 8px; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
+                ${escapeHtml(p.description)}
+              </p>
+            ` : ''}
+            ${Array.isArray(p.amenities) && p.amenities.length > 0 ? `
+              <div style="display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 12px;">
+                ${p.amenities.slice(0, 5).map((a: string) => `<span style="font-size: 11px; font-weight: 600; background: #fff; border: 1px solid var(--color-neutral-200); padding: 2px 8px; border-radius: 999px; color: var(--color-neutral-700);">${escapeHtml(a)}</span>`).join('')}
+                ${p.amenities.length > 5 ? `<span style="font-size: 10px; color: var(--color-neutral-500); align-self: center;">+${p.amenities.length - 5} more</span>` : ''}
+              </div>
+            ` : ''}
           </div>
-          <div style="display: flex; gap: 8px; margin-top: 16px;">
+          <div style="display: flex; gap: 8px; margin-top: 12px;">
             <button class="btn-primary-action approve-btn" data-prov-id="${escapeHtml(p.id)}" style="flex: 1; padding: 8px; font-size: 13px; background: var(--color-success-600);">
               <i class="fa-solid fa-check"></i> Approve
             </button>

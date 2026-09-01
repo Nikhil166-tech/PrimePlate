@@ -124,13 +124,13 @@ export async function renderProviderDetail(providerId: string) {
       ? amenitiesList
         .map(
           (a: string) => `
-            <span style="background: var(--color-neutral-100); color: var(--color-neutral-800); font-weight: 600; font-size: 13px; padding: 6px 14px; border-radius: 999px; display: inline-flex; align-items: center; gap: 6px;">
-              <i class="fa-solid fa-check-circle" style="color: var(--color-success-600);"></i> ${escapeHtml(a)}
+            <span style="background: var(--color-neutral-100); color: var(--color-neutral-800); font-weight: 700; font-size: 12px; padding: 5px 12px; border-radius: 999px; display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--color-neutral-200);">
+              <i class="fa-solid fa-circle-check" style="color: var(--color-primary-600); font-size: 11px;"></i> ${escapeHtml(a)}
             </span>
           `,
         )
         .join('')
-      : `<span style="font-size: 13px; color: var(--color-neutral-500);">No amenities listed.</span>`;
+      : `<span style="font-size: 13px; color: var(--color-neutral-400); font-style: italic;">No amenities added yet.</span>`;
 
     const primaryPlan = mealPlans[0];
     const baseMonthlyPrice = (primaryPlan && primaryPlan.pricePerMonth && !isNaN(Number(primaryPlan.pricePerMonth)))
@@ -363,10 +363,10 @@ export async function renderProviderDetail(providerId: string) {
             <!-- 1. About Mess -->
             <div style="background: #fff; border: 1px solid var(--color-neutral-200); border-radius: 20px; padding: 28px; box-shadow: 0 4px 12px rgba(0,0,0,0.03);">
               <h2 class="font-display" style="font-size: 20px; font-weight: 700; margin-bottom: 12px;">About this Kitchen</h2>
-              <p style="color: var(--color-neutral-600); font-size: 15px; line-height: 1.6; margin-bottom: 20px;">${escapeHtml(provider.description || 'No description available.')}</p>
+              <p style="color: var(--color-neutral-700); font-size: 15px; line-height: 1.6; margin-bottom: 20px;">${provider.description ? escapeHtml(provider.description) : '<span style="color: var(--color-neutral-400); font-style: italic;">No description added yet.</span>'}</p>
               
               <h3 style="font-size: 15px; font-weight: 700; margin-bottom: 10px; color: var(--color-neutral-900);">Hostel Amenities & Facilities</h3>
-              <div style="display: flex; gap: 10px; flex-wrap: wrap;">${amenitiesHtml}</div>
+              <div style="display: flex; gap: 8px; flex-wrap: wrap;">${amenitiesHtml}</div>
             </div>
 
             <!-- 2. Mobile Subscription Section -->

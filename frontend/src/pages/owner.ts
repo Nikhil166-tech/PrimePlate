@@ -5,6 +5,10 @@ import api, {
   updateProviderBreakSettings,
   getProviderEarningsSummary,
   getProviderEarningsHistory,
+  uploadProviderHostelImage,
+  replaceProviderHostelImage,
+  getMyHostelImages,
+  deleteProviderHostelImage,
 } from '../api';
 import { navigate } from '../router';
 import { showToast } from '../components/toast';
@@ -13,6 +17,18 @@ import { renderFooter, attachFooterEvents } from '../components/footer';
 import { escapeHtml, getSafeImageUrl } from '../utils/sanitize';
 
 const DAYS_OF_WEEK = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+
+interface ImageQueueItem {
+  id: string;
+  file: File;
+  previewUrl: string;
+  name: string;
+  size: number;
+  category: string;
+  status: 'WAITING' | 'UPLOADING' | 'SUCCESS' | 'ERROR';
+  progress: number;
+  errorMessage?: string;
+}
 
 export async function renderOwnerPortal() {
   const container = document.getElementById('app')!;
@@ -33,7 +49,22 @@ export async function renderOwnerPortal() {
   let showSubscriberDetailsModal = false;
   let selectedSubscriberForDetails: any = null;
   let showManagePanel = false;
-  let mobileSheet: 'NONE' | 'MANAGE_PG' | 'BREAK_REQUESTS' | 'SUBSCRIBERS' | 'WEEKLY_MENU' | 'REVIEWS' | 'BREAK_SETTINGS' | 'EARNINGS_HISTORY' = 'NONE';
+  let mobileSheet: 'NONE' | 'MANAGE_PG' | 'BREAK_REQUESTS' | 'SUBSCRIBERS' | 'WEEKLY_MENU' | 'REVIEWS' | 'BREAK_SETTINGS' | 'EARNINGS_HISTORY' | 'HOSTEL_IMAGES' = 'NONE';
+  let hostelImages: any[] = [];
+  let imagesLoading = false;
+  let uploadQueue: ImageQueueItem[] = [];
+  let isQueueUploading = false;
+  let carouselActiveIndex = 0;
+  let lightboxImage: any | null = null;
+  let imageToReplace: any | null = null;
+  let replaceFile: File | null = null;
+  let replacePreviewUrl: string | null = null;
+  let replaceCategory: string = 'Hostel';
+  let isReplacingImage = false;
+  let replaceProgress = 0;
+  let replaceErrorMessage: string | null = null;
+  let imageToDelete: any | null = null;
+  let isDeletingImage = false;
   let editingMenu: { dayIdx: number; mealType: string } | null = null;
   let editingMenuValue = '';
   let modalEditLat: number | null = null;
@@ -152,11 +183,34 @@ export async function renderOwnerPortal() {
     }
   };
 
+  const fetchHostelImages = async () => {
+    if (!selectedHostel) {
+      hostelImages = [];
+      imagesLoading = false;
+      carouselActiveIndex = 0;
+      return;
+    }
+    imagesLoading = true;
+    try {
+      const data: any = await getMyHostelImages(selectedHostel.id);
+      hostelImages = Array.isArray(data) ? data : [];
+      if (carouselActiveIndex >= hostelImages.length) {
+        carouselActiveIndex = Math.max(0, hostelImages.length - 1);
+      }
+    } catch (_) {
+      hostelImages = [];
+      carouselActiveIndex = 0;
+    } finally {
+      imagesLoading = false;
+    }
+  };
+
   await fetchLiveSubs();
   await fetchWeeklyMenus();
   await fetchProviderReviews();
   await fetchProviderBreakRequests();
   await fetchEarningsData();
+  await fetchHostelImages();
 
   const render = () => {
     const totalSubscribersCount = liveSubs.length;
@@ -570,6 +624,241 @@ export async function renderOwnerPortal() {
       </div>
     `;
 
+    const renderHostelImagesContent = () => `
+      <div style="display: flex; flex-direction: column; gap: 20px;">
+        <!-- Header & Stats -->
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+          <div>
+            <span style="font-size: 13px; font-weight: 700; background: var(--color-primary-50); color: var(--color-primary-700); padding: 6px 14px; border-radius: 999px; display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--color-primary-200);">
+              <i class="fa-solid fa-camera"></i> ${hostelImages.length} / 10 Photos Uploaded
+            </span>
+          </div>
+          ${hostelImages.length >= 10
+            ? `<span style="font-size: 12px; font-weight: 700; color: #d97706; background: #fef3c7; padding: 6px 14px; border-radius: 8px; border: 1px solid #fde68a; display: inline-flex; align-items: center; gap: 6px;">
+                 <i class="fa-solid fa-circle-exclamation"></i> Maximum 10 photos limit reached
+               </span>`
+            : ''
+          }
+        </div>
+
+        ${hostelImages.length < 10 ? `
+          <!-- Desktop & Mobile Upload Interface -->
+          <div style="display: flex; flex-direction: column; gap: 14px;">
+            <!-- Mobile Quick Buttons (Only visible on mobile devices <769px) -->
+            <div class="mobile-only-section">
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                <button type="button" class="mobile-take-photo-btn btn-primary-action" style="padding: 14px 16px; font-size: 14px; font-weight: 700; border-radius: 14px; justify-content: center; background: linear-gradient(135deg, var(--color-primary-600), var(--color-primary-700)); box-shadow: 0 4px 12px rgba(234, 88, 12, 0.2); cursor: pointer;">
+                  <i class="fa-solid fa-camera" style="font-size: 16px;"></i> 📷 Take Photo
+                </button>
+                <button type="button" class="mobile-gallery-btn btn-outline-action" style="padding: 14px 16px; font-size: 14px; font-weight: 700; border-radius: 14px; justify-content: center; background: #fff; border: 2px solid var(--color-primary-600); color: var(--color-primary-700); cursor: pointer;">
+                  <i class="fa-solid fa-images" style="font-size: 16px;"></i> 🖼️ Choose from Gallery
+                </button>
+              </div>
+            </div>
+
+            <!-- Desktop Drag & Drop Zone -->
+            <div class="hostel-dropzone" style="border: 2px dashed var(--color-neutral-300); border-radius: 16px; padding: 28px 20px; text-align: center; background: #fff; cursor: pointer; transition: all 0.2s ease; position: relative;">
+              <div style="width: 52px; height: 52px; border-radius: 50%; background: var(--color-primary-50); color: var(--color-primary-600); display: flex; align-items: center; justify-content: center; margin: 0 auto 12px; font-size: 22px;">
+                <i class="fa-solid fa-cloud-arrow-up"></i>
+              </div>
+              <h4 style="font-size: 15px; font-weight: 700; color: var(--color-neutral-800); margin: 0 0 6px 0;">
+                Drag & drop hostel photos here, or <span style="color: var(--color-primary-600); text-decoration: underline;">Browse files</span>
+              </h4>
+              <p style="font-size: 12px; color: var(--color-neutral-500); margin: 0;">
+                Supports JPG, PNG, WebP • Max 10MB per image
+              </p>
+            </div>
+          </div>
+        ` : ''}
+
+        <!-- Upload Queue Section (If items are queued) -->
+        ${uploadQueue.length > 0 ? `
+          <div style="background: var(--color-neutral-50); border: 1px solid var(--color-neutral-200); border-radius: 16px; padding: 16px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+              <h4 style="font-size: 14px; font-weight: 700; color: var(--color-neutral-900); margin: 0; display: flex; align-items: center; gap: 6px;">
+                <i class="fa-solid fa-layer-group" style="color: var(--color-primary-600);"></i> Upload Queue (${uploadQueue.length} ${uploadQueue.length === 1 ? 'image' : 'images'})
+              </h4>
+              <div style="display: flex; gap: 8px;">
+                <button type="button" class="clear-queue-btn btn-outline-action" style="padding: 6px 12px; font-size: 12px; font-weight: 700; border-radius: 8px;" ${isQueueUploading ? 'disabled' : ''}>
+                  Clear All
+                </button>
+                <button type="button" class="start-upload-queue-btn btn-primary-action" style="padding: 6px 16px; font-size: 12px; font-weight: 700; border-radius: 8px;" ${isQueueUploading ? 'disabled' : ''}>
+                  ${isQueueUploading ? '<i class="fa-solid fa-spinner fa-spin"></i> Uploading...' : '<i class="fa-solid fa-cloud-arrow-up"></i> Upload Queue'}
+                </button>
+              </div>
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 10px;">
+              ${uploadQueue.map((item) => `
+                <div style="background: #fff; border: 1px solid var(--color-neutral-200); border-radius: 12px; padding: 12px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
+                  <!-- Thumbnail -->
+                  <div style="width: 52px; height: 52px; border-radius: 8px; overflow: hidden; background: #000; flex-shrink: 0; border: 1px solid var(--color-neutral-200);">
+                    <img src="${item.previewUrl}" alt="Queue preview" style="width: 100%; height: 100%; object-fit: cover;" />
+                  </div>
+
+                  <!-- Details -->
+                  <div style="flex: 1; min-width: 160px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 4px;">
+                      <span style="font-size: 13px; font-weight: 700; color: var(--color-neutral-900); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 220px;" title="${escapeHtml(item.name)}">
+                        ${escapeHtml(item.name)}
+                      </span>
+                      <span style="font-size: 11px; font-weight: 600; color: var(--color-neutral-500); flex-shrink: 0;">
+                        ${(item.size / (1024 * 1024)).toFixed(2)} MB
+                      </span>
+                    </div>
+
+                    <!-- Status Badge -->
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                      ${item.status === 'WAITING'
+                        ? `<span style="font-size: 11px; font-weight: 700; background: #f1f5f9; color: #475569; padding: 2px 8px; border-radius: 999px;">Waiting in queue</span>`
+                        : item.status === 'UPLOADING'
+                          ? `<span style="font-size: 11px; font-weight: 700; background: #e0f2fe; color: #0284c7; padding: 2px 8px; border-radius: 999px; display: inline-flex; align-items: center; gap: 4px;">
+                               <i class="fa-solid fa-spinner fa-spin"></i> <span id="progress-text-${item.id}">Uploading ${item.progress}%</span>
+                             </span>`
+                          : item.status === 'SUCCESS'
+                            ? `<span style="font-size: 11px; font-weight: 700; background: #dcfce7; color: #16a34a; padding: 2px 8px; border-radius: 999px; display: inline-flex; align-items: center; gap: 4px;">
+                                 <i class="fa-solid fa-check"></i> Uploaded ✓
+                               </span>`
+                            : `<span style="font-size: 11px; font-weight: 700; background: #fee2e2; color: #dc2626; padding: 2px 8px; border-radius: 999px; display: inline-flex; align-items: center; gap: 4px;">
+                                 <i class="fa-solid fa-triangle-exclamation"></i> Upload Failed ❌
+                               </span>`
+                      }
+                    </div>
+
+                    <!-- Progress Bar (Visible when uploading) -->
+                    ${item.status === 'UPLOADING' ? `
+                      <div style="width: 100%; height: 6px; background: #e2e8f0; border-radius: 999px; overflow: hidden; margin-top: 6px;">
+                        <div id="progress-bar-${item.id}" style="width: ${item.progress}%; height: 100%; background: linear-gradient(90deg, var(--color-primary-500), var(--color-primary-600)); transition: width 0.2s ease;"></div>
+                      </div>
+                    ` : ''}
+
+                    <!-- Error Text if Failed -->
+                    ${item.errorMessage ? `
+                      <span style="font-size: 11px; color: #dc2626; font-weight: 600; display: block; margin-top: 4px;">
+                        ${escapeHtml(item.errorMessage)}
+                      </span>
+                    ` : ''}
+                  </div>
+
+                  <!-- Actions -->
+                  <div style="display: flex; align-items: center; gap: 6px; flex-shrink: 0;">
+                    ${item.status === 'ERROR' ? `
+                      <button type="button" class="retry-queue-item-btn btn-outline-action" data-id="${item.id}" style="padding: 6px 10px; font-size: 12px; font-weight: 700; border-radius: 8px; background: #fff; color: var(--color-primary-700); border-color: var(--color-primary-300);" ${isQueueUploading ? 'disabled' : ''}>
+                        <i class="fa-solid fa-rotate-right"></i> Retry
+                      </button>
+                    ` : ''}
+                    ${item.status !== 'UPLOADING' && item.status !== 'SUCCESS' ? `
+                      <button type="button" class="remove-queue-item-btn" data-id="${item.id}" style="background: none; border: none; font-size: 16px; color: var(--color-neutral-400); cursor: pointer; padding: 6px;" title="Remove from queue" ${isQueueUploading ? 'disabled' : ''}>
+                        <i class="fa-solid fa-xmark"></i>
+                      </button>
+                    ` : ''}
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        ` : ''}
+
+        <!-- Carousel Gallery Section -->
+        <div>
+          ${imagesLoading
+            ? `<div style="text-align: center; padding: 36px;"><i class="fa-solid fa-spinner fa-spin" style="font-size: 24px; color: var(--color-primary-600);"></i></div>`
+            : hostelImages.length === 0 && uploadQueue.length === 0
+              ? `<div style="text-align: center; padding: 36px 20px; background: var(--color-neutral-50); border: 1px dashed var(--color-neutral-300); border-radius: 16px;">
+                   <div style="width: 56px; height: 56px; border-radius: 16px; background: #fff; display: flex; align-items: center; justify-content: center; margin: 0 auto 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); color: var(--color-neutral-400); font-size: 24px;">
+                     <i class="fa-solid fa-images"></i>
+                   </div>
+                   <h4 style="font-size: 15px; font-weight: 700; color: var(--color-neutral-800); margin: 0 0 4px 0;">No hostel photos added yet.</h4>
+                   <p style="font-size: 13px; color: var(--color-neutral-500); margin: 0;">
+                     Upload photos of your front entrance, rooms, dining hall, and facilities to showcase to students.
+                   </p>
+                 </div>`
+              : hostelImages.length > 0 ? `
+                <div style="background: #fff; border: 1px solid var(--color-neutral-200); border-radius: 20px; padding: 18px; box-shadow: 0 4px 14px rgba(0,0,0,0.03); max-width: 620px; margin: 0 auto; width: 100%;">
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; flex-wrap: wrap; gap: 8px;">
+                    <h4 style="font-size: 15px; font-weight: 700; color: var(--color-neutral-900); margin: 0; display: flex; align-items: center; gap: 6px;">
+                      <i class="fa-solid fa-images" style="color: var(--color-primary-600);"></i> Hostel Photos (${hostelImages.length})
+                    </h4>
+                    <span style="font-size: 12px; font-weight: 700; background: var(--color-neutral-100); color: var(--color-neutral-700); padding: 4px 10px; border-radius: 999px;">
+                      Photo ${carouselActiveIndex + 1} of ${hostelImages.length}
+                    </span>
+                  </div>
+
+                  <!-- Main Carousel Slide (Normal proportions) -->
+                  <div style="position: relative; width: 100%; height: 340px; border-radius: 16px; overflow: hidden; background: #0f172a; display: flex; align-items: center; justify-content: center; box-shadow: 0 8px 24px rgba(0,0,0,0.12);">
+                    <img src="${getSafeImageUrl(hostelImages[carouselActiveIndex]?.imageUrl)}" alt="Hostel Photo ${carouselActiveIndex + 1}" style="width: 100%; height: 100%; object-fit: contain; background: #0f172a;" />
+                    
+                    <!-- Index Tag -->
+                    <span style="position: absolute; top: 12px; left: 12px; font-size: 11px; font-weight: 800; background: rgba(0,0,0,0.65); color: #fff; padding: 4px 10px; border-radius: 8px; backdrop-filter: blur(4px);">
+                      #${carouselActiveIndex + 1}
+                    </span>
+
+                    <!-- Lightbox Trigger -->
+                    <button type="button" class="gallery-photo-click" data-img-id="${escapeHtml(hostelImages[carouselActiveIndex]?.id)}" style="position: absolute; top: 12px; right: 12px; background: rgba(0,0,0,0.65); color: #fff; border: none; padding: 6px 12px; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; backdrop-filter: blur(4px); display: inline-flex; align-items: center; gap: 6px;">
+                      <i class="fa-solid fa-expand"></i> Enlarge
+                    </button>
+
+                    <!-- Navigation Arrow: Previous -->
+                    ${hostelImages.length > 1 ? `
+                      <button type="button" class="carousel-prev-btn" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 40px; height: 40px; border-radius: 50%; background: rgba(255,255,255,0.92); border: none; color: var(--color-neutral-900); font-size: 15px; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.25); z-index: 5; transition: transform 0.15s ease;">
+                        <i class="fa-solid fa-chevron-left"></i>
+                      </button>
+                      <button type="button" class="carousel-next-btn" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); width: 40px; height: 40px; border-radius: 50%; background: rgba(255,255,255,0.92); border: none; color: var(--color-neutral-900); font-size: 15px; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.25); z-index: 5; transition: transform 0.15s ease;">
+                        <i class="fa-solid fa-chevron-right"></i>
+                      </button>
+                    ` : ''}
+
+                    <!-- Bottom Indicator Dots -->
+                    ${hostelImages.length > 1 ? `
+                      <div style="position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%); display: flex; gap: 6px; z-index: 5; background: rgba(0,0,0,0.45); padding: 4px 10px; border-radius: 999px; backdrop-filter: blur(4px);">
+                        ${hostelImages.map((_, idx) => `
+                          <button type="button" class="carousel-dot-btn" data-slide-idx="${idx}" style="width: ${idx === carouselActiveIndex ? '20px' : '7px'}; height: 7px; border-radius: 999px; background: ${idx === carouselActiveIndex ? 'var(--color-primary-500)' : 'rgba(255,255,255,0.6)'}; border: none; padding: 0; cursor: pointer; transition: all 0.2s ease;"></button>
+                        `).join('')}
+                      </div>
+                    ` : ''}
+                  </div>
+
+                  <!-- Management Controls for Active Carousel Photo -->
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 14px; padding: 12px 14px; background: var(--color-neutral-50); border: 1px solid var(--color-neutral-200); border-radius: 14px; flex-wrap: wrap; gap: 10px;">
+                    <div>
+                      <span style="font-size: 13px; font-weight: 700; color: var(--color-neutral-800); display: block;">
+                        ${escapeHtml(hostelImages[carouselActiveIndex]?.originalFileName || `Photo #${carouselActiveIndex + 1}`)}
+                      </span>
+                      <span style="font-size: 11px; color: var(--color-neutral-500);">
+                        Visible in public mess showcase
+                      </span>
+                    </div>
+                    <div style="display: flex; gap: 8px;">
+                      <button type="button" class="replace-hostel-image-btn btn-outline-action" data-img-id="${escapeHtml(hostelImages[carouselActiveIndex]?.id)}" style="padding: 8px 14px; font-size: 12px; font-weight: 700; border-radius: 10px; background: #fff;">
+                        <i class="fa-solid fa-arrows-rotate"></i> Replace Photo
+                      </button>
+                      <button type="button" class="delete-hostel-image-btn" data-img-id="${escapeHtml(hostelImages[carouselActiveIndex]?.id)}" style="background: #fee2e2; color: #dc2626; border: 1px solid #fca5a5; font-size: 12px; font-weight: 700; padding: 8px 14px; border-radius: 10px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
+                        <i class="fa-solid fa-trash-can"></i> Delete Photo
+                      </button>
+                    </div>
+                  </div>
+
+                  <!-- Horizontal Scrollable Thumbnail Strip -->
+                  ${hostelImages.length > 1 ? `
+                    <div style="margin-top: 14px;">
+                      <span style="font-size: 12px; font-weight: 700; color: var(--color-neutral-600); margin-bottom: 8px; display: block;">All Photos (${hostelImages.length}):</span>
+                      <div style="display: flex; gap: 10px; overflow-x: auto; padding-bottom: 6px; scrollbar-width: thin; -webkit-overflow-scrolling: touch;">
+                        ${hostelImages.map((img, idx) => `
+                          <button type="button" class="carousel-thumb-btn" data-slide-idx="${idx}" style="flex-shrink: 0; width: 80px; height: 56px; border-radius: 10px; overflow: hidden; border: ${idx === carouselActiveIndex ? '3px solid var(--color-primary-600)' : '2px solid transparent'}; box-shadow: ${idx === carouselActiveIndex ? '0 0 8px rgba(234, 88, 12, 0.4)' : 'none'}; padding: 0; background: var(--color-neutral-100); cursor: pointer; transition: all 0.2s ease; position: relative;">
+                            <img src="${getSafeImageUrl(img.imageUrl)}" alt="Thumb ${idx + 1}" style="width: 100%; height: 100%; object-fit: cover;" />
+                            <span style="position: absolute; bottom: 2px; right: 2px; font-size: 9px; font-weight: 800; background: rgba(0,0,0,0.7); color: #fff; padding: 1px 4px; border-radius: 4px;">#${idx + 1}</span>
+                          </button>
+                        `).join('')}
+                      </div>
+                    </div>
+                  ` : ''}
+                </div>
+              ` : ''
+          }
+        </div>
+      </div>
+    `;
+
     container.innerHTML = `
       ${renderNavbar()}
       <main class="main-content" style="padding-top: 88px; padding-bottom: 60px; background: #f8fafc;">
@@ -776,6 +1065,16 @@ export async function renderOwnerPortal() {
                 <div style="display: flex; flex-direction: column; gap: 10px;">
                   <div class="compact-action-card">
                     <div>
+                      <span style="font-size: 14px; font-weight: 700; color: var(--color-neutral-900); display: block;"><i class="fa-solid fa-camera" style="color: var(--color-primary-600); margin-right: 6px;"></i> Hostel Images</span>
+                      <span style="font-size: 12px; font-weight: 600; color: var(--color-neutral-600);">${hostelImages.length} / 10 Photos Uploaded</span>
+                    </div>
+                    <button class="open-hostel-images-sheet-btn btn-outline-action" style="padding: 8px 14px; font-size: 12px; font-weight: 700; border-radius: 10px; min-height: 40px; background: #fff;">
+                      Manage Photos
+                    </button>
+                  </div>
+
+                  <div class="compact-action-card">
+                    <div>
                       <span style="font-size: 14px; font-weight: 700; color: var(--color-neutral-900); display: block;"><i class="fa-solid fa-plane-departure" style="color: var(--color-primary-600); margin-right: 6px;"></i> Subscription Breaks</span>
                       <span style="font-size: 12px; font-weight: 600; color: ${providerBreakRequests.filter((r) => r.status === 'PENDING').length > 0 ? '#c2410c' : 'var(--color-neutral-500)'};">
                         ${providerBreakRequests.filter((r) => r.status === 'PENDING').length} Pending Requests
@@ -854,6 +1153,16 @@ export async function renderOwnerPortal() {
                   </div>
                 </div>
 
+                <!-- Hostel Images Section Card -->
+                <div id="hostelImagesSection" style="background: #fff; border: 1px solid var(--color-neutral-200); border-radius: 20px; padding: 20px; margin-bottom: 24px; box-shadow: 0 4px 12px rgba(0,0,0,0.03);">
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                    <h3 class="font-display" style="font-size: 18px; font-weight: 700; color: var(--color-neutral-900); margin: 0;">
+                      <i class="fa-solid fa-images" style="color: var(--color-primary-600);"></i> Hostel Images
+                    </h3>
+                  </div>
+                  ${renderHostelImagesContent()}
+                </div>
+
                 <!-- Today's Menu Highlight Card -->
                 <div id="todaysMenuSection" style="background: #fff; border: 1px solid var(--color-neutral-200); border-radius: 20px; padding: 20px; margin-bottom: 24px; box-shadow: 0 4px 12px rgba(0,0,0,0.03);">
                   <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
@@ -930,6 +1239,7 @@ export async function renderOwnerPortal() {
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; border-bottom: 1px solid var(--color-neutral-200); padding-bottom: 12px;">
               <h3 class="font-display" style="font-size: 20px; font-weight: 800; color: var(--color-neutral-900); margin: 0;">
                 ${mobileSheet === 'MANAGE_PG' ? 'Manage PG' :
+          mobileSheet === 'HOSTEL_IMAGES' ? 'Hostel Images' :
           mobileSheet === 'BREAK_REQUESTS' ? 'Subscription Break Requests' :
             mobileSheet === 'SUBSCRIBERS' ? 'Subscribers' :
               mobileSheet === 'WEEKLY_MENU' ? 'Weekly Menu Editor' :
@@ -940,6 +1250,7 @@ export async function renderOwnerPortal() {
               <button class="close-mobile-sheet-btn" style="background: none; border: none; font-size: 24px; cursor: pointer; color: var(--color-neutral-500); padding: 4px 8px;">&times;</button>
             </div>
             ${mobileSheet === 'MANAGE_PG' ? renderManagePgContent() :
+          mobileSheet === 'HOSTEL_IMAGES' ? renderHostelImagesContent() :
           mobileSheet === 'BREAK_REQUESTS' ? renderBreakRequestsContent() :
             mobileSheet === 'SUBSCRIBERS' ? renderSubscribersContent() :
               mobileSheet === 'WEEKLY_MENU' ? renderWeeklyMenuContent() :
@@ -1144,6 +1455,148 @@ export async function renderOwnerPortal() {
         </div>
       </div>
 
+      <!-- Hidden Inputs for Native Mobile Camera, Gallery, and Replacement Pickers -->
+      <input type="file" id="hostelCameraInput" accept="image/*" capture="environment" style="display: none;" />
+      <input type="file" id="hostelGalleryInput" accept="image/*" multiple style="display: none;" />
+      <input type="file" id="hostelReplaceCameraInput" accept="image/*" capture="environment" style="display: none;" />
+      <input type="file" id="hostelReplaceGalleryInput" accept="image/*" style="display: none;" />
+
+      <!-- Modal: Replace Hostel Image -->
+      <div id="replaceImageModal" style="display: ${imageToReplace ? 'flex' : 'none'}; position: fixed; inset: 0; background: rgba(0,0,0,0.65); align-items: center; justify-content: center; z-index: 2200; padding: 16px;">
+        <div style="background: #fff; border-radius: 24px; max-width: 460px; width: 100%; padding: 24px; box-shadow: 0 20px 40px rgba(0,0,0,0.3); max-height: 90vh; overflow-y: auto;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; border-bottom: 1px solid var(--color-neutral-200); padding-bottom: 12px;">
+            <h3 class="font-display" style="font-size: 18px; font-weight: 800; color: var(--color-neutral-900); margin: 0; display: flex; align-items: center; gap: 8px;">
+              <i class="fa-solid fa-arrows-rotate" style="color: var(--color-primary-600);"></i> Replace Hostel Photo
+            </h3>
+            <button class="cancel-replace-x-btn" style="background: none; border: none; font-size: 24px; cursor: pointer; color: var(--color-neutral-500); padding: 4px 8px;">&times;</button>
+          </div>
+
+          <!-- Current Photo vs New Photo Comparison -->
+          <div style="display: grid; grid-template-columns: ${replacePreviewUrl ? '1fr 1fr' : '1fr'}; gap: 12px; margin-bottom: 16px;">
+            <div>
+              <span style="font-size: 11px; font-weight: 700; color: var(--color-neutral-500); display: block; margin-bottom: 4px;">CURRENT PHOTO</span>
+              <div style="width: 100%; aspect-ratio: 4/3; border-radius: 12px; overflow: hidden; background: #000; border: 1px solid var(--color-neutral-200);">
+                <img src="${getSafeImageUrl(imageToReplace?.imageUrl)}" alt="Current photo" style="width: 100%; height: 100%; object-fit: cover;" />
+              </div>
+            </div>
+            ${replacePreviewUrl ? `
+              <div>
+                <span style="font-size: 11px; font-weight: 700; color: var(--color-primary-600); display: block; margin-bottom: 4px;">NEW PHOTO PREVIEW</span>
+                <div style="width: 100%; aspect-ratio: 4/3; border-radius: 12px; overflow: hidden; background: #000; border: 2px solid var(--color-primary-500);">
+                  <img src="${replacePreviewUrl}" alt="New replacement preview" style="width: 100%; height: 100%; object-fit: cover;" />
+                </div>
+              </div>
+            ` : ''}
+          </div>
+
+          <!-- Action Buttons to Choose / Take New Photo -->
+          <div class="mobile-only-section" style="margin-bottom: 16px;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+              <button type="button" class="replace-take-photo-btn btn-primary-action" style="padding: 10px; font-size: 13px; font-weight: 700; border-radius: 12px; justify-content: center; cursor: pointer;" ${isReplacingImage ? 'disabled' : ''}>
+                <i class="fa-solid fa-camera"></i> 📷 Take Photo
+              </button>
+              <button type="button" class="replace-gallery-btn btn-outline-action" style="padding: 10px; font-size: 13px; font-weight: 700; border-radius: 12px; justify-content: center; background: #fff; cursor: pointer;" ${isReplacingImage ? 'disabled' : ''}>
+                <i class="fa-solid fa-images"></i> 🖼️ From Gallery
+              </button>
+            </div>
+          </div>
+          <div class="desktop-only-section" style="margin-bottom: 16px;">
+            <button type="button" class="replace-gallery-btn btn-primary-action" style="width: 100%; padding: 12px; font-size: 13px; font-weight: 700; border-radius: 12px; justify-content: center; cursor: pointer;" ${isReplacingImage ? 'disabled' : ''}>
+              <i class="fa-solid fa-cloud-arrow-up"></i> Choose Replacement Image
+            </button>
+          </div>
+
+          ${replaceFile ? `
+            <!-- Replacement File Details -->
+            <div style="background: var(--color-neutral-50); border: 1px solid var(--color-neutral-200); border-radius: 12px; padding: 12px; margin-bottom: 16px;">
+              <div style="display: flex; justify-content: space-between; align-items: center; font-size: 12px;">
+                <span style="font-weight: 700; color: var(--color-neutral-800); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 260px;">
+                  <i class="fa-solid fa-file-image" style="color: var(--color-primary-600); margin-right: 4px;"></i> ${escapeHtml(replaceFile.name)}
+                </span>
+                <span style="font-weight: 600; color: var(--color-neutral-500);">
+                  ${(replaceFile.size / (1024 * 1024)).toFixed(2)} MB
+                </span>
+              </div>
+            </div>
+          ` : ''}
+
+          <!-- Progress Bar if Uploading Replacement -->
+          ${isReplacingImage ? `
+            <div style="margin-bottom: 16px;">
+              <div style="display: flex; justify-content: space-between; font-size: 12px; font-weight: 700; margin-bottom: 4px; color: var(--color-primary-700);">
+                <span>Uploading replacement photo...</span>
+                <span>${replaceProgress}%</span>
+              </div>
+              <div style="width: 100%; height: 8px; background: #e2e8f0; border-radius: 999px; overflow: hidden;">
+                <div id="replaceProgressBar" style="width: ${replaceProgress}%; height: 100%; background: var(--color-primary-600); transition: width 0.2s ease;"></div>
+              </div>
+            </div>
+          ` : ''}
+
+          ${replaceErrorMessage ? `
+            <div style="background: #fee2e2; border: 1px solid #fca5a5; color: #dc2626; padding: 8px 12px; border-radius: 10px; font-size: 12px; font-weight: 600; margin-bottom: 14px;">
+              ${escapeHtml(replaceErrorMessage)}
+            </div>
+          ` : ''}
+
+          <div style="display: flex; justify-content: flex-end; gap: 10px;">
+            <button type="button" class="cancel-replace-image-btn btn-outline-action" style="padding: 10px 18px; font-size: 13px;" ${isReplacingImage ? 'disabled' : ''}>
+              Cancel
+            </button>
+            <button type="button" class="confirm-replace-image-btn btn-primary-action" style="padding: 10px 24px; font-size: 13px;" ${!replaceFile || isReplacingImage ? 'disabled' : ''}>
+              ${isReplacingImage ? '<i class="fa-solid fa-spinner fa-spin"></i> Replacing...' : '<i class="fa-solid fa-cloud-arrow-up"></i> Upload Replacement'}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Modal: Delete Image Confirmation -->
+      <div id="deleteImageModal" style="display: ${imageToDelete ? 'flex' : 'none'}; position: fixed; inset: 0; background: rgba(0,0,0,0.65); align-items: center; justify-content: center; z-index: 2200; padding: 16px;">
+        <div style="background: #fff; border-radius: 24px; max-width: 400px; width: 100%; padding: 24px; box-shadow: 0 20px 40px rgba(0,0,0,0.3); text-align: center;">
+          <div style="width: 52px; height: 52px; border-radius: 50%; background: #fee2e2; color: #dc2626; display: flex; align-items: center; justify-content: center; font-size: 24px; margin: 0 auto 16px;">
+            <i class="fa-solid fa-trash-can"></i>
+          </div>
+          <h3 class="font-display" style="font-size: 18px; font-weight: 800; color: var(--color-neutral-900); margin: 0 0 8px 0;">Delete this hostel photo?</h3>
+          <p style="font-size: 13px; color: var(--color-neutral-600); margin: 0 0 16px 0;">
+            This photo will be permanently removed from your hostel listing.
+          </p>
+          ${imageToDelete?.imageUrl ? `
+            <div style="width: 140px; height: 105px; margin: 0 auto 18px; border-radius: 12px; overflow: hidden; border: 1px solid var(--color-neutral-200); position: relative;">
+              <img src="${getSafeImageUrl(imageToDelete.imageUrl)}" alt="Delete preview" style="width: 100%; height: 100%; object-fit: cover;" />
+              <span style="position: absolute; bottom: 4px; left: 4px; font-size: 9px; font-weight: 800; background: rgba(0,0,0,0.7); color: #fff; padding: 2px 6px; border-radius: 4px;">
+                ${escapeHtml(imageToDelete.imageCategory || 'Photo')}
+              </span>
+            </div>
+          ` : ''}
+          <div style="display: flex; justify-content: center; gap: 12px;">
+            <button type="button" class="cancel-delete-image-btn btn-outline-action" style="padding: 10px 18px; font-size: 14px;" ${isDeletingImage ? 'disabled' : ''}>
+              Cancel
+            </button>
+            <button type="button" class="confirm-delete-image-btn btn-primary-action" style="padding: 10px 24px; font-size: 14px; background: #dc2626; border-color: #dc2626;" ${isDeletingImage ? 'disabled' : ''}>
+              ${isDeletingImage ? '<i class="fa-solid fa-spinner fa-spin"></i> Deleting...' : '<i class="fa-solid fa-trash-can"></i> Delete'}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Modal: Full-Screen Lightbox View -->
+      <div id="lightboxModal" style="display: ${lightboxImage ? 'flex' : 'none'}; position: fixed; inset: 0; background: rgba(0,0,0,0.88); align-items: center; justify-content: center; z-index: 2300; padding: 20px;">
+        <div style="position: relative; max-width: 90vw; max-height: 90vh; display: flex; flex-direction: column; align-items: center;">
+          <button id="closeLightboxBtn" style="position: absolute; top: -40px; right: 0; background: none; border: none; color: #fff; font-size: 32px; cursor: pointer; padding: 4px 8px;">&times;</button>
+          <img src="${getSafeImageUrl(lightboxImage?.imageUrl)}" alt="Full preview" style="max-width: 100%; max-height: 80vh; object-fit: contain; border-radius: 12px; box-shadow: 0 20px 50px rgba(0,0,0,0.5);" />
+          <div style="margin-top: 12px; display: flex; align-items: center; gap: 10px;">
+            <span style="font-size: 13px; font-weight: 700; color: #fff; background: var(--color-primary-600); padding: 4px 14px; border-radius: 999px;">
+              ${escapeHtml(lightboxImage?.imageCategory || 'Hostel Photo')}
+            </span>
+            ${lightboxImage?.originalFileName ? `
+              <span style="font-size: 12px; color: rgba(255,255,255,0.8);">
+                ${escapeHtml(lightboxImage.originalFileName)}
+              </span>
+            ` : ''}
+          </div>
+        </div>
+      </div>
+
       ${renderFooter()}
     `;
 
@@ -1163,12 +1616,20 @@ export async function renderOwnerPortal() {
           await fetchWeeklyMenus();
           await fetchProviderReviews();
           await fetchProviderBreakRequests();
+          await fetchHostelImages();
           render();
         }
       });
     });
 
     // Mobile Sheet Open Triggers
+    document.querySelectorAll('.open-hostel-images-sheet-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        mobileSheet = 'HOSTEL_IMAGES';
+        render();
+      });
+    });
+
     document.querySelectorAll('.open-manage-pg-sheet-btn').forEach((btn) => {
       btn.addEventListener('click', () => {
         mobileSheet = 'MANAGE_PG';
@@ -1215,6 +1676,463 @@ export async function renderOwnerPortal() {
       btn.addEventListener('click', () => {
         mobileSheet = 'BREAK_SETTINGS';
         render();
+      });
+    });
+
+    // --- Complete Production-Ready Hostel Image Upload & Management Handlers ---
+
+    const validateImageFile = (file: File): string | null => {
+      const validTypes = ['image/jpeg', 'image/png', 'image/webp'];
+      const isExtValid = /\.(jpe?g|png|webp)$/i.test(file.name);
+      if (!validTypes.includes(file.type) && !isExtValid) {
+        return 'Please upload a JPG, PNG, or WebP image.';
+      }
+      const maxSize = 10 * 1024 * 1024; // 10 MB
+      if (file.size > maxSize) {
+        return 'Image size must be less than 10 MB.';
+      }
+      return null;
+    };
+
+    const addFilesToQueue = (files: FileList | File[]) => {
+      const currentCount = hostelImages.length + uploadQueue.filter((q) => q.status !== 'ERROR').length;
+      let added = 0;
+
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        if (currentCount + added >= 10) {
+          showToast('Maximum 10 photos allowed per hostel.', 'info');
+          break;
+        }
+
+        const errorMsg = validateImageFile(file);
+        if (errorMsg) {
+          showToast(`${file.name}: ${errorMsg}`, 'error');
+          continue;
+        }
+
+        const previewUrl = URL.createObjectURL(file);
+        uploadQueue.push({
+          id: 'q_' + Math.random().toString(36).substring(2, 9),
+          file,
+          previewUrl,
+          name: file.name,
+          size: file.size,
+          category: 'Hostel',
+          status: 'WAITING',
+          progress: 0,
+        });
+        added++;
+      }
+
+      if (added > 0) {
+        render();
+      }
+    };
+
+    const processUploadQueue = async () => {
+      if (isQueueUploading || !selectedHostel) return;
+      const pending = uploadQueue.filter((item) => item.status === 'WAITING' || item.status === 'ERROR');
+      if (pending.length === 0) return;
+
+      isQueueUploading = true;
+      render();
+
+      for (const item of pending) {
+        if (hostelImages.length >= 10) {
+          item.status = 'ERROR';
+          item.errorMessage = 'Limit reached: Maximum 10 photos per hostel.';
+          render();
+          continue;
+        }
+
+        item.status = 'UPLOADING';
+        item.progress = 8;
+        item.errorMessage = undefined;
+        render();
+
+        try {
+          const formData = new FormData();
+          formData.append('file', item.file);
+          formData.append('providerId', selectedHostel.id);
+          formData.append('imageCategory', item.category);
+
+          await uploadProviderHostelImage(formData, selectedHostel.id, (progressEvent) => {
+            if (progressEvent.total) {
+              const percent = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+              item.progress = Math.min(99, Math.max(8, percent));
+              const bar = document.getElementById(`progress-bar-${item.id}`);
+              if (bar) bar.style.width = `${item.progress}%`;
+              const txt = document.getElementById(`progress-text-${item.id}`);
+              if (txt) txt.textContent = `Uploading ${item.progress}%`;
+            }
+          });
+
+          item.status = 'SUCCESS';
+          item.progress = 100;
+          await fetchHostelImages();
+          render();
+        } catch (err: any) {
+          item.status = 'ERROR';
+          item.errorMessage = err.message || 'Upload interrupted. Check connection and try again.';
+          render();
+        }
+      }
+
+      // Cleanup successful queue items after brief delay
+      setTimeout(() => {
+        uploadQueue = uploadQueue.filter((item) => item.status !== 'SUCCESS');
+        isQueueUploading = false;
+        render();
+      }, 1000);
+    };
+
+    // Mobile Take Photo & Gallery triggers (works in main layout & mobile bottom sheet)
+    document.querySelectorAll('.mobile-take-photo-btn').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const cameraInput = document.getElementById('hostelCameraInput') as HTMLInputElement;
+        if (cameraInput) {
+          cameraInput.value = '';
+          cameraInput.click();
+        }
+      });
+    });
+
+    document.querySelectorAll('.mobile-gallery-btn').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const galleryInput = document.getElementById('hostelGalleryInput') as HTMLInputElement;
+        if (galleryInput) {
+          galleryInput.value = '';
+          galleryInput.click();
+        }
+      });
+    });
+
+    // Carousel Slider Navigation Handlers
+    document.querySelectorAll('.carousel-prev-btn').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (hostelImages.length > 0) {
+          carouselActiveIndex = (carouselActiveIndex - 1 + hostelImages.length) % hostelImages.length;
+          render();
+        }
+      });
+    });
+
+    document.querySelectorAll('.carousel-next-btn').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (hostelImages.length > 0) {
+          carouselActiveIndex = (carouselActiveIndex + 1) % hostelImages.length;
+          render();
+        }
+      });
+    });
+
+    document.querySelectorAll('.carousel-dot-btn').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const idx = Number((e.currentTarget as HTMLElement).getAttribute('data-slide-idx')) || 0;
+        carouselActiveIndex = Math.max(0, Math.min(idx, hostelImages.length - 1));
+        render();
+      });
+    });
+
+    document.querySelectorAll('.carousel-thumb-btn').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const idx = Number((e.currentTarget as HTMLElement).getAttribute('data-slide-idx')) || 0;
+        carouselActiveIndex = Math.max(0, Math.min(idx, hostelImages.length - 1));
+        render();
+      });
+    });
+
+    // File input changes
+    const cameraInput = document.getElementById('hostelCameraInput') as HTMLInputElement;
+    if (cameraInput) {
+      cameraInput.addEventListener('change', (e) => {
+        const files = (e.target as HTMLInputElement).files;
+        if (files && files.length > 0) {
+          addFilesToQueue(files);
+        }
+      });
+    }
+
+    const galleryInput = document.getElementById('hostelGalleryInput') as HTMLInputElement;
+    if (galleryInput) {
+      galleryInput.addEventListener('change', (e) => {
+        const files = (e.target as HTMLInputElement).files;
+        if (files && files.length > 0) {
+          addFilesToQueue(files);
+        }
+      });
+    }
+
+    // Drag and Drop Zone Handlers
+    document.querySelectorAll('.hostel-dropzone').forEach((dropzone) => {
+      dropzone.addEventListener('click', (e) => {
+        e.preventDefault();
+        const input = document.getElementById('hostelGalleryInput') as HTMLInputElement;
+        if (input) {
+          input.value = '';
+          input.click();
+        }
+      });
+
+      dropzone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        (dropzone as HTMLElement).style.borderColor = 'var(--color-primary-500)';
+        (dropzone as HTMLElement).style.backgroundColor = 'var(--color-primary-50)';
+      });
+
+      dropzone.addEventListener('dragleave', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        (dropzone as HTMLElement).style.borderColor = 'var(--color-neutral-300)';
+        (dropzone as HTMLElement).style.backgroundColor = '#fff';
+      });
+
+      dropzone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        (dropzone as HTMLElement).style.borderColor = 'var(--color-neutral-300)';
+        (dropzone as HTMLElement).style.backgroundColor = '#fff';
+        const dt = (e as DragEvent).dataTransfer;
+        if (dt && dt.files && dt.files.length > 0) {
+          addFilesToQueue(dt.files);
+        }
+      });
+    });
+
+    // Queue actions: Upload All, Clear All, Remove Item, Retry Item
+    document.querySelectorAll('.start-upload-queue-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        processUploadQueue();
+      });
+    });
+
+    document.querySelectorAll('.clear-queue-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        if (isQueueUploading) return;
+        uploadQueue = [];
+        render();
+      });
+    });
+
+    document.querySelectorAll('.remove-queue-item-btn').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        const id = (e.currentTarget as HTMLElement).getAttribute('data-id');
+        uploadQueue = uploadQueue.filter((q) => q.id !== id);
+        render();
+      });
+    });
+
+    document.querySelectorAll('.retry-queue-item-btn').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        const id = (e.currentTarget as HTMLElement).getAttribute('data-id');
+        const item = uploadQueue.find((q) => q.id === id);
+        if (item) {
+          item.status = 'WAITING';
+          item.progress = 0;
+          item.errorMessage = undefined;
+          processUploadQueue();
+        }
+      });
+    });
+
+    // Lightbox Modal
+    document.querySelectorAll('.gallery-photo-click').forEach((el) => {
+      el.addEventListener('click', (e) => {
+        const imgId = (e.currentTarget as HTMLElement).getAttribute('data-img-id');
+        const found = hostelImages.find((img) => img.id === imgId);
+        if (found) {
+          lightboxImage = found;
+          render();
+        }
+      });
+    });
+
+    document.getElementById('closeLightboxBtn')?.addEventListener('click', () => {
+      lightboxImage = null;
+      render();
+    });
+
+    document.getElementById('lightboxModal')?.addEventListener('click', (e) => {
+      if (e.target === document.getElementById('lightboxModal')) {
+        lightboxImage = null;
+        render();
+      }
+    });
+
+    // Replace Image Modal Handlers
+    document.querySelectorAll('.replace-hostel-image-btn').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        const imgId = (e.currentTarget as HTMLElement).getAttribute('data-img-id');
+        const found = hostelImages.find((img) => img.id === imgId);
+        if (found) {
+          imageToReplace = found;
+          replaceFile = null;
+          replacePreviewUrl = null;
+          replaceCategory = found.imageCategory || 'Hostel';
+          isReplacingImage = false;
+          replaceProgress = 0;
+          replaceErrorMessage = null;
+          render();
+        }
+      });
+    });
+
+    const closeReplaceModal = () => {
+      if (isReplacingImage) return;
+      imageToReplace = null;
+      replaceFile = null;
+      replacePreviewUrl = null;
+      isReplacingImage = false;
+      replaceProgress = 0;
+      replaceErrorMessage = null;
+      render();
+    };
+
+    document.querySelectorAll('.cancel-replace-image-btn').forEach((btn) => {
+      btn.addEventListener('click', closeReplaceModal);
+    });
+    document.querySelectorAll('.cancel-replace-x-btn').forEach((btn) => {
+      btn.addEventListener('click', closeReplaceModal);
+    });
+
+    document.querySelectorAll('.replace-take-photo-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const input = document.getElementById('hostelReplaceCameraInput') as HTMLInputElement;
+        if (input) {
+          input.value = '';
+          input.click();
+        }
+      });
+    });
+
+    document.querySelectorAll('.replace-gallery-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const input = document.getElementById('hostelReplaceGalleryInput') as HTMLInputElement;
+        if (input) {
+          input.value = '';
+          input.click();
+        }
+      });
+    });
+
+    const onReplaceFileSelected = (file: File) => {
+      const err = validateImageFile(file);
+      if (err) {
+        showToast(err, 'error');
+        return;
+      }
+      replaceFile = file;
+      replacePreviewUrl = URL.createObjectURL(file);
+      replaceErrorMessage = null;
+      render();
+    };
+
+    const replaceCameraInput = document.getElementById('hostelReplaceCameraInput') as HTMLInputElement;
+    if (replaceCameraInput) {
+      replaceCameraInput.addEventListener('change', (e) => {
+        const file = (e.target as HTMLInputElement).files?.[0];
+        if (file) onReplaceFileSelected(file);
+      });
+    }
+
+    const replaceGalleryInput = document.getElementById('hostelReplaceGalleryInput') as HTMLInputElement;
+    if (replaceGalleryInput) {
+      replaceGalleryInput.addEventListener('change', (e) => {
+        const file = (e.target as HTMLInputElement).files?.[0];
+        if (file) onReplaceFileSelected(file);
+      });
+    }
+
+    document.querySelectorAll('.confirm-replace-image-btn').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        if (!imageToReplace || !replaceFile) return;
+        isReplacingImage = true;
+        replaceProgress = 10;
+        replaceErrorMessage = null;
+        render();
+
+        try {
+          const formData = new FormData();
+          formData.append('file', replaceFile);
+          formData.append('imageCategory', replaceCategory);
+
+          await replaceProviderHostelImage(imageToReplace.id, formData, (progressEvent) => {
+            if (progressEvent.total) {
+              const percent = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+              replaceProgress = Math.min(99, Math.max(10, percent));
+              const bar = document.getElementById('replaceProgressBar');
+              if (bar) bar.style.width = `${replaceProgress}%`;
+            }
+          });
+
+          showToast('Hostel photo replaced successfully!', 'success');
+          imageToReplace = null;
+          replaceFile = null;
+          replacePreviewUrl = null;
+          isReplacingImage = false;
+          await fetchHostelImages();
+          render();
+        } catch (err: any) {
+          isReplacingImage = false;
+          replaceErrorMessage = err.message || 'Failed to replace image. Please try again.';
+          showToast(replaceErrorMessage || 'Failed to replace image', 'error');
+          render();
+        }
+      });
+    });
+
+    // Delete Image Modal Handlers
+    document.querySelectorAll('.delete-hostel-image-btn').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        const imgId = (e.currentTarget as HTMLElement).getAttribute('data-img-id');
+        const img = hostelImages.find((i) => i.id === imgId);
+        if (img) {
+          imageToDelete = img;
+          render();
+        }
+      });
+    });
+
+    document.querySelectorAll('.cancel-delete-image-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        imageToDelete = null;
+        isDeletingImage = false;
+        render();
+      });
+    });
+
+    document.querySelectorAll('.confirm-delete-image-btn').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        if (!imageToDelete) return;
+        isDeletingImage = true;
+        render();
+
+        try {
+          await deleteProviderHostelImage(imageToDelete.id);
+          showToast('Hostel photo deleted successfully.', 'info');
+          imageToDelete = null;
+          isDeletingImage = false;
+          await fetchHostelImages();
+          render();
+        } catch (err: any) {
+          isDeletingImage = false;
+          showToast(err.message || 'Failed to delete hostel image', 'error');
+          render();
+        }
       });
     });
 

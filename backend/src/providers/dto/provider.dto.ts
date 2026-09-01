@@ -6,6 +6,9 @@ import {
   IsNumber,
   Min,
   Max,
+  MaxLength,
+  IsArray,
+  ArrayMaxSize,
 } from 'class-validator';
 import { Category } from '../../common/enums/category.enum';
 
@@ -16,6 +19,7 @@ export class ProviderDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(1000, { message: 'Description cannot exceed 1000 characters' })
   description?: string;
 
   @IsOptional()
@@ -35,6 +39,9 @@ export class ProviderDto {
   category?: Category;
 
   @IsOptional()
+  @IsArray({ message: 'Amenities must be an array of strings' })
+  @IsString({ each: true, message: 'Each amenity must be a string' })
+  @ArrayMaxSize(30, { message: 'Cannot specify more than 30 amenities' })
   amenities?: string[];
 
   @IsOptional()

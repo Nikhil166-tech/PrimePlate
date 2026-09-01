@@ -27,24 +27,34 @@ export class UploadsService {
       );
     }
 
-    const maxSize = 5 * 1024 * 1024; // 5 MB
+    const maxSize = 10 * 1024 * 1024; // 10 MB
     if (file.size && file.size > maxSize) {
-      throw new BadRequestException('File size exceeds maximum 5MB limit');
+      throw new BadRequestException('File size exceeds maximum 10MB limit');
     }
 
     const cloudName = this.config.get<string>('CLOUDINARY_CLOUD_NAME');
     const apiKey = this.config.get<string>('CLOUDINARY_API_KEY');
+    const apiSecret = this.config.get<string>('CLOUDINARY_API_SECRET');
     const isProduction = process.env.NODE_ENV === 'production';
 
-    if (!cloudName || !apiKey) {
+    const isCloudinaryConfigured =
+      cloudName &&
+      apiKey &&
+      apiSecret &&
+      cloudName !== 'your_cloudinary_cloud_name' &&
+      apiKey !== 'your_cloudinary_api_key';
+
+    if (!isCloudinaryConfigured) {
       if (isProduction) {
         throw new BadRequestException(
           'Cloudinary configuration missing in production environment. Upload failed.',
         );
       }
+      // Return the exact uploaded file buffer as a Data URI so the exact user-uploaded image is preserved and rendered identically
+      const mime = file.mimetype || 'image/jpeg';
+      const base64Data = file.buffer.toString('base64');
       return {
-        secure_url:
-          'https://images.pexels.com/photos/5775684/pexels-photo-5775684.jpeg?auto=compress&cs=tinysrgb&h=650&w=940',
+        secure_url: `data:${mime};base64,${base64Data}`,
       };
     }
 

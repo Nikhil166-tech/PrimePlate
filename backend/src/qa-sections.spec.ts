@@ -688,7 +688,20 @@ describe('PrimePlate Comprehensive QA Suite (Sections 19, 24, 26, 27, 28, 30, 40
               const {
                 ProvidersService,
               } = require('./providers/providers.service');
-              return new ProvidersService(providerRepo, mockSubRepo as any);
+              const mockImageRepo = {
+                find: jest.fn().mockResolvedValue([]),
+                count: jest.fn().mockResolvedValue(0),
+              };
+              const mockUploads = {
+                upload: jest.fn().mockResolvedValue({ secure_url: 'https://sample.com/img.jpg' }),
+              };
+              return new ProvidersService(
+                providerRepo,
+                mockSubRepo as any,
+                mockImageRepo as any,
+                {} as any,
+                mockUploads as any,
+              );
             },
           },
         ],

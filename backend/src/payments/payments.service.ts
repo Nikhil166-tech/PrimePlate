@@ -777,22 +777,20 @@ export class PaymentsService {
   async getPaymentStatus(orderId: string, userId: string) {
     if (!orderId) throw new BadRequestException('Order ID is required');
 
-    const payment = await this.paymentRepo.findOne({
+    this.logger.log(`PAYMENT_STATUS_CHECK: orderId=${orderId}, userId=${userId}`);
+
+    let payment = await this.paymentRepo.findOne({
       where: { razorpayOrderId: orderId },
       relations: { student: true, provider: true },
     });
 
-    if (!payment) {
-      throw new NotFoundException('Payment order not found');
-    }
-
-    if (payment.student && payment.student.id !== userId) {
+    if (payment && payment.student && payment.student.id !== userId) {
       throw new ForbiddenException(
         'Cannot check payment status belonging to another user',
       );
     }
 
-    if (payment.status === 'paid') {
+    if (payment && payment.status === 'paid') {
       const existingSubs =
         await this.subscriptionsService.findByStudent(userId);
       const sub = existingSubs.find(
@@ -800,6 +798,7 @@ export class PaymentsService {
           s.mealPlan?.id === payment.mealPlanId ||
           s.razorpayOrderId === orderId,
       );
+      this.logger.log(`PAYMENT_STATUS_CHECK: orderId=${orderId}, status=SUCCESS`);
       return {
         status: 'SUCCESS',
         paymentStatus: 'PAID',
@@ -810,7 +809,7 @@ export class PaymentsService {
       };
     }
 
-    // Reconcile with Razorpay API if available, even if local status is 'created', 'processing', or 'failed'
+    // Reconcile with Razorpay API if available, even if local status is 'created', 'processing', 'failed', or missing
     if (this.razorpay) {
       try {
         const rzpOrder: any = await this.razorpay.orders.fetch(orderId);
@@ -826,24 +825,35 @@ export class PaymentsService {
           const paymentId = capturedPayment?.id || `pay_rzp_${Date.now()}`;
           const amountInPaise = capturedPayment?.amount || rzpOrder.amount_paid;
 
-          const result = await this.reconcileCapturedPayment({
-            userId,
-            razorpayOrderId: orderId,
-            razorpayPaymentId: paymentId,
-            mealPlanId: payment.mealPlanId,
-            durationInput: payment.durationDays,
-            skipSignatureCheck: true,
-            paymentAmountInPaise: amountInPaise ? Number(amountInPaise) : undefined,
-          });
+          const rzpNotes = rzpOrder.notes || {};
+          const mealPlanId = payment?.mealPlanId || rzpNotes.mealPlanId;
+          const durationDays = payment?.durationDays || rzpNotes.durationDays || 30;
 
-          return {
-            status: 'SUCCESS',
-            paymentStatus: 'PAID',
-            orderId,
-            paymentId,
-            amount: Number(payment.amount),
-            subscription: result.subscription,
-          };
+          if (mealPlanId) {
+            const result = await this.reconcileCapturedPayment({
+              userId,
+              razorpayOrderId: orderId,
+              razorpayPaymentId: paymentId,
+              mealPlanId,
+              durationInput: durationDays,
+              skipSignatureCheck: true,
+              paymentAmountInPaise: amountInPaise
+                ? Number(amountInPaise)
+                : undefined,
+            });
+
+            this.logger.log(`PAYMENT_STATUS_CHECK: orderId=${orderId}, status=SUCCESS`);
+            return {
+              status: 'SUCCESS',
+              paymentStatus: 'PAID',
+              orderId,
+              paymentId,
+              amount: result.payment?.amount
+                ? Number(result.payment.amount)
+                : Number(amountInPaise / 100),
+              subscription: result.subscription,
+            };
+          }
         } else if (
           rzpOrder &&
           (rzpOrder.status === 'attempted' || rzpOrder.status === 'expired')
@@ -854,10 +864,11 @@ export class PaymentsService {
             paymentsObj?.items?.length > 0 &&
             paymentsObj.items.every((p: any) => p.status === 'failed');
           if (allFailed || rzpOrder.status === 'expired') {
-            if (payment.status !== 'paid') {
+            if (payment && payment.status !== 'paid') {
               payment.status = 'failed';
               await this.paymentRepo.save(payment);
             }
+            this.logger.log(`PAYMENT_STATUS_CHECK: orderId=${orderId}, status=FAILED`);
             return {
               status: 'FAILED',
               paymentStatus: 'FAILED',
@@ -867,11 +878,16 @@ export class PaymentsService {
           }
         }
       } catch (err: any) {
-        this.logger.warn(`Razorpay order status fetch error: ${err.message}`);
+        this.logger.warn(`Razorpay order status fetch error for ${orderId}: ${err.message}`);
       }
     }
 
+    if (!payment) {
+      throw new NotFoundException('Payment order not found');
+    }
+
     if (payment.status === 'failed') {
+      this.logger.log(`PAYMENT_STATUS_CHECK: orderId=${orderId}, status=FAILED`);
       return {
         status: 'FAILED',
         paymentStatus: 'FAILED',
@@ -880,6 +896,7 @@ export class PaymentsService {
       };
     }
 
+    this.logger.log(`PAYMENT_STATUS_CHECK: orderId=${orderId}, status=PROCESSING`);
     return {
       status: 'PROCESSING',
       paymentStatus: (payment.status || 'PENDING').toUpperCase(),

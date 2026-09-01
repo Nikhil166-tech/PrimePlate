@@ -777,6 +777,27 @@ export async function renderDashboard() {
     updateContentDisplay();
   };
 
+  const checkPendingOrderOnDashboard = async () => {
+    const pendingOrderId = sessionStorage.getItem('pendingPaymentOrderId');
+    if (pendingOrderId) {
+      console.log(`PAYMENT_PENDING_ORDER orderId=${pendingOrderId}`);
+      try {
+        const res: any = await api.get(`/payments/${pendingOrderId}/status`);
+        console.log(`PAYMENT_STATUS_CHECK orderId=${pendingOrderId} status=${res?.status}`);
+        if (res && res.status === 'SUCCESS') {
+          sessionStorage.removeItem('pendingPaymentOrderId');
+          showToast('Payment verified! Your subscription is now ACTIVE 🎉', 'success');
+          await fetchSubs();
+        } else if (res && res.status === 'FAILED') {
+          sessionStorage.removeItem('pendingPaymentOrderId');
+          showToast(res.message || 'Previous payment attempt failed.', 'info');
+        }
+      } catch (_) {
+        // Keep pending order ID for user manual check
+      }
+    }
+  };
+
   renderPage();
-  fetchSubs();
+  fetchSubs().then(() => checkPendingOrderOnDashboard());
 }

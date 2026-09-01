@@ -197,8 +197,12 @@ export async function renderCheckout(planId: string) {
   const payBtn = document.getElementById('payBtn') as HTMLButtonElement;
   const instantDemoBtn = document.getElementById('instantDemoPayBtn') as HTMLButtonElement;
 
-  const setConfirmationPendingState = (orderId: string) => {
+  let pollingTimerId: any = null;
+
+  const setConfirmationPendingState = (orderId: string, isMaxAttemptsReached = false) => {
     sessionStorage.setItem('pendingPaymentOrderId', orderId);
+    console.log(`PAYMENT_PENDING_ORDER orderId=${orderId}`);
+
     if (payBtn) {
       payBtn.innerHTML = `<i class="fa-solid fa-clock-rotate-left"></i> <span>Check Payment Status</span>`;
       payBtn.removeAttribute('disabled');
@@ -211,7 +215,10 @@ export async function renderCheckout(planId: string) {
     }
 
     const detailsBox = document.getElementById('checkoutPlanDetails');
-    if (detailsBox && !document.getElementById('pendingRecoveryNotice')) {
+    const existingNotice = document.getElementById('pendingRecoveryNotice');
+    if (existingNotice) existingNotice.remove();
+
+    if (detailsBox) {
       const notice = document.createElement('div');
       notice.id = 'pendingRecoveryNotice';
       notice.style.background = '#fffbeb';
@@ -219,14 +226,20 @@ export async function renderCheckout(planId: string) {
       notice.style.borderRadius = '12px';
       notice.style.padding = '16px';
       notice.style.marginBottom = '16px';
+
+      const noticeTitle = isMaxAttemptsReached
+        ? 'Payment confirmation is taking longer than expected.'
+        : 'Payment Confirmation Pending';
+      const noticeDesc = isMaxAttemptsReached
+        ? 'Please check your subscription status before trying to pay again.'
+        : 'Your transaction was submitted. We\'re confirming the payment status with Razorpay. <strong>Please do not pay again</strong> while we reconcile your order.';
+
       notice.innerHTML = `
         <div style="display: flex; align-items: flex-start; gap: 12px;">
           <i class="fa-solid fa-hourglass-half" style="color: #d97706; font-size: 20px; margin-top: 2px;"></i>
           <div>
-            <strong style="color: #92400e; font-size: 15px; display: block; margin-bottom: 4px;">Payment Confirmation Pending</strong>
-            <p style="color: #b45309; font-size: 13px; margin: 0; line-height: 1.4;">
-              Your transaction was submitted. We're confirming the payment status with Razorpay. <strong>Please do not pay again</strong> while we reconcile your order.
-            </p>
+            <strong style="color: #92400e; font-size: 15px; display: block; margin-bottom: 4px;">${noticeTitle}</strong>
+            <p style="color: #b45309; font-size: 13px; margin: 0; line-height: 1.4;">${noticeDesc}</p>
           </div>
         </div>
       `;
@@ -235,6 +248,8 @@ export async function renderCheckout(planId: string) {
   };
 
   const resetPayBtns = () => {
+    if (pollingTimerId) clearTimeout(pollingTimerId);
+    pollingTimerId = null;
     sessionStorage.removeItem('pendingPaymentOrderId');
     const notice = document.getElementById('pendingRecoveryNotice');
     if (notice) notice.remove();
@@ -253,6 +268,8 @@ export async function renderCheckout(planId: string) {
   };
 
   const pollStatus = async (orderId: string, manual = false) => {
+    console.log(`PAYMENT_STATUS_CHECK orderId=${orderId}`);
+
     if (payBtn) {
       payBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Checking Status...`;
       payBtn.setAttribute('disabled', 'true');
@@ -260,51 +277,64 @@ export async function renderCheckout(planId: string) {
 
     try {
       const res: any = await api.get(`/payments/${orderId}/status`);
-      if (res && res.status === 'SUCCESS') {
+      const status = res?.status;
+      console.log(`PAYMENT_STATUS_CHECK orderId=${orderId} status=${status}`);
+
+      if (status === 'SUCCESS') {
+        if (pollingTimerId) clearTimeout(pollingTimerId);
+        pollingTimerId = null;
         sessionStorage.removeItem('pendingPaymentOrderId');
         showToast('Payment verified successfully! Your subscription is now ACTIVE 🎉', 'success');
         navigate('#/student/dashboard');
-        return true;
-      } else if (res && res.status === 'FAILED') {
+        return 'SUCCESS';
+      } else if (status === 'FAILED') {
+        if (pollingTimerId) clearTimeout(pollingTimerId);
+        pollingTimerId = null;
         sessionStorage.removeItem('pendingPaymentOrderId');
-        showToast(res.message || 'Payment failed. Please try again.', 'error');
+        showToast(res.message || 'Payment failed. You can try again.', 'error');
         resetPayBtns();
-        return false;
+        return 'FAILED';
       } else {
         if (manual) {
-          showToast('Payment confirmation is still in progress. Please check again in a few seconds.', 'info');
+          showToast('Payment confirmation is pending. Please check again shortly.', 'info');
         }
-        setConfirmationPendingState(orderId);
-        return null;
+        setConfirmationPendingState(orderId, false);
+        return 'PROCESSING';
       }
     } catch (err: any) {
       if (manual) {
-        showToast(err.message || 'Unable to confirm payment status yet. Please try again shortly.', 'info');
+        showToast(err.message || 'Payment confirmation is pending. Please check again shortly.', 'info');
       }
-      setConfirmationPendingState(orderId);
-      return null;
+      setConfirmationPendingState(orderId, false);
+      return 'ERROR';
     }
   };
 
   const startBoundedStatusPolling = async (orderId: string) => {
-    setConfirmationPendingState(orderId);
-    showToast('Network glitch encountered. Checking payment confirmation with server...', 'info');
+    if (pollingTimerId) clearTimeout(pollingTimerId);
+    setConfirmationPendingState(orderId, false);
+    showToast('Checking payment confirmation with server...', 'info');
 
     let attempts = 0;
-    const maxAttempts = 4;
-    const intervals = [2000, 3000, 4000, 5000];
+    const maxAttempts = 5;
+    const intervals = [2000, 3000, 4000, 5000, 6000];
 
     const runPoll = async () => {
       if (attempts >= maxAttempts) {
-        setConfirmationPendingState(orderId);
+        setConfirmationPendingState(orderId, true);
         return;
       }
-      const delay = intervals[attempts] || 3000;
+      const delay = intervals[attempts] || 4000;
       attempts++;
-      setTimeout(async () => {
+      pollingTimerId = setTimeout(async () => {
         const result = await pollStatus(orderId, false);
-        if (result === null && attempts < maxAttempts) {
+        if (result === 'SUCCESS' || result === 'FAILED') {
+          return;
+        }
+        if (attempts < maxAttempts) {
           runPoll();
+        } else {
+          setConfirmationPendingState(orderId, true);
         }
       }, delay);
     };
@@ -315,8 +345,9 @@ export async function renderCheckout(planId: string) {
   // Check for unresolved pending order on page load / refresh
   const savedPendingOrderId = sessionStorage.getItem('pendingPaymentOrderId');
   if (savedPendingOrderId) {
-    setConfirmationPendingState(savedPendingOrderId);
-    pollStatus(savedPendingOrderId, false);
+    console.log(`PAYMENT_PENDING_ORDER orderId=${savedPendingOrderId}`);
+    setConfirmationPendingState(savedPendingOrderId, false);
+    startBoundedStatusPolling(savedPendingOrderId);
   }
 
   const processDirectVerification = async (orderId: string) => {

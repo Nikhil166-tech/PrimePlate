@@ -10,6 +10,7 @@ import { renderOwnerPortal } from './pages/owner';
 import { renderAdminPortal } from './pages/admin';
 import { renderForgotPassword } from './pages/forgot-password';
 import { renderResetPassword } from './pages/reset-password';
+import { renderTransactions } from './pages/transactions';
 
 // Auth & Role guard
 function requireRole(allowedRoles: string[], callback: () => void) {
@@ -47,6 +48,8 @@ registerRoute('#/reset-password', renderResetPassword);
 registerRoute('#/providers', renderProviders);
 registerRoute('#/dashboard', () => requireRole(['STUDENT'], renderDashboard));
 registerRoute('#/student/dashboard', () => requireRole(['STUDENT'], renderDashboard));
+registerRoute('#/student/transactions', () => requireRole(['STUDENT'], renderTransactions));
+registerRoute('#/student/transactions/:orderId', () => requireRole(['STUDENT'], renderTransactions));
 registerRoute('#/owner', () => requireRole(['PROVIDER', 'MEAL_PROVIDER'], renderOwnerPortal));
 registerRoute('#/admin', () => requireRole(['ADMIN'], renderAdminPortal));
 registerRoute('#/providers/:id', () => {

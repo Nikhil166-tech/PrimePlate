@@ -25,6 +25,8 @@ import { SubscriptionBreakRequest } from './subscription-breaks/subscription-bre
 import { SubscriptionBreaksModule } from './subscription-breaks/subscription-breaks.module';
 import { ProviderEarning } from './payouts/provider-earning.entity';
 import { PayoutsModule } from './payouts/payouts.module';
+import { SupportTicket } from './support/support-ticket.entity';
+import { SupportModule } from './support/support.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 
@@ -79,6 +81,7 @@ import { AppService } from './app.service';
       PasswordResetToken,
       SubscriptionBreakRequest,
       ProviderEarning,
+      SupportTicket,
     ]),
     AuthModule,
     UsersModule,
@@ -87,6 +90,7 @@ import { AppService } from './app.service';
     SubscriptionsModule,
     PaymentsModule,
     PayoutsModule,
+    SupportModule,
     UploadsModule,
     ReviewsModule,
     AnalyticsModule,

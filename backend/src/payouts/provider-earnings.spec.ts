@@ -11,6 +11,7 @@ import { PaymentWebhookEvent } from '../payments/webhook-event.entity';
 import { Subscription } from '../subscriptions/subscription.entity';
 import { User } from '../users/user.entity';
 import { MealPlan } from '../meal-plans/meal-plan.entity';
+import { SupportTicket } from '../support/support-ticket.entity';
 import { PaymentsService } from '../payments/payments.service';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { ConfigService } from '@nestjs/config';
@@ -80,6 +81,13 @@ describe('Provider Earnings & Payout Ledger Specification', () => {
         PayoutsService,
         PaymentsService,
         SubscriptionsService,
+        {
+          provide: getRepositoryToken(SupportTicket),
+          useValue: {
+            find: jest.fn().mockResolvedValue([]),
+            findOne: jest.fn().mockResolvedValue(null),
+          },
+        },
         {
           provide: ConfigService,
           useValue: {

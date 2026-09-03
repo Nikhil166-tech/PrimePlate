@@ -702,12 +702,12 @@ export async function renderOwnerPortal() {
             <!-- Mobile Quick Buttons (Only visible on mobile devices <769px) -->
             <div class="mobile-only-section">
               <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-                <label for="hostelCameraInput" class="mobile-take-photo-btn btn-primary-action" style="padding: 14px 16px; font-size: 14px; font-weight: 700; border-radius: 14px; justify-content: center; background: linear-gradient(135deg, var(--color-primary-600), var(--color-primary-700)); box-shadow: 0 4px 12px rgba(234, 88, 12, 0.2); cursor: pointer; display: flex; align-items: center; gap: 8px;">
+                <button type="button" class="mobile-take-photo-btn btn-primary-action" style="padding: 14px 16px; font-size: 14px; font-weight: 700; border-radius: 14px; justify-content: center; background: linear-gradient(135deg, var(--color-primary-600), var(--color-primary-700)); box-shadow: 0 4px 12px rgba(234, 88, 12, 0.2); cursor: pointer; display: flex; align-items: center; gap: 8px;">
                   <i class="fa-solid fa-camera" style="font-size: 16px;"></i> 📷 Take Photo
-                </label>
-                <label for="hostelGalleryInput" class="mobile-gallery-btn btn-outline-action" style="padding: 14px 16px; font-size: 14px; font-weight: 700; border-radius: 14px; justify-content: center; background: #fff; border: 2px solid var(--color-primary-600); color: var(--color-primary-700); cursor: pointer; display: flex; align-items: center; gap: 8px;">
+                </button>
+                <button type="button" class="mobile-gallery-btn btn-outline-action" style="padding: 14px 16px; font-size: 14px; font-weight: 700; border-radius: 14px; justify-content: center; background: #fff; border: 2px solid var(--color-primary-600); color: var(--color-primary-700); cursor: pointer; display: flex; align-items: center; gap: 8px;">
                   <i class="fa-solid fa-images" style="font-size: 16px;"></i> 🖼️ Choose from Gallery
-                </label>
+                </button>
               </div>
             </div>
 
@@ -1673,23 +1673,22 @@ export async function renderOwnerPortal() {
       </div>
 
       <!-- Hidden Inputs for Native Mobile Camera, Gallery, and Replacement Pickers -->
-      <input type="file" id="hostelCameraInput" accept="image/*" capture="camera" style="display: none;" />
+      <input type="file" id="hostelCameraInput" accept="image/*" capture="environment" style="display: none;" />
       <input type="file" id="hostelGalleryInput" accept="image/*" multiple style="display: none;" />
-      <input type="file" id="hostelReplaceCameraInput" accept="image/*" capture="camera" style="display: none;" />
+      <input type="file" id="hostelReplaceCameraInput" accept="image/*" capture="environment" style="display: none;" />
       <input type="file" id="hostelReplaceGalleryInput" accept="image/*" style="display: none;" />
-
-      <!-- HTML5 Live Camera Viewfinder Modal -->
-      <div id="liveCameraModal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.9); align-items: center; justify-content: center; z-index: 3000; padding: 16px;">
+      <!-- HTML5 Live Camera Viewfinder Modal (Desktop WebCam) -->
+      <div id="liveCameraModal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); align-items: center; justify-content: center; z-index: 3000; padding: 16px;">
         <div style="background: #111827; border-radius: 24px; max-width: 500px; width: 100%; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); border: 1px solid #374151; display: flex; flex-direction: column;">
           <div style="padding: 16px 20px; display: flex; justify-content: space-between; align-items: center; background: #1f2937; border-bottom: 1px solid #374151;">
             <h3 style="margin: 0; color: #fff; font-size: 16px; font-weight: 700; display: flex; align-items: center; gap: 8px;">
-              <i class="fa-solid fa-camera" style="color: #f97316;"></i> Live Camera Viewfinder
+              <i class="fa-solid fa-camera" style="color: #f97316;"></i> Camera Viewfinder
             </h3>
             <button id="closeLiveCameraBtn" type="button" style="background: none; border: none; color: #9ca3af; font-size: 24px; cursor: pointer; padding: 0 4px;">&times;</button>
           </div>
           
           <div style="position: relative; width: 100%; aspect-ratio: 4/3; background: #000; display: flex; align-items: center; justify-content: center; overflow: hidden;">
-            <video id="liveCameraVideo" autoplay playsinline style="width: 100%; height: 100%; object-fit: cover;"></video>
+            <video id="liveCameraVideo" autoplay playsinline muted style="width: 100%; height: 100%; object-fit: cover;"></video>
             <canvas id="liveCameraCanvas" style="display: none;"></canvas>
             <div id="cameraLoadingSpinner" style="position: absolute; color: #fff; font-size: 14px; font-weight: 600; display: flex; flex-direction: column; align-items: center; gap: 8px;">
               <i class="fa-solid fa-spinner fa-spin" style="font-size: 28px; color: #f97316;"></i>
@@ -1697,20 +1696,16 @@ export async function renderOwnerPortal() {
             </div>
           </div>
           
-          <div style="padding: 16px 20px; background: #1f2937; display: flex; justify-content: space-between; align-items: center;">
-            <button id="switchCameraFacingBtn" type="button" style="background: #374151; border: none; color: #fff; padding: 10px 16px; border-radius: 12px; font-size: 13px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 6px;">
-              <i class="fa-solid fa-camera-rotate"></i> Flip
-            </button>
-            <button id="snapCameraButton" type="button" style="background: #ea580c; border: none; color: #fff; width: 60px; height: 60px; border-radius: 50%; font-size: 22px; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 0 4px rgba(234,88,12,0.3);">
+          <div style="padding: 16px 20px; background: #1f2937; display: flex; justify-content: space-around; align-items: center;">
+            <button id="snapCameraButton" type="button" style="background: #ea580c; border: none; color: #fff; width: 60px; height: 60px; border-radius: 50%; font-size: 22px; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 0 4px rgba(234,88,12,0.3);" title="Take photo">
               <i class="fa-solid fa-camera"></i>
             </button>
-            <button id="cancelLiveCameraBtn" type="button" style="background: #374151; border: none; color: #fff; padding: 10px 16px; border-radius: 12px; font-size: 13px; font-weight: 600; cursor: pointer;">
+            <button id="cancelLiveCameraBtn" type="button" style="background: #374151; border: none; color: #fff; padding: 10px 20px; border-radius: 12px; font-size: 13px; font-weight: 600; cursor: pointer;">
               Cancel
             </button>
           </div>
         </div>
       </div>
-
       <!-- Modal: Replace Hostel Image -->
       <div id="replaceImageModal" style="display: ${imageToReplace ? 'flex' : 'none'}; position: fixed; inset: 0; background: rgba(0,0,0,0.65); align-items: center; justify-content: center; z-index: 2200; padding: 16px;">
         <div style="background: #fff; border-radius: 24px; max-width: 460px; width: 100%; padding: 24px; box-shadow: 0 20px 40px rgba(0,0,0,0.3); max-height: 90vh; overflow-y: auto;">
@@ -1742,18 +1737,18 @@ export async function renderOwnerPortal() {
           <!-- Action Buttons to Choose / Take New Photo -->
           <div class="mobile-only-section" style="margin-bottom: 16px;">
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-              <label for="hostelReplaceCameraInput" class="replace-take-photo-btn btn-primary-action" style="padding: 10px; font-size: 13px; font-weight: 700; border-radius: 12px; justify-content: center; cursor: pointer; display: flex; align-items: center; gap: 6px;">
+              <button type="button" class="replace-take-photo-btn btn-primary-action" style="padding: 10px; font-size: 13px; font-weight: 700; border-radius: 12px; justify-content: center; cursor: pointer; display: flex; align-items: center; gap: 6px;">
                 <i class="fa-solid fa-camera"></i> 📷 Take Photo
-              </label>
-              <label for="hostelReplaceGalleryInput" class="replace-gallery-btn btn-outline-action" style="padding: 10px; font-size: 13px; font-weight: 700; border-radius: 12px; justify-content: center; background: #fff; cursor: pointer; display: flex; align-items: center; gap: 6px;">
+              </button>
+              <button type="button" class="replace-gallery-btn btn-outline-action" style="padding: 10px; font-size: 13px; font-weight: 700; border-radius: 12px; justify-content: center; background: #fff; cursor: pointer; display: flex; align-items: center; gap: 6px;">
                 <i class="fa-solid fa-images"></i> 🖼️ From Gallery
-              </label>
+              </button>
             </div>
           </div>
           <div class="desktop-only-section" style="margin-bottom: 16px;">
-            <label for="hostelReplaceGalleryInput" class="replace-gallery-btn btn-primary-action" style="width: 100%; padding: 12px; font-size: 13px; font-weight: 700; border-radius: 12px; justify-content: center; cursor: pointer; display: flex; align-items: center; gap: 8px;">
+            <button type="button" class="replace-gallery-btn btn-primary-action" style="width: 100%; padding: 12px; font-size: 13px; font-weight: 700; border-radius: 12px; justify-content: center; cursor: pointer; display: flex; align-items: center; gap: 8px;">
               <i class="fa-solid fa-cloud-arrow-up"></i> Choose Replacement Image
-            </label>
+            </button>
           </div>
 
           ${replaceFile ? `
@@ -2039,7 +2034,6 @@ export async function renderOwnerPortal() {
     };
 
     let currentCameraStream: MediaStream | null = null;
-    let currentFacingMode: 'environment' | 'user' = 'environment';
     let targetCameraQueueCallback: ((file: File) => void) | null = null;
 
     const stopCameraStream = () => {
@@ -2051,7 +2045,7 @@ export async function renderOwnerPortal() {
       if (modal) modal.style.display = 'none';
     };
 
-    const openLiveCameraView = async (onPhotoCaptured: (file: File) => void, fallbackInputId = 'hostelCameraInput') => {
+    const openLiveCameraView = async (onPhotoCaptured: (file: File) => void) => {
       targetCameraQueueCallback = onPhotoCaptured;
       const modal = document.getElementById('liveCameraModal');
       const video = document.getElementById('liveCameraVideo') as HTMLVideoElement;
@@ -2063,11 +2057,7 @@ export async function renderOwnerPortal() {
           : (navigator as any).webkitGetUserMedia || (navigator as any).mozGetUserMedia;
 
       if (!getUserMediaFn) {
-        const input = document.getElementById(fallbackInputId) as HTMLInputElement;
-        if (input) {
-          input.value = '';
-          input.click();
-        }
+        showToast('Camera is not supported on this browser. Please select from Gallery.', 'info');
         return;
       }
 
@@ -2082,7 +2072,7 @@ export async function renderOwnerPortal() {
         try {
           currentCameraStream = await getUserMediaFn.call(
             navigator.mediaDevices || navigator,
-            { video: { facingMode: { ideal: currentFacingMode } }, audio: false },
+            { video: { facingMode: { ideal: 'environment' } }, audio: false },
           );
         } catch (_) {
           currentCameraStream = await getUserMediaFn.call(
@@ -2093,17 +2083,15 @@ export async function renderOwnerPortal() {
 
         if (video) {
           video.srcObject = currentCameraStream;
+          video.muted = true;
+          video.setAttribute('playsinline', 'true');
           await video.play();
         }
         if (spinner) spinner.style.display = 'none';
       } catch (err: any) {
-        console.warn('Camera stream permission error, using native picker:', err);
+        console.warn('Camera stream error:', err);
         stopCameraStream();
-        const input = document.getElementById(fallbackInputId) as HTMLInputElement;
-        if (input) {
-          input.value = '';
-          input.click();
-        }
+        showToast('Camera access blocked or unavailable. Please check camera permissions in your browser.', 'error');
       }
     };
 
@@ -2132,18 +2120,11 @@ export async function renderOwnerPortal() {
       );
     };
 
-    // Live Camera Viewfinder Event Listeners
     document.getElementById('closeLiveCameraBtn')?.addEventListener('click', stopCameraStream);
     document.getElementById('cancelLiveCameraBtn')?.addEventListener('click', stopCameraStream);
     document.getElementById('snapCameraButton')?.addEventListener('click', snapPhotoFromCamera);
-    document.getElementById('switchCameraFacingBtn')?.addEventListener('click', () => {
-      currentFacingMode = currentFacingMode === 'environment' ? 'user' : 'environment';
-      if (targetCameraQueueCallback) {
-        openLiveCameraView(targetCameraQueueCallback);
-      }
-    });
 
-    // Mobile Take Photo & Gallery triggers
+    // Mobile & Desktop Take Photo trigger
     document.querySelectorAll('.mobile-take-photo-btn').forEach((btn) => {
       btn.addEventListener('click', (e) => {
         e.preventDefault();
@@ -2370,6 +2351,7 @@ export async function renderOwnerPortal() {
           replaceErrorMessage = null;
           showEditProfileModal = false;
           render();
+          openLiveCameraView((file) => onReplaceFileSelected(file));
         } else {
           openLiveCameraView((file) => addFilesToQueue([file]));
         }

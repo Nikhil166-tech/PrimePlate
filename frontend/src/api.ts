@@ -64,6 +64,8 @@ api.interceptors.response.use(
       localStorage.removeItem('refreshToken');
       localStorage.removeItem('userRole');
       localStorage.removeItem('userEmail');
+      sessionStorage.removeItem('pendingPaymentOrderId');
+      sessionStorage.removeItem('pendingPaymentPlanId');
 
       if (!window.location.hash.includes('#/login')) {
         window.location.hash = '#/login';
@@ -74,6 +76,8 @@ api.interceptors.response.use(
       localStorage.removeItem('refreshToken');
       localStorage.removeItem('userRole');
       localStorage.removeItem('userEmail');
+      sessionStorage.removeItem('pendingPaymentOrderId');
+      sessionStorage.removeItem('pendingPaymentPlanId');
 
       if (!window.location.hash.includes('#/login')) {
         window.location.hash = '#/login';
@@ -171,6 +175,21 @@ export const deleteProviderHostelImage = (imageId: string) =>
 
 export const getPublicHostelImages = (providerId: string) =>
   api.get(`/providers/${encodeURIComponent(providerId)}/images`);
+
+export const getPaymentHistory = () => api.get('/payments/history');
+export const getPaymentDetails = (orderId: string) => api.get(`/payments/${encodeURIComponent(orderId)}/details`);
+export const checkPaymentStatus = (orderId: string) => api.get(`/payments/${encodeURIComponent(orderId)}/status`);
+
+export const createSupportTicket = (data: {
+  razorpayOrderId: string;
+  issueType: string;
+  description: string;
+  utrReference?: string;
+}) => api.post('/support/payment-issues', data);
+
+export const getSupportTickets = () => api.get('/support/payment-issues');
+export const getSupportTicketByOrderId = (orderId: string) =>
+  api.get(`/support/payment-issues/order/${encodeURIComponent(orderId)}`);
 
 export default api;
 

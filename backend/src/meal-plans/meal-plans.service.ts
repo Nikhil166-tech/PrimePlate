@@ -48,47 +48,10 @@ export class MealPlansService {
   }
 
   async findByProvider(providerId: string): Promise<MealPlan[]> {
-    const plans = await this.planRepo.find({
+    return this.planRepo.find({
       where: { provider: { id: providerId }, isActive: true },
       relations: { provider: true },
     });
-    if (plans.length > 0) return plans;
-
-    const provider = await this.providerRepo.findOne({
-      where: { id: providerId },
-    });
-    if (
-      provider &&
-      provider.monthlyPrice &&
-      Number(provider.monthlyPrice) > 0
-    ) {
-      const defaultPlan = this.planRepo.create({
-        title: 'Monthly Subscription Plan',
-        pricePerMonth: Number(provider.monthlyPrice),
-        description: 'Daily fresh cooked breakfast, lunch & dinner',
-        provider,
-        isActive: true,
-      });
-      try {
-        const saved = await this.planRepo.save(defaultPlan);
-        return [saved];
-      } catch (err) {
-        return [
-          {
-            id: provider.id,
-            title: 'Monthly Subscription Plan',
-            pricePerMonth: Number(provider.monthlyPrice),
-            description: 'Daily fresh cooked breakfast, lunch & dinner',
-            provider,
-            isActive: true,
-            createdAt: new Date(),
-            updatedAt: new Date(),
-          } as any,
-        ];
-      }
-    }
-
-    return [];
   }
 
   async findById(id: string): Promise<MealPlan> {
@@ -96,28 +59,9 @@ export class MealPlansService {
       where: { id },
       relations: { provider: true },
     });
-    if (plan) return plan;
-
-    const provider = await this.providerRepo.findOne({ where: { id } });
-    if (
-      provider &&
-      provider.monthlyPrice &&
-      Number(provider.monthlyPrice) > 0
-    ) {
-      const newPlan = this.planRepo.create({
-        title: `${provider.name} Monthly Mess Plan`,
-        pricePerMonth: Number(provider.monthlyPrice),
-        description: 'Daily fresh cooked breakfast, lunch & dinner',
-        provider,
-        isActive: true,
-      });
-      try {
-        return await this.planRepo.save(newPlan);
-      } catch (_) {
-        return newPlan;
-      }
+    if (!plan) {
+      throw new NotFoundException('Meal plan not found');
     }
-
-    throw new NotFoundException('Meal plan not found');
+    return plan;
   }
 }

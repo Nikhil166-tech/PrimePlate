@@ -27,8 +27,11 @@ export function renderNavbar(): string {
     </a>
     ${
       token && isStudent
-        ? `<a href="#/dashboard" class="nav-item-btn ${currentHash === '#/dashboard' ? 'active' : ''}">
+        ? `<a href="#/dashboard" class="nav-item-btn ${currentHash === '#/dashboard' || currentHash === '#/student/dashboard' ? 'active' : ''}">
             <i class="fa-solid fa-qrcode"></i> My Mess Card
+          </a>
+          <a href="#/student/transactions" class="nav-item-btn ${currentHash.startsWith('#/student/transactions') ? 'active' : ''}">
+            <i class="fa-solid fa-receipt"></i> Transactions
           </a>`
         : ''
     }
@@ -100,6 +103,8 @@ export function attachNavbarEvents() {
     localStorage.removeItem('refreshToken');
     localStorage.removeItem('userRole');
     localStorage.removeItem('userEmail');
+    sessionStorage.removeItem('pendingPaymentOrderId');
+    sessionStorage.removeItem('pendingPaymentPlanId');
     navigate('#/login');
   };
 

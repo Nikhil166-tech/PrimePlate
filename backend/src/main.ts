@@ -132,6 +132,18 @@ async function bootstrap() {
   app.use('/api/v1/payments/create-order', paymentRateLimiter);
   app.use('/api/v1/payments/verify', paymentRateLimiter);
 
+  // Support ticket creation rate limiter (anti-spam)
+  const supportRateLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 20,
+    message: {
+      success: false,
+      message: 'Too many support ticket requests. Please try again shortly.',
+    },
+  });
+
+  app.use('/api/v1/support/payment-issues', supportRateLimiter);
+
   // Global validation and response interceptor
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
   app.useGlobalInterceptors(new TransformResponseInterceptor());

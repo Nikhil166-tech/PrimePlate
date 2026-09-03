@@ -148,6 +148,18 @@ export class PaymentsController {
     return this.paymentsService.getPaymentStatus(orderId, req.user.userId);
   }
 
+  @Get(':orderId/details')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.STUDENT)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get Detailed Transaction Info for an Order' })
+  async getPaymentDetails(
+    @Req() req: AuthenticatedRequest,
+    @Param('orderId') orderId: string,
+  ) {
+    return this.paymentsService.getPaymentDetails(orderId, req.user.userId);
+  }
+
   @Get('history')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.STUDENT)

@@ -390,7 +390,7 @@ export async function renderDashboard() {
 
     const totalSpentEl = document.getElementById('totalSpentAmount');
     if (totalSpentEl) {
-      totalSpentEl.innerText = validPaidSubs.length > 0 ? `₹${totalSpent.toLocaleString('en-IN')}` : 'Amount unavailable';
+      totalSpentEl.innerText = `₹${totalSpent.toLocaleString('en-IN')}`;
     }
 
     const totalSubsEl = document.getElementById('totalSubsCount');
@@ -802,8 +802,16 @@ export async function renderDashboard() {
           sessionStorage.removeItem('pendingPaymentOrderId');
           showToast(res.message || 'Previous payment attempt failed.', 'info');
         }
-      } catch (_) {
-        // Keep pending order ID for user manual check
+      } catch (err: any) {
+        const isAuthOrNotFound =
+          err?.response?.status === 403 ||
+          err?.status === 403 ||
+          err?.response?.status === 404 ||
+          err?.status === 404;
+        if (isAuthOrNotFound) {
+          sessionStorage.removeItem('pendingPaymentOrderId');
+          sessionStorage.removeItem('pendingPaymentPlanId');
+        }
       }
     }
   };

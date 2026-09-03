@@ -22,6 +22,7 @@ import {
   ProviderEarning,
   ProviderEarningStatus,
 } from '../payouts/provider-earning.entity';
+import { SupportTicket } from '../support/support-ticket.entity';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 
 describe('PrimePlate Payment Security & Recovery Specification', () => {
@@ -245,6 +246,13 @@ describe('PrimePlate Payment Security & Recovery Specification', () => {
               if (opts?.where?.id === mockStudent2.id) return mockStudent2;
               return null;
             }),
+          },
+        },
+        {
+          provide: getRepositoryToken(SupportTicket),
+          useValue: {
+            find: jest.fn().mockResolvedValue([]),
+            findOne: jest.fn().mockResolvedValue(null),
           },
         },
         {

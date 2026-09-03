@@ -90,22 +90,6 @@ export class ProvidersService {
       verified: !isProd,
     } as Partial<MealProvider>);
     const saved = await this.providerRepo.save(provider);
-
-    // Auto-create default meal plan for immediate student checkout
-    try {
-      const defaultPlan = this.providerRepo.manager.create(MealPlan, {
-        title: `${saved.name} Monthly Mess Plan`,
-        pricePerMonth: saved.monthlyPrice || 2999,
-        description:
-          'Standard fresh 3-meal monthly PG/hostel mess subscription',
-        provider: saved,
-        isActive: true,
-      });
-      await this.providerRepo.manager.save(MealPlan, defaultPlan);
-    } catch (_) {
-      // MealPlan creation fallback handled on query
-    }
-
     return saved;
   }
 

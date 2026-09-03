@@ -1356,13 +1356,15 @@ body {
    ========================================================================== */
 
 /* Prevent page-wide horizontal scrolling */
-html, body {
+html,
+body {
   overflow-x: hidden;
   width: 100%;
   max-width: 100vw;
 }
 
-#app, .main-content {
+#app,
+.main-content {
   overflow-x: hidden;
   width: 100%;
   max-width: 100vw;
@@ -1504,8 +1506,8 @@ img {
   }
 
   /* Modals width protection */
-  div[id*="Modal"] > div,
-  div[id*="modal"] > div {
+  div[id*="Modal"]>div,
+  div[id*="modal"]>div {
     max-width: calc(100vw - 24px) !important;
     padding: 20px 16px !important;
     border-radius: 20px !important;
@@ -2559,14 +2561,14 @@ img {
   background-color: white;
   transition: .3s;
   border-radius: 50%;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
-input:checked + .toggle-slider {
+input:checked+.toggle-slider {
   background-color: var(--color-primary-600);
 }
 
-input:checked + .toggle-slider:before {
+input:checked+.toggle-slider:before {
   transform: translateX(24px);
 }
 
@@ -2586,6 +2588,7 @@ input:checked + .toggle-slider:before {
   .mobile-only-section {
     display: none !important;
   }
+
   .desktop-only-section {
     display: block !important;
   }
@@ -2622,6 +2625,7 @@ input:checked + .toggle-slider:before {
     align-items: center;
     padding: 20px;
   }
+
   .mobile-bottom-sheet-content {
     border-radius: 28px;
   }
@@ -2631,6 +2635,7 @@ input:checked + .toggle-slider:before {
   from {
     transform: translateY(100%);
   }
+
   to {
     transform: translateY(0);
   }
@@ -2640,6 +2645,7 @@ input:checked + .toggle-slider:before {
   from {
     opacity: 0;
   }
+
   to {
     opacity: 1;
   }
@@ -2664,61 +2670,44 @@ input:checked + .toggle-slider:before {
 }
 
 /* ==========================================================================
-   Global Mobile Touch Smoothness & GPU Hardware Acceleration
+   Transactions Mobile Responsive UI System
    ========================================================================== */
 
-html, body {
-  -webkit-tap-highlight-color: transparent;
-  touch-action: manipulation;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+.tx-scroll-hide::-webkit-scrollbar {
+  display: none;
+}
+.tx-scroll-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
 
-/* Momentum scrolling for all scroll containers on mobile */
-*,
-.overflow-y-auto,
-.overflow-x-auto {
-  -webkit-overflow-scrolling: touch;
-}
-
-/* Instant micro-animation tap feedback on interactive elements */
-button:active,
-.btn-primary-action:active,
-.btn-secondary-action:active,
-.btn-outline-action:active,
-.compact-action-card:active,
-.slide-take-photo-btn:active,
-.slide-choose-gallery-btn:active,
-.change-main-hostel-image-btn:active {
-  transform: scale(0.97) translateZ(0);
-  transition: transform 0.08s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-/* GPU acceleration for modals, bottom sheets, and overlays */
-.mobile-bottom-sheet-content,
-.modal-content,
-#liveCameraModal > div,
-#replaceImageModal > div,
-#deleteImageModal > div,
-#lightboxModal > div {
-  will-change: transform, opacity;
-  transform: translateZ(0);
-  backface-visibility: hidden;
-}
-
-/* Smooth Pulse animation for processing states */
-@keyframes smoothPulse {
-  0%, 100% {
-    opacity: 1;
-    transform: scale(1);
+@media (max-width: 640px) {
+  .tx-detail-modal-container {
+    align-items: flex-end !important;
+    padding: 0 !important;
   }
-  50% {
-    opacity: 0.85;
-    transform: scale(0.98);
+  .tx-detail-modal-sheet {
+    border-top-left-radius: 28px !important;
+    border-top-right-radius: 28px !important;
+    border-bottom-left-radius: 0 !important;
+    border-bottom-right-radius: 0 !important;
+    max-height: 90vh !important;
+    width: 100% !important;
+    animation: slideUpSheet 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
   }
-}
-
-.payment-processing-badge {
-  animation: smoothPulse 1.8s ease-in-out infinite;
+  .tx-metrics-grid {
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+  }
+  .tx-card-mobile-flex {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 12px !important;
+  }
+  .tx-card-mobile-right {
+    text-align: left !important;
+    align-items: flex-start !important;
+    border-top: 1px dashed var(--color-neutral-200);
+    padding-top: 10px;
+  }
 }

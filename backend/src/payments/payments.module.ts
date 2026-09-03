@@ -5,6 +5,7 @@ import { PaymentWebhookEvent } from './webhook-event.entity';
 import { MealPlan } from '../meal-plans/meal-plan.entity';
 import { User } from '../users/user.entity';
 import { ProviderEarning } from '../payouts/provider-earning.entity';
+import { SupportTicket } from '../support/support-ticket.entity';
 import { SubscriptionsModule } from '../subscriptions/subscriptions.module';
 import { PayoutsModule } from '../payouts/payouts.module';
 import { PaymentsService } from './payments.service';
@@ -18,6 +19,7 @@ import { PaymentsController } from './payments.controller';
       User,
       ProviderEarning,
       PaymentWebhookEvent,
+      SupportTicket,
     ]),
     forwardRef(() => SubscriptionsModule),
     PayoutsModule,

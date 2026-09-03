@@ -10,11 +10,12 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, In } from 'typeorm';
 import { Payment } from './payment.entity';
 import { PaymentWebhookEvent } from './webhook-event.entity';
 import { MealPlan } from '../meal-plans/meal-plan.entity';
 import { MealProvider } from '../providers/meal-provider.entity';
+import { SupportTicket } from '../support/support-ticket.entity';
 import {
   Subscription,
   SubscriptionStatus,
@@ -101,6 +102,8 @@ export class PaymentsService {
     private readonly webhookEventRepo: Repository<PaymentWebhookEvent>,
     @InjectRepository(MealPlan) private readonly planRepo: Repository<MealPlan>,
     @InjectRepository(User) private readonly userRepo: Repository<User>,
+    @InjectRepository(SupportTicket)
+    private readonly ticketRepo: Repository<SupportTicket>,
     @Inject(forwardRef(() => SubscriptionsService))
     private readonly subscriptionsService: SubscriptionsService,
   ) {
@@ -208,9 +211,7 @@ export class PaymentsService {
           `Razorpay API warning (${err.message}). Falling back to development test order structure.`,
         );
         orderId = `order_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
-        keyId =
-          this.config.get<string>('RAZORPAY_KEY_ID') ||
-          'rzp_test_TN9FfsEkkkjPHH';
+        keyId = this.config.get<string>('RAZORPAY_KEY_ID') || '';
         orderResult = {
           id: orderId,
           entity: 'order',
@@ -490,6 +491,19 @@ export class PaymentsService {
         },
       });
 
+      // Capacity renewal exception check: if student already has an active subscription with this provider, renewal does not consume an additional seat
+      const studentExistingActiveForProvider = await manager.findOne(Subscription, {
+        where: {
+          student: { id: student.id },
+          mealPlan: { provider: { id: provider.id } },
+          status: SubscriptionStatus.ACTIVE,
+        },
+      });
+
+      const effectiveActiveSeats = studentExistingActiveForProvider
+        ? Math.max(0, activeCount - 1)
+        : activeCount;
+
       if (
         provider.totalCapacity === null ||
         provider.totalCapacity === undefined
@@ -500,7 +514,7 @@ export class PaymentsService {
       }
 
       const totalCap = Number(provider.totalCapacity);
-      if (activeCount >= totalCap) {
+      if (effectiveActiveSeats >= totalCap) {
         throw new BadRequestException(
           'This mess is fully booked. Maximum student capacity reached.',
         );
@@ -588,13 +602,30 @@ export class PaymentsService {
       });
 
       let savedSubscription: Subscription;
+      const todayStr = new Date().toISOString().split('T')[0];
 
       if (existingActiveSub) {
-        savedSubscription = existingActiveSub;
+        // Renewal logic: Extend existing active subscription end date by durationDays
+        const baseEndStr =
+          existingActiveSub.endDate && existingActiveSub.endDate >= todayStr
+            ? existingActiveSub.endDate
+            : todayStr;
+
+        const baseEndObj = new Date(baseEndStr + 'T00:00:00Z');
+        baseEndObj.setUTCDate(baseEndObj.getUTCDate() + durationDays);
+        const newEndDate = baseEndObj.toISOString().split('T')[0];
+
+        existingActiveSub.endDate = newEndDate;
+        existingActiveSub.status = SubscriptionStatus.ACTIVE;
+
+        savedSubscription = await manager.save(
+          Subscription,
+          existingActiveSub,
+        );
       } else {
-        const startDate = new Date().toISOString().split('T')[0];
-        const startObj = new Date(startDate);
-        startObj.setDate(startObj.getDate() + durationDays);
+        const startDate = todayStr;
+        const startObj = new Date(startDate + 'T00:00:00Z');
+        startObj.setUTCDate(startObj.getUTCDate() + durationDays);
         const endDate = startObj.toISOString().split('T')[0];
 
         const subscriptionEntity = manager.create(Subscription, {
@@ -993,11 +1024,278 @@ export class PaymentsService {
     });
   }
 
-  async getHistory(userId: string): Promise<Payment[]> {
-    return this.paymentRepo.find({
+  async getHistory(userId: string): Promise<any[]> {
+    const payments = await this.paymentRepo.find({
       where: { student: { id: userId } },
-      relations: { provider: true },
+      relations: { provider: true, student: true },
       order: { createdAt: 'DESC' },
     });
+
+    const mealPlanIds = [...new Set(payments.map((p) => p.mealPlanId).filter((id): id is string => Boolean(id)))];
+    let mealPlansMap: Record<string, any> = {};
+    if (mealPlanIds.length > 0) {
+      const plans = await this.planRepo.find({
+        where: { id: In(mealPlanIds) },
+        relations: { provider: true },
+      });
+      plans.forEach((p) => {
+        mealPlansMap[p.id] = p;
+      });
+    }
+
+    let ticketsMap: Record<string, any> = {};
+    if (this.ticketRepo) {
+      const tickets = await this.ticketRepo.find({
+        where: { student: { id: userId } },
+        order: { createdAt: 'DESC' },
+      });
+      tickets.forEach((t) => {
+        if (!ticketsMap[t.razorpayOrderId]) {
+          ticketsMap[t.razorpayOrderId] = t;
+        }
+      });
+    }
+
+    let subscriptions: any[] = [];
+    if (this.subscriptionsService) {
+      try {
+        subscriptions = await this.subscriptionsService.findByStudent(userId);
+      } catch (_) {
+        subscriptions = [];
+      }
+    }
+
+    return payments.map((p) => {
+      const statusLower = (p.status || 'created').toLowerCase();
+      let displayStatus = 'PENDING';
+      if (statusLower === 'paid') displayStatus = 'SUCCESS';
+      else if (statusLower === 'failed') displayStatus = 'FAILED';
+      else if (statusLower === 'refunded') displayStatus = 'REFUNDED';
+      else displayStatus = 'PENDING';
+
+      const plan = p.mealPlanId ? mealPlansMap[p.mealPlanId] : null;
+      const sub = subscriptions.find(
+        (s: any) =>
+          s.mealPlan?.id === p.mealPlanId ||
+          (p.provider && s.provider?.id === p.provider.id),
+      );
+
+      const ticket = ticketsMap[p.razorpayOrderId] || null;
+
+      return {
+        id: p.id,
+        amount: Number(p.amount),
+        currency: 'INR',
+        status: displayStatus,
+        rawStatus: p.status,
+        razorpayOrderId: p.razorpayOrderId,
+        razorpayPaymentId: p.razorpayPaymentId || null,
+        durationDays: p.durationDays || 30,
+        mealPlanId: p.mealPlanId || null,
+        createdAt: p.createdAt,
+        provider: p.provider
+          ? {
+              id: p.provider.id,
+              name: p.provider.name,
+              city: p.provider.city || '',
+              address: p.provider.address || '',
+            }
+          : plan?.provider
+          ? {
+              id: plan.provider.id,
+              name: plan.provider.name,
+              city: plan.provider.city || '',
+              address: plan.provider.address || '',
+            }
+          : null,
+        mealPlan: plan
+          ? {
+              id: plan.id,
+              title: plan.title,
+              pricePerMonth: Number(plan.pricePerMonth),
+            }
+          : null,
+        subscription: sub
+          ? {
+              id: sub.id,
+              status: sub.status,
+              startDate: sub.startDate,
+              endDate: sub.endDate,
+            }
+          : null,
+        supportTicket: ticket
+          ? {
+              id: ticket.id,
+              ticketNumber: ticket.ticketNumber,
+              status: ticket.status,
+              issueType: ticket.issueType,
+              createdAt: ticket.createdAt,
+            }
+          : null,
+      };
+    });
+  }
+
+  async getPaymentDetails(orderId: string, userId: string): Promise<any> {
+    const payment = await this.paymentRepo.findOne({
+      where: { razorpayOrderId: orderId },
+      relations: { student: true, provider: true },
+    });
+
+    if (!payment) {
+      throw new NotFoundException(`Payment order "${orderId}" not found.`);
+    }
+
+    // IDOR Check: Ensure authenticated student owns the payment order
+    if (payment.student && payment.student.id !== userId) {
+      this.logger.warn(
+        `IDOR_PREVENTED: Student ${userId} attempted to access payment details for order ${orderId} owned by ${payment.student.id}`,
+      );
+      throw new ForbiddenException(
+        'You do not have permission to view details for this payment order.',
+      );
+    }
+
+    let mealPlan: any = null;
+    if (payment.mealPlanId) {
+      mealPlan = await this.planRepo.findOne({
+        where: { id: payment.mealPlanId },
+        relations: { provider: true },
+      });
+    }
+
+    const provider = payment.provider || mealPlan?.provider || null;
+    let subscriptions: any[] = [];
+    if (this.subscriptionsService) {
+      try {
+        subscriptions = await this.subscriptionsService.findByStudent(userId);
+      } catch (_) {
+        subscriptions = [];
+      }
+    }
+
+    const sub = subscriptions.find(
+      (s: any) =>
+        s.mealPlan?.id === payment.mealPlanId ||
+        (provider && s.provider?.id === provider.id),
+    );
+
+    let ticket: any = null;
+    if (this.ticketRepo) {
+      ticket = await this.ticketRepo.findOne({
+        where: { student: { id: userId }, razorpayOrderId: orderId },
+        order: { createdAt: 'DESC' },
+      });
+    }
+
+    const statusLower = (payment.status || 'created').toLowerCase();
+    let displayStatus = 'PENDING';
+    if (statusLower === 'paid') displayStatus = 'SUCCESS';
+    else if (statusLower === 'failed') displayStatus = 'FAILED';
+    else if (statusLower === 'refunded') displayStatus = 'REFUNDED';
+    else displayStatus = 'PENDING';
+
+    // Construct clean 3-step timeline: Payment Initiated -> Payment Status -> Mess Card Activated (if success)
+    const timeline: any[] = [];
+
+    // Step 1: Payment Initiated
+    timeline.push({
+      event: 'PAYMENT_INITIATED',
+      title: 'Payment Initiated',
+      description: `Payment order initiated for ₹${Number(payment.amount).toLocaleString('en-IN')}`,
+      timestamp: payment.createdAt,
+      status: 'COMPLETED',
+    });
+
+    // Step 2: Payment Status
+    if (statusLower === 'paid') {
+      timeline.push({
+        event: 'PAYMENT_SUCCESS',
+        title: 'Payment Successful',
+        description: `Payment of ₹${Number(payment.amount).toLocaleString('en-IN')} verified & confirmed`,
+        timestamp: payment.createdAt,
+        status: 'COMPLETED',
+      });
+    } else if (statusLower === 'failed') {
+      timeline.push({
+        event: 'PAYMENT_FAILED',
+        title: 'Payment Failed',
+        description: 'Payment attempt was failed or cancelled',
+        timestamp: payment.createdAt,
+        status: 'FAILED',
+      });
+    } else if (statusLower === 'refunded') {
+      timeline.push({
+        event: 'PAYMENT_REFUNDED',
+        title: 'Payment Refunded',
+        description: 'Payment amount has been refunded',
+        timestamp: payment.createdAt,
+        status: 'REFUNDED',
+      });
+    } else {
+      timeline.push({
+        event: 'PAYMENT_PENDING',
+        title: 'Payment Pending',
+        description: 'Payment verification is in progress',
+        timestamp: payment.createdAt,
+        status: 'PENDING',
+      });
+    }
+
+    // Step 3: Mess Card Activated (Only if payment is SUCCESS and subscription exists)
+    if (statusLower === 'paid' && sub) {
+      timeline.push({
+        event: 'MESSCARD_ACTIVATED',
+        title: 'Mess Card Activated',
+        description: 'Digital QR Mess Card active & ready for daily meal scanning',
+        timestamp: sub.startDate || payment.createdAt,
+        status: 'COMPLETED',
+      });
+    }
+
+    return {
+      payment: {
+        id: payment.id,
+        amount: Number(payment.amount),
+        currency: 'INR',
+        status: displayStatus,
+        rawStatus: payment.status,
+        razorpayOrderId: payment.razorpayOrderId,
+        razorpayPaymentId: payment.razorpayPaymentId || null,
+        durationDays: payment.durationDays || 30,
+        createdAt: payment.createdAt,
+        paymentMethod: payment.razorpayPaymentId ? 'Razorpay Online' : 'Online',
+      },
+      purchaseDetails: {
+        mealPlanId: payment.mealPlanId,
+        mealPlanTitle: mealPlan?.title || 'Standard Mess Subscription',
+        durationDays: payment.durationDays || 30,
+        amount: Number(payment.amount),
+        providerId: provider?.id || null,
+        providerName: provider?.name || 'Mess Provider',
+        providerAddress: provider?.address || provider?.city || '',
+      },
+      subscription: sub
+        ? {
+            id: sub.id,
+            status: sub.status,
+            startDate: sub.startDate,
+            endDate: sub.endDate,
+            messCardAvailable: true,
+          }
+        : null,
+      timeline,
+      supportTicket: ticket
+        ? {
+            id: ticket.id,
+            ticketNumber: ticket.ticketNumber,
+            status: ticket.status,
+            issueType: ticket.issueType,
+            description: ticket.description,
+            utrReference: ticket.utrReference || null,
+            createdAt: ticket.createdAt,
+          }
+        : null,
+    };
   }
 }

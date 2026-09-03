@@ -153,12 +153,6 @@ export async function renderCheckout(planId: string) {
             <i class="fa-solid fa-lock"></i>
             <span id="payBtnText">Pay with Razorpay (₹${calcPrice(selectedDays).toLocaleString('en-IN')})</span>
           </button>
-
-          <div style="margin-top: 14px; text-align: center;">
-            <button id="instantDemoPayBtn" type="button" class="btn-outline-action" style="width: 100%; padding: 12px; font-size: 14px; font-weight: 700; border-color: #cbd5e1; color: var(--color-neutral-700); background: #f8fafc; display: flex; align-items: center; justify-content: center; gap: 8px;">
-              <i class="fa-solid fa-bolt" style="color: #ea580c;"></i> Instant Test Checkout (Sandbox Mode)
-            </button>
-          </div>
         </div>
       </div>
     </main>
@@ -195,7 +189,6 @@ export async function renderCheckout(planId: string) {
   });
 
   const payBtn = document.getElementById('payBtn') as HTMLButtonElement;
-  const instantDemoBtn = document.getElementById('instantDemoPayBtn') as HTMLButtonElement;
 
   let pollingTimerId: any = null;
 
@@ -210,9 +203,6 @@ export async function renderCheckout(planId: string) {
       payBtn.className = 'btn-primary-action';
       payBtn.style.backgroundColor = '#d97706';
       payBtn.onclick = () => pollStatus(orderId, true);
-    }
-    if (instantDemoBtn) {
-      instantDemoBtn.style.display = 'none';
     }
 
     const detailsBox = document.getElementById('checkoutPlanDetails');
@@ -269,11 +259,6 @@ export async function renderCheckout(planId: string) {
       payBtn.removeAttribute('disabled');
       payBtn.style.backgroundColor = '';
       payBtn.onclick = null;
-    }
-    if (instantDemoBtn) {
-      instantDemoBtn.innerHTML = `<i class="fa-solid fa-bolt" style="color: #ea580c;"></i> Instant Test Checkout (Sandbox Mode)`;
-      instantDemoBtn.removeAttribute('disabled');
-      instantDemoBtn.style.display = '';
     }
   };
 
@@ -380,46 +365,6 @@ export async function renderCheckout(planId: string) {
     }
   }
 
-  const processDirectVerification = async (orderId: string) => {
-    try {
-      const result: any = await api.post('/payments/verify', {
-        razorpay_payment_id: `pay_test_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
-        razorpay_order_id: orderId,
-        razorpay_signature: `sig_test_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
-        mealPlanId: actualPlanId,
-        durationDays: selectedDays,
-      });
-
-      const isVerified = result && result.success === true && result.verified === true && Boolean(result.subscription || result.payment);
-      if (isVerified) {
-        sessionStorage.removeItem('pendingPaymentOrderId');
-        showToast('Payment verified successfully! Your subscription is now ACTIVE 🎉', 'success');
-        navigate('#/student/dashboard');
-      } else {
-        startBoundedStatusPolling(orderId);
-      }
-    } catch (err: any) {
-      startBoundedStatusPolling(orderId);
-    }
-  };
-
-  instantDemoBtn?.addEventListener('click', async () => {
-    instantDemoBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Activating Subscription...`;
-    instantDemoBtn.setAttribute('disabled', 'true');
-    payBtn.setAttribute('disabled', 'true');
-
-    try {
-      const order: any = await api.post('/payments/create-order', {
-        mealPlanId: actualPlanId,
-        durationDays: selectedDays,
-      });
-      await processDirectVerification(order.id);
-    } catch (err: any) {
-      showToast(err.message || 'Failed to create test order', 'error');
-      resetPayBtns();
-    }
-  });
-
   payBtn.addEventListener('click', async () => {
     if (payBtn.hasAttribute('disabled')) return;
 
@@ -431,7 +376,6 @@ export async function renderCheckout(planId: string) {
 
     payBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Initializing Payment...`;
     payBtn.setAttribute('disabled', 'true');
-    if (instantDemoBtn) instantDemoBtn.setAttribute('disabled', 'true');
 
     try {
       // 1. Create Razorpay order via backend
@@ -446,19 +390,11 @@ export async function renderCheckout(planId: string) {
       const userEmail = localStorage.getItem('userEmail') || '';
       const keyId = order.key_id || import.meta.env.VITE_RAZORPAY_KEY_ID;
 
-      // If Razorpay test placeholder key is present, execute direct test verification without 401 error
-      const isPlaceholderKey = !keyId || keyId === 'rzp_test_key' || keyId.includes('your_key_id_here');
-      if (isPlaceholderKey) {
-        showToast('Running sandbox payment verification...', 'info');
-        await processDirectVerification(order.id);
-        return;
-      }
-
-      // 2. Ensure Razorpay Checkout script is loaded for real key
+      // 2. Ensure Razorpay Checkout script is loaded
       const isLoaded = await loadRazorpayScript();
       if (!isLoaded || !(window as any).Razorpay) {
-        showToast('Razorpay Checkout SDK not reachable. Running sandbox payment...', 'info');
-        await processDirectVerification(order.id);
+        showToast('Razorpay Checkout SDK unreachable. Please check your connection.', 'error');
+        resetPayBtns();
         return;
       }
 
@@ -521,8 +457,8 @@ export async function renderCheckout(planId: string) {
         const rzp = new (window as any).Razorpay(options);
         rzp.open();
       } catch (err: any) {
-        showToast('Razorpay modal unavailable. Completing via sandbox...', 'info');
-        await processDirectVerification(order.id);
+        showToast('Unable to open Razorpay payment window.', 'error');
+        resetPayBtns();
       }
     } catch (err: any) {
       showToast(err.message || 'Failed to initiate payment', 'error');

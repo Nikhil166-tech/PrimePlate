@@ -138,7 +138,8 @@ export class SubscriptionsService {
 
   async findByStudent(studentId: string): Promise<any[]> {
     if (!studentId) return [];
-    await this.autoRecoverStudentPendingPayments(studentId);
+    // Trigger background auto-recovery without blocking response latency
+    this.autoRecoverStudentPendingPayments(studentId).catch(() => {});
 
     // Auto-reconcile orphaned paid payments using central PaymentsService logic
     if (

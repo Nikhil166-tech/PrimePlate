@@ -138,47 +138,9 @@ export class SubscriptionsService {
 
   async findByStudent(studentId: string): Promise<any[]> {
     if (!studentId) return [];
-    // Trigger background auto-recovery without blocking response latency
+    // Trigger background auto-recovery and reconciliation without blocking response latency
     this.autoRecoverStudentPendingPayments(studentId).catch(() => {});
-
-    // Auto-reconcile orphaned paid payments using central PaymentsService logic
-    if (
-      this.subRepo &&
-      this.subRepo.manager &&
-      typeof this.subRepo.manager.find === 'function' &&
-      this.paymentsService
-    ) {
-      try {
-        const mgr = this.subRepo.manager;
-        const paidPayments = await mgr.find(Payment, {
-          where: { student: { id: studentId }, status: 'paid' },
-        });
-
-        if (paidPayments && paidPayments.length > 0) {
-          for (const p of paidPayments) {
-            if (!p.razorpayOrderId) continue;
-            let earning: any = null;
-            if (typeof mgr.findOne === 'function') {
-              earning = await mgr.findOne(ProviderEarning, {
-                where: { paymentId: p.id },
-              });
-            }
-            if (!earning || !earning.subscriptionId) {
-              try {
-                await this.paymentsService.reconcileCapturedPayment({
-                  userId: studentId,
-                  razorpayOrderId: p.razorpayOrderId,
-                  razorpayPaymentId: p.razorpayPaymentId || p.razorpayOrderId,
-                  mealPlanId: p.mealPlanId,
-                  durationInput: p.durationDays,
-                  skipSignatureCheck: true,
-                });
-              } catch (_) {}
-            }
-          }
-        }
-      } catch (_) {}
-    }
+    this.autoReconcileOrphanedPaidPayments(studentId).catch(() => {});
 
     const subs = await this.subRepo.find({
       where: { student: { id: studentId } },
@@ -454,6 +416,47 @@ export class SubscriptionsService {
             }
           }
         } catch (_) {}
+      }
+    } catch (_) {}
+  }
+
+  private async autoReconcileOrphanedPaidPayments(studentId: string): Promise<void> {
+    if (
+      !this.subRepo ||
+      !this.subRepo.manager ||
+      typeof this.subRepo.manager.find !== 'function' ||
+      !this.paymentsService
+    ) {
+      return;
+    }
+    try {
+      const mgr = this.subRepo.manager;
+      const paidPayments = await mgr.find(Payment, {
+        where: { student: { id: studentId }, status: 'paid' },
+      });
+
+      if (paidPayments && paidPayments.length > 0) {
+        for (const p of paidPayments) {
+          if (!p.razorpayOrderId) continue;
+          let earning: any = null;
+          if (typeof mgr.findOne === 'function') {
+            earning = await mgr.findOne(ProviderEarning, {
+              where: { paymentId: p.id },
+            });
+          }
+          if (!earning || !earning.subscriptionId) {
+            try {
+              await this.paymentsService.reconcileCapturedPayment({
+                userId: studentId,
+                razorpayOrderId: p.razorpayOrderId,
+                razorpayPaymentId: p.razorpayPaymentId || p.razorpayOrderId,
+                mealPlanId: p.mealPlanId,
+                durationInput: p.durationDays,
+                skipSignatureCheck: true,
+              });
+            } catch (_) {}
+          }
+        }
       }
     } catch (_) {}
   }

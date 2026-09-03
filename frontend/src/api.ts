@@ -134,8 +134,10 @@ export const updateProviderBreakSettings = async (
   }
 };
 
-export const getProviderEarningsSummary = () => api.get('/payouts/provider/summary');
-export const getProviderEarningsHistory = () => api.get('/payouts/provider/history');
+export const getProviderEarningsSummary = (kitchenId?: string) =>
+  api.get(`/payouts/provider/summary${kitchenId ? `?kitchenId=${encodeURIComponent(kitchenId)}` : ''}`);
+export const getProviderEarningsHistory = (kitchenId?: string) =>
+  api.get(`/payouts/provider/history${kitchenId ? `?kitchenId=${encodeURIComponent(kitchenId)}` : ''}`);
 
 export const uploadProviderHostelImage = (
   formData: FormData,

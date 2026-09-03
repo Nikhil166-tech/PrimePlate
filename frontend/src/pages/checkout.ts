@@ -94,25 +94,23 @@ export async function renderCheckout(planId: string) {
   const calcPrice = (days: number) => Math.max(1, Math.round(selectedPlan!.basePrice * (days / 30)));
 
   const durationOptions = [
-    { days: 1, title: '1 Day Plan', description: 'Daily fresh 4 Roti, Rice, Dal & 2 Sabzi' },
-    { days: 7, title: '1 Week Plan (7 Days)', description: '7 days daily fresh meals subscription' },
-    { days: 15, title: '15 Days Plan', description: '15 days half-month meal subscription' },
-    { days: 30, title: '1 Month Plan (30 Days)', description: 'Full 30 days monthly meal subscription' },
+    { days: 1, title: '1 Day Pass', description: 'Daily fresh meal' },
+    { days: 7, title: '7 Days Pass', description: '1 week subscription' },
+    { days: 15, title: '15 Days Pass', description: 'Half-month subscription' },
+    { days: 30, title: '1 Month Pass (30 Days)', description: 'Full month subscription' },
   ];
 
   const durationCardsHtml = durationOptions.map((opt) => {
     const isSelected = opt.days === selectedDays;
     const pVal = calcPrice(opt.days);
     return `
-      <label class="co-duration-card" style="display: flex; align-items: center; justify-content: space-between; border: ${isSelected ? '2px solid #f97316' : '1px solid #e5e7eb'}; background: ${isSelected ? '#fff8f0' : '#ffffff'}; border-radius: 14px; padding: 14px 16px; margin-bottom: 12px; cursor: pointer; transition: all 0.2s ease-in-out;">
-        <div style="display: flex; align-items: center; gap: 12px;">
-          <input type="radio" name="coDurationPlan" value="${opt.days}" ${isSelected ? 'checked' : ''} style="width: 18px; height: 18px; accent-color: #ea580c; cursor: pointer;" />
-          <div>
-            <strong style="font-size: 15px; font-weight: 700; color: #111827; display: block; margin-bottom: 2px;">${escapeHtml(opt.title)}</strong>
-            <p style="font-size: 13px; color: #6b7280; margin: 0; line-height: 1.4;">${escapeHtml(opt.description)}</p>
-          </div>
+      <label class="co-duration-card" style="display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 10px; border: ${isSelected ? '2px solid #f97316' : '1px solid #e5e7eb'}; background: ${isSelected ? '#fff8f0' : '#ffffff'}; border-radius: 14px; padding: 12px 14px; margin-bottom: 10px; cursor: pointer; min-width: 0; box-sizing: border-box;">
+        <input type="radio" name="coDurationPlan" value="${opt.days}" ${isSelected ? 'checked' : ''} style="width: 18px; height: 18px; accent-color: #ea580c; cursor: pointer; flex-shrink: 0;" />
+        <div style="min-width: 0; overflow: hidden;">
+          <strong style="font-size: 14px; font-weight: 700; color: #111827; display: block; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(opt.title)}</strong>
+          <p style="font-size: 12px; color: #6b7280; margin: 0; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(opt.description)}</p>
         </div>
-        <span style="font-weight: 800; color: #ea580c; font-size: 17px; white-space: nowrap; margin-left: 12px;">₹${pVal.toLocaleString('en-IN')}</span>
+        <span style="font-weight: 800; color: #ea580c; font-size: 16px; white-space: nowrap; flex-shrink: 0; text-align: right;">₹${pVal.toLocaleString('en-IN')}</span>
       </label>
     `;
   }).join('');

@@ -427,11 +427,21 @@ export async function renderDashboard() {
             !isHalfMonth && !isOneDay && !isOneWeek &&
             (totalInitialDays >= 25 || planTitleLower.includes('1 month') || planTitleLower.includes('one month') || (planTitleLower.includes('month') && !planTitleLower.includes('half')));
 
-          // Calculate break requests for this subscription
-          const subBreaks = loadedBreakRequests.filter((r) => r.subscriptionId === s.id);
-          const usedBreakDays = subBreaks.filter((r) => r.status === 'APPROVED').reduce((sum, r) => sum + Number(r.breakDays || 0), 0);
+          // Calculate break requests for this subscription strictly by subscription ID
+          const subBreaks = loadedBreakRequests.filter(
+            (r) =>
+              Boolean(s.id) &&
+              Boolean(r.subscriptionId) &&
+              String(r.subscriptionId) === String(s.id),
+          );
+          const usedBreakDays = subBreaks
+            .filter((r) => r.status === 'APPROVED')
+            .reduce((sum, r) => sum + Number(r.breakDays || 0), 0);
           const availableBreakDays = Math.max(0, 4 - usedBreakDays);
-          const isProviderBreakEnabled = s.subscriptionBreaksEnabled === true || s.mealPlan?.provider?.subscriptionBreaksEnabled === true || s.provider?.subscriptionBreaksEnabled === true;
+          const isProviderBreakEnabled =
+            s.subscriptionBreaksEnabled === true ||
+            s.mealPlan?.provider?.subscriptionBreaksEnabled === true ||
+            s.provider?.subscriptionBreaksEnabled === true;
 
           let breakSectionHtml = '';
           // Show Subscription Break section ONLY for eligible active 1-MONTH subscriptions with break enabled

@@ -1,4 +1,4 @@
-import { Controller, Get, UseGuards, Req } from '@nestjs/common';
+import { Controller, Get, UseGuards, Req, Query } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { PayoutsService } from './payouts.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -17,8 +17,11 @@ export class PayoutsController {
   @Roles(Role.PROVIDER)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Get Financial Earnings Summary for Provider' })
-  async getSummary(@Req() req: AuthenticatedRequest) {
-    return this.payoutsService.getProviderSummary(req.user.userId);
+  async getSummary(
+    @Req() req: AuthenticatedRequest,
+    @Query('kitchenId') kitchenId?: string,
+  ) {
+    return this.payoutsService.getProviderSummary(req.user.userId, kitchenId);
   }
 
   @Get('provider/history')
@@ -26,7 +29,10 @@ export class PayoutsController {
   @Roles(Role.PROVIDER)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Get Provider Earnings History Ledger' })
-  async getHistory(@Req() req: AuthenticatedRequest) {
-    return this.payoutsService.getProviderHistory(req.user.userId);
+  async getHistory(
+    @Req() req: AuthenticatedRequest,
+    @Query('kitchenId') kitchenId?: string,
+  ) {
+    return this.payoutsService.getProviderHistory(req.user.userId, kitchenId);
   }
 }

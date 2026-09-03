@@ -874,6 +874,20 @@ export class PaymentsService {
       relations: { student: true, provider: true },
     });
 
+    if (!payment) {
+      payment = await this.paymentRepo.findOne({
+        where: { id: orderId },
+        relations: { student: true, provider: true },
+      });
+    }
+
+    if (!payment) {
+      payment = await this.paymentRepo.findOne({
+        where: { razorpayPaymentId: orderId },
+        relations: { student: true, provider: true },
+      });
+    }
+
     if (payment && payment.student && payment.student.id !== userId) {
       throw new ForbiddenException(
         'Cannot check payment status belonging to another user',
@@ -1137,12 +1151,77 @@ export class PaymentsService {
   }
 
   async getPaymentDetails(orderId: string, userId: string): Promise<any> {
-    const payment = await this.paymentRepo.findOne({
+    let payment = await this.paymentRepo.findOne({
       where: { razorpayOrderId: orderId },
       relations: { student: true, provider: true },
     });
 
     if (!payment) {
+      payment = await this.paymentRepo.findOne({
+        where: { id: orderId },
+        relations: { student: true, provider: true },
+      });
+    }
+
+    if (!payment) {
+      payment = await this.paymentRepo.findOne({
+        where: { razorpayPaymentId: orderId },
+        relations: { student: true, provider: true },
+      });
+    }
+
+    if (!payment) {
+      // Check active subscriptions fallback
+      const existingSubs = this.subscriptionsService
+        ? await this.subscriptionsService.findByStudent(userId)
+        : [];
+      const subMatch = existingSubs.find(
+        (s: any) => s.razorpayOrderId === orderId || s.id === orderId,
+      );
+
+      if (subMatch) {
+        return {
+          payment: {
+            id: subMatch.id,
+            amount: Number(subMatch.mealPlan?.price || 0),
+            currency: 'INR',
+            status: 'SUCCESS',
+            rawStatus: 'paid',
+            razorpayOrderId: orderId,
+            razorpayPaymentId: subMatch.razorpayPaymentId || null,
+            durationDays: 30,
+            createdAt: subMatch.startDate || new Date(),
+          },
+          provider: subMatch.provider || null,
+          mealPlan: subMatch.mealPlan || null,
+          subscription: subMatch,
+          supportTicket: null,
+          timeline: [
+            {
+              event: 'PAYMENT_INITIATED',
+              title: 'Payment Initiated',
+              description: `Payment order initiated`,
+              timestamp: subMatch.startDate || new Date(),
+              status: 'COMPLETED',
+            },
+            {
+              event: 'PAYMENT_SUCCESS',
+              title: 'Payment Successful',
+              description: `Payment verified & confirmed`,
+              timestamp: subMatch.startDate || new Date(),
+              status: 'COMPLETED',
+            },
+            {
+              event: 'MESSCARD_ACTIVATED',
+              title: 'Mess Card Activated',
+              description: `Digital QR Mess Card active & ready for daily meal scanning`,
+              timestamp: subMatch.startDate || new Date(),
+              status: 'COMPLETED',
+            },
+          ],
+        };
+      }
+
       throw new NotFoundException(`Payment order "${orderId}" not found.`);
     }
 

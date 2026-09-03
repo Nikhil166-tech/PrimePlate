@@ -1033,9 +1033,104 @@ export class PaymentsService {
         earning.status = ProviderEarningStatus.REFUNDED;
         await manager.save(ProviderEarning, earning);
       }
-
       return saved;
     });
+  }
+
+  async recoverPendingPayments(userId: string): Promise<{
+    status: string;
+    totalChecked: number;
+    recoveredCount: number;
+    recoveredOrders: string[];
+    durationMs: number;
+  }> {
+    const startTime = Date.now();
+    this.logger.log(`PAYMENT_RECOVERY_STARTED: userId=${userId}`);
+
+    // Bounded search: limit to newest 5 unresolved payments ('created', 'processing', 'authorized')
+    const pendingPayments = await this.paymentRepo.find({
+      where: {
+        student: { id: userId },
+        status: In(['created', 'processing', 'authorized']),
+      },
+      order: { createdAt: 'DESC' },
+      take: 5,
+    });
+
+    if (!pendingPayments || pendingPayments.length === 0) {
+      const durationMs = Date.now() - startTime;
+      this.logger.log(`PAYMENT_RECOVERY_COMPLETED: userId=${userId}, checked=0, recovered=0, durationMs=${durationMs}`);
+      return {
+        status: 'NO_PENDING_PAYMENTS',
+        totalChecked: 0,
+        recoveredCount: 0,
+        recoveredOrders: [],
+        durationMs,
+      };
+    }
+
+    let recoveredCount = 0;
+    const recoveredOrders: string[] = [];
+
+    if (this.razorpay) {
+      for (const payment of pendingPayments) {
+        if (!payment.razorpayOrderId) continue;
+
+        try {
+          // Bounded 5-second fetch timeout per Razorpay call
+          const fetchPromise = this.razorpay.orders.fetch(payment.razorpayOrderId);
+          const timeoutPromise = new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('Razorpay API timeout')), 5000),
+          );
+
+          const rzpOrder: any = await Promise.race([fetchPromise, timeoutPromise]);
+
+          if (rzpOrder && (rzpOrder.status === 'paid' || rzpOrder.amount_paid > 0)) {
+            const paymentsObj: any = await this.razorpay.orders.fetchPayments(payment.razorpayOrderId);
+            const captured = paymentsObj?.items?.find((p: any) => p.status === 'captured');
+            const paymentId = captured?.id || `pay_rzp_${Date.now()}`;
+            const amountInPaise = captured?.amount || rzpOrder.amount_paid;
+            const rzpNotes = rzpOrder.notes || {};
+            const mealPlanId = payment.mealPlanId || rzpNotes.mealPlanId;
+            const durationDays = payment.durationDays || rzpNotes.durationDays || 30;
+
+            if (mealPlanId) {
+              await this.reconcileCapturedPayment({
+                userId,
+                razorpayOrderId: payment.razorpayOrderId,
+                razorpayPaymentId: paymentId,
+                mealPlanId,
+                durationInput: durationDays,
+                skipSignatureCheck: true,
+                paymentAmountInPaise: amountInPaise ? Number(amountInPaise) : undefined,
+              });
+              recoveredCount++;
+              recoveredOrders.push(payment.razorpayOrderId);
+            }
+          } else if (rzpOrder && (rzpOrder.status === 'attempted' || rzpOrder.status === 'expired')) {
+            const paymentsObj: any = await this.razorpay.orders.fetchPayments(payment.razorpayOrderId);
+            const allFailed = paymentsObj?.items?.length > 0 && paymentsObj.items.every((p: any) => p.status === 'failed');
+            if (allFailed || rzpOrder.status === 'expired') {
+              payment.status = 'failed';
+              await this.paymentRepo.save(payment);
+            }
+          }
+        } catch (err: any) {
+          this.logger.error(`Error recovering order ${payment.razorpayOrderId}: ${err.message}`);
+        }
+      }
+    }
+
+    const durationMs = Date.now() - startTime;
+    this.logger.log(`PAYMENT_RECOVERY_COMPLETED: userId=${userId}, checked=${pendingPayments.length}, recovered=${recoveredCount}, durationMs=${durationMs}`);
+
+    return {
+      status: 'SUCCESS',
+      totalChecked: pendingPayments.length,
+      recoveredCount,
+      recoveredOrders,
+      durationMs,
+    };
   }
 
   async getHistory(userId: string): Promise<any[]> {

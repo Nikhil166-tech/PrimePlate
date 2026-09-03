@@ -179,6 +179,7 @@ export const getPublicHostelImages = (providerId: string) =>
 export const getPaymentHistory = () => api.get('/payments/history');
 export const getPaymentDetails = (orderId: string) => api.get(`/payments/${encodeURIComponent(orderId)}/details`);
 export const checkPaymentStatus = (orderId: string) => api.get(`/payments/${encodeURIComponent(orderId)}/status`);
+export const recoverPendingPayments = () => api.post('/payments/recover-pending');
 
 export const createSupportTicket = (data: {
   razorpayOrderId: string;

@@ -168,4 +168,13 @@ export class PaymentsController {
   async getHistory(@Req() req: AuthenticatedRequest) {
     return this.paymentsService.getHistory(req.user.userId);
   }
+
+  @Post('recover-pending')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.STUDENT)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Explicitly Recover Unresolved Pending Payments for PrimeMate' })
+  async recoverPendingPayments(@Req() req: AuthenticatedRequest) {
+    return this.paymentsService.recoverPendingPayments(req.user.userId);
+  }
 }

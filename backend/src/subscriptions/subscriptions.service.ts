@@ -138,9 +138,6 @@ export class SubscriptionsService {
 
   async findByStudent(studentId: string): Promise<any[]> {
     if (!studentId) return [];
-    // Trigger background auto-recovery and reconciliation without blocking response latency
-    this.autoRecoverStudentPendingPayments(studentId).catch(() => {});
-    this.autoReconcileOrphanedPaidPayments(studentId).catch(() => {});
 
     const subs = await this.subRepo.find({
       where: { student: { id: studentId } },
@@ -176,11 +173,9 @@ export class SubscriptionsService {
     const todayStr = new Date().toISOString().split('T')[0];
 
     for (const sub of subs) {
-      if (sub.endDate && sub.endDate < todayStr && sub.status === SubscriptionStatus.ACTIVE) {
-        sub.status = SubscriptionStatus.EXPIRED;
-        if (this.subRepo.manager && typeof this.subRepo.manager.save === 'function') {
-          await this.subRepo.manager.save(Subscription, sub);
-        }
+      let activeOrExpiredStatus = sub.status;
+      if (sub.endDate && sub.endDate < todayStr && activeOrExpiredStatus === SubscriptionStatus.ACTIVE) {
+        activeOrExpiredStatus = SubscriptionStatus.EXPIRED;
       }
 
       // Allow ACTIVE and EXPIRED subscriptions in history view
@@ -369,95 +364,5 @@ export class SubscriptionsService {
     sub.status = SubscriptionStatus.CANCELLED;
     sub.cancelledAt = new Date();
     return this.subRepo.save(sub);
-  }
-
-  private async autoRecoverStudentPendingPayments(studentId: string) {
-    try {
-      const pendingPayments = await this.subRepo.manager.find(Payment, {
-        where: {
-          student: { id: studentId },
-          status: 'created',
-        },
-        take: 5,
-      });
-
-      if (!pendingPayments || pendingPayments.length === 0) return;
-
-      const keyId = process.env.RAZORPAY_KEY_ID;
-      const keySecret = process.env.RAZORPAY_KEY_SECRET;
-      if (!keyId || !keySecret || keyId === 'rzp_test_key') return;
-
-      const Razorpay = require('razorpay');
-      const rzp = new Razorpay({ key_id: keyId, key_secret: keySecret });
-
-      for (const payment of pendingPayments) {
-        if (!payment.razorpayOrderId) continue;
-        try {
-          const rzpOrder: any = await rzp.orders.fetch(payment.razorpayOrderId);
-          if (rzpOrder && (rzpOrder.status === 'paid' || rzpOrder.amount_paid > 0)) {
-            const paymentsObj: any = await rzp.orders.fetchPayments(payment.razorpayOrderId);
-            const captured = paymentsObj?.items?.find((p: any) => p.status === 'captured');
-            const paymentId = captured?.id || `pay_rzp_${Date.now()}`;
-            const amountInPaise = captured?.amount || rzpOrder.amount_paid;
-            const rzpNotes = rzpOrder.notes || {};
-            const mealPlanId = payment.mealPlanId || rzpNotes.mealPlanId;
-            const durationDays = payment.durationDays || rzpNotes.durationDays || 30;
-
-            if (mealPlanId && this.paymentsService && typeof this.paymentsService.reconcileCapturedPayment === 'function') {
-              await this.paymentsService.reconcileCapturedPayment({
-                userId: studentId,
-                razorpayOrderId: payment.razorpayOrderId,
-                razorpayPaymentId: paymentId,
-                mealPlanId,
-                durationInput: durationDays,
-                skipSignatureCheck: true,
-                paymentAmountInPaise: amountInPaise,
-              });
-            }
-          }
-        } catch (_) {}
-      }
-    } catch (_) {}
-  }
-
-  private async autoReconcileOrphanedPaidPayments(studentId: string): Promise<void> {
-    if (
-      !this.subRepo ||
-      !this.subRepo.manager ||
-      typeof this.subRepo.manager.find !== 'function' ||
-      !this.paymentsService
-    ) {
-      return;
-    }
-    try {
-      const mgr = this.subRepo.manager;
-      const paidPayments = await mgr.find(Payment, {
-        where: { student: { id: studentId }, status: 'paid' },
-      });
-
-      if (paidPayments && paidPayments.length > 0) {
-        for (const p of paidPayments) {
-          if (!p.razorpayOrderId) continue;
-          let earning: any = null;
-          if (typeof mgr.findOne === 'function') {
-            earning = await mgr.findOne(ProviderEarning, {
-              where: { paymentId: p.id },
-            });
-          }
-          if (!earning || !earning.subscriptionId) {
-            try {
-              await this.paymentsService.reconcileCapturedPayment({
-                userId: studentId,
-                razorpayOrderId: p.razorpayOrderId,
-                razorpayPaymentId: p.razorpayPaymentId || p.razorpayOrderId,
-                mealPlanId: p.mealPlanId,
-                durationInput: p.durationDays,
-                skipSignatureCheck: true,
-              });
-            } catch (_) {}
-          }
-        }
-      }
-    } catch (_) {}
   }
 }

@@ -760,12 +760,13 @@ export async function renderDashboard() {
 
       let daysLeft = 0;
       if (endDate) {
-        const endMs = new Date(endDate).getTime();
+        const [y, m, d] = endDate.split('-').map(Number);
+        const endMs = new Date(y, (m || 1) - 1, d || 1, 23, 59, 59, 999).getTime();
         const diffMs = endMs - Date.now();
         daysLeft = Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
       }
 
-      if (rawStatus === 'ACTIVE' && (daysLeft <= 0 || (endDate && endDate < todayStr))) {
+      if (rawStatus === 'ACTIVE' && endDate && endDate < todayStr) {
         rawStatus = 'EXPIRED';
       }
 

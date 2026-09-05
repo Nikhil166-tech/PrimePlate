@@ -591,31 +591,33 @@ export class PaymentsService {
         };
       }
 
-      // Check if an active Subscription already exists for this student & meal plan
+      // Check if an active Subscription already exists for this student in this PG/provider
       const existingActiveSub = await manager.findOne(Subscription, {
         where: {
           student: { id: student.id },
-          mealPlan: { id: mealPlan.id },
+          mealPlan: { provider: { id: provider.id } },
           status: SubscriptionStatus.ACTIVE,
         },
+        relations: { mealPlan: { provider: true } },
         order: { createdAt: 'DESC' },
       });
 
       let savedSubscription: Subscription;
       const todayStr = new Date().toISOString().split('T')[0];
 
-      if (existingActiveSub) {
-        // Renewal logic: Extend existing active subscription end date by durationDays
-        const baseEndStr =
-          existingActiveSub.endDate && existingActiveSub.endDate >= todayStr
-            ? existingActiveSub.endDate
-            : todayStr;
-
+      if (
+        existingActiveSub &&
+        existingActiveSub.endDate &&
+        existingActiveSub.endDate >= todayStr
+      ) {
+        // Renewal logic: Extend existing active subscription in this PG by durationDays
+        const baseEndStr = existingActiveSub.endDate;
         const baseEndObj = new Date(baseEndStr + 'T00:00:00Z');
         baseEndObj.setUTCDate(baseEndObj.getUTCDate() + durationDays);
         const newEndDate = baseEndObj.toISOString().split('T')[0];
 
         existingActiveSub.endDate = newEndDate;
+        existingActiveSub.mealPlan = mealPlan;
         existingActiveSub.status = SubscriptionStatus.ACTIVE;
 
         savedSubscription = await manager.save(
@@ -623,6 +625,12 @@ export class PaymentsService {
           existingActiveSub,
         );
       } else {
+        // If there was an old subscription whose endDate has already passed, mark it as EXPIRED
+        if (existingActiveSub) {
+          existingActiveSub.status = SubscriptionStatus.EXPIRED;
+          await manager.save(Subscription, existingActiveSub);
+        }
+
         const startDate = todayStr;
         const startObj = new Date(startDate + 'T00:00:00Z');
         startObj.setUTCDate(startObj.getUTCDate() + durationDays);
@@ -1183,11 +1191,14 @@ export class PaymentsService {
       else displayStatus = 'PENDING';
 
       const plan = p.mealPlanId ? mealPlansMap[p.mealPlanId] : null;
-      const sub = subscriptions.find(
-        (s: any) =>
-          s.mealPlan?.id === p.mealPlanId ||
-          (p.provider && s.provider?.id === p.provider.id),
-      );
+      const sub =
+        statusLower === 'paid'
+          ? subscriptions.find(
+              (s: any) =>
+                s.mealPlan?.id === p.mealPlanId ||
+                (p.provider && s.provider?.id === p.provider.id),
+            )
+          : null;
 
       const ticket = ticketsMap[p.razorpayOrderId] || null;
 
@@ -1285,7 +1296,7 @@ export class PaymentsService {
             razorpayOrderId: orderId,
             razorpayPaymentId: subMatch.razorpayPaymentId || null,
             durationDays: 30,
-            createdAt: subMatch.startDate || new Date(),
+            createdAt: subMatch.createdAt || subMatch.startDate || new Date(),
           },
           provider: subMatch.provider || null,
           mealPlan: subMatch.mealPlan || null,
@@ -1296,21 +1307,21 @@ export class PaymentsService {
               event: 'PAYMENT_INITIATED',
               title: 'Payment Initiated',
               description: `Payment order initiated`,
-              timestamp: subMatch.startDate || new Date(),
+              timestamp: subMatch.createdAt || subMatch.startDate || new Date(),
               status: 'COMPLETED',
             },
             {
               event: 'PAYMENT_SUCCESS',
               title: 'Payment Successful',
               description: `Payment verified & confirmed`,
-              timestamp: subMatch.startDate || new Date(),
+              timestamp: subMatch.createdAt || subMatch.startDate || new Date(),
               status: 'COMPLETED',
             },
             {
               event: 'MESSCARD_ACTIVATED',
               title: 'Mess Card Activated',
               description: `Digital QR Mess Card active & ready for daily meal scanning`,
-              timestamp: subMatch.startDate || new Date(),
+              timestamp: subMatch.createdAt || subMatch.startDate || new Date(),
               status: 'COMPLETED',
             },
           ],
@@ -1339,20 +1350,37 @@ export class PaymentsService {
     }
 
     const provider = payment.provider || mealPlan?.provider || null;
-    let subscriptions: any[] = [];
-    if (this.subscriptionsService) {
+
+    const statusLower = (payment.status || 'created').toLowerCase();
+    let displayStatus = 'PENDING';
+    if (statusLower === 'paid') displayStatus = 'SUCCESS';
+    else if (statusLower === 'failed') displayStatus = 'FAILED';
+    else if (statusLower === 'refunded') displayStatus = 'REFUNDED';
+    else displayStatus = 'PENDING';
+
+    let sub: any = null;
+    if (statusLower === 'paid') {
       try {
-        subscriptions = await this.subscriptionsService.findByStudent(userId);
-      } catch (_) {
-        subscriptions = [];
+        const earning = await this.paymentRepo.manager.findOne(ProviderEarning, {
+          where: { paymentId: payment.id },
+          relations: { subscription: { mealPlan: { provider: true } } },
+        });
+        if (earning?.subscription) {
+          sub = earning.subscription;
+        }
+      } catch (_) {}
+
+      if (!sub && this.subscriptionsService) {
+        try {
+          const subscriptions = await this.subscriptionsService.findByStudent(userId);
+          sub = subscriptions.find(
+            (s: any) =>
+              s.mealPlan?.id === payment.mealPlanId ||
+              (provider && s.provider?.id === provider.id),
+          );
+        } catch (_) {}
       }
     }
-
-    const sub = subscriptions.find(
-      (s: any) =>
-        s.mealPlan?.id === payment.mealPlanId ||
-        (provider && s.provider?.id === provider.id),
-    );
 
     let ticket: any = null;
     if (this.ticketRepo) {
@@ -1361,13 +1389,6 @@ export class PaymentsService {
         order: { createdAt: 'DESC' },
       });
     }
-
-    const statusLower = (payment.status || 'created').toLowerCase();
-    let displayStatus = 'PENDING';
-    if (statusLower === 'paid') displayStatus = 'SUCCESS';
-    else if (statusLower === 'failed') displayStatus = 'FAILED';
-    else if (statusLower === 'refunded') displayStatus = 'REFUNDED';
-    else displayStatus = 'PENDING';
 
     // Construct clean 3-step timeline: Payment Initiated -> Payment Status -> Mess Card Activated (if success)
     const timeline: any[] = [];
@@ -1422,7 +1443,7 @@ export class PaymentsService {
         event: 'MESSCARD_ACTIVATED',
         title: 'Mess Card Activated',
         description: 'Digital QR Mess Card active & ready for daily meal scanning',
-        timestamp: sub.startDate || payment.createdAt,
+        timestamp: payment.createdAt || sub.createdAt || new Date(),
         status: 'COMPLETED',
       });
     }

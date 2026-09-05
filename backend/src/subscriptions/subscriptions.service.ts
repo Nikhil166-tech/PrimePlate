@@ -148,6 +148,7 @@ export class SubscriptionsService {
     const earnings = await this.subRepo.manager.find(ProviderEarning, {
       where: { studentId },
       relations: { payment: true },
+      order: { createdAt: 'ASC' },
     });
 
     const payments = await this.subRepo.manager.find(Payment, {
@@ -220,6 +221,7 @@ export class SubscriptionsService {
 
       validCustomerSubs.push({
         ...sub,
+        status: activeOrExpiredStatus,
         amountPaid: rawAmount,
         razorpayOrderId: matchingPayment.razorpayOrderId || null,
         razorpayPaymentId: matchingPayment.razorpayPaymentId || null,

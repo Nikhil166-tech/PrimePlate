@@ -245,15 +245,15 @@ export async function renderProviderDetail(providerId: string) {
             const calculatedPrice = Math.max(1, Math.round(baseMonthlyPrice * (opt.days / 30)));
             const priceText = `₹${calculatedPrice.toLocaleString('en-IN')}`;
             return `
-              <label class="mobile-duration-plan-card" style="display: flex; align-items: center; justify-content: space-between; border: ${opt.isDefault ? '2px solid #f97316' : '1px solid #e5e7eb'}; background: ${opt.isDefault ? '#fff8f0' : '#ffffff'}; border-radius: 14px; padding: 14px 16px; margin-bottom: 12px; cursor: pointer; transition: all 0.2s ease-in-out;">
-                <div style="display: flex; align-items: center; gap: 12px;">
-                  <input type="radio" name="mobileDurationPlanSelect" value="${opt.days}" ${opt.isDefault ? 'checked' : ''} style="width: 18px; height: 18px; accent-color: #ea580c; cursor: pointer;" />
-                  <div>
+              <label class="mobile-duration-plan-card" style="display: flex; align-items: center; justify-content: space-between; border: ${opt.isDefault ? '2px solid #f97316' : '1px solid #e5e7eb'}; background: ${opt.isDefault ? '#fff8f0' : '#ffffff'}; border-radius: 14px; padding: 14px 16px; margin-bottom: 12px; cursor: pointer; transition: all 0.2s ease-in-out; min-width: 0; max-width: 100%; box-sizing: border-box;">
+                <div style="display: flex; align-items: center; gap: 12px; min-width: 0; flex: 1;">
+                  <input type="radio" name="mobileDurationPlanSelect" value="${opt.days}" ${opt.isDefault ? 'checked' : ''} style="width: 18px; height: 18px; accent-color: #ea580c; cursor: pointer; flex-shrink: 0;" />
+                  <div style="min-width: 0; flex: 1;">
                     <strong style="font-size: 15px; font-weight: 700; color: #111827; display: block; margin-bottom: 2px;">${escapeHtml(opt.title)}</strong>
-                    <p style="font-size: 13px; color: #6b7280; margin: 0; line-height: 1.4;">${escapeHtml(opt.description)}</p>
+                    <p style="font-size: 13px; color: #6b7280; margin: 0; line-height: 1.4; word-break: break-word;">${escapeHtml(opt.description)}</p>
                   </div>
                 </div>
-                <span style="font-weight: 800; color: #ea580c; font-size: 17px; white-space: nowrap; margin-left: 12px;">${priceText}</span>
+                <span style="font-weight: 800; color: #ea580c; font-size: 17px; white-space: nowrap; margin-left: 12px; flex-shrink: 0;">${priceText}</span>
               </label>
             `;
           })
@@ -323,24 +323,47 @@ export async function renderProviderDetail(providerId: string) {
 
     const hostelImagesHtml = hostelImages.length > 0
       ? `
-        <div id="hostel-gallery-container" style="display: flex; flex-direction: column; gap: 14px;">
-          <!-- Main Selected Image -->
-          <div id="galleryMainImageWrapper" style="position: relative; width: 100%; aspect-ratio: 16/9; max-height: 420px; border-radius: 18px; overflow: hidden; background: #0f172a; cursor: pointer; border: 1px solid var(--color-neutral-200); box-shadow: 0 4px 14px rgba(0,0,0,0.06);">
-            <img id="galleryMainImage" src="${getSafeImageUrl(hostelImages[0].imageUrl)}" alt="Hostel photo" style="width: 100%; height: 100%; object-fit: cover; transition: opacity 0.2s ease;" />
-            <div style="position: absolute; bottom: 12px; right: 12px; background: rgba(0,0,0,0.7); color: #fff; padding: 4px 12px; border-radius: 999px; font-size: 12px; font-weight: 700; display: inline-flex; align-items: center; gap: 6px; backdrop-filter: blur(4px);">
-              <i class="fa-solid fa-expand"></i> Click to enlarge
-            </div>
-            <span id="galleryCounterBadge" style="position: absolute; top: 12px; left: 12px; background: rgba(0,0,0,0.7); color: #fff; padding: 4px 10px; border-radius: 999px; font-size: 11px; font-weight: 700; backdrop-filter: blur(4px);">
+        <div id="hostel-gallery-container">
+          <!-- Main Selected Image (Interactive Carousel Viewport) -->
+          <div id="galleryMainImageWrapper">
+            <img id="galleryMainImage" src="${getSafeImageUrl(hostelImages[0].imageUrl)}" alt="Hostel photo" />
+            
+            ${hostelImages.length > 1 ? `
+              <!-- Carousel Prev & Next Navigation Arrows -->
+              <button type="button" id="carouselPrevBtn" class="carousel-nav-btn carousel-nav-prev" aria-label="Previous Photo" title="Previous Photo">
+                <i class="fa-solid fa-chevron-left"></i>
+              </button>
+              <button type="button" id="carouselNextBtn" class="carousel-nav-btn carousel-nav-next" aria-label="Next Photo" title="Next Photo">
+                <i class="fa-solid fa-chevron-right"></i>
+              </button>
+            ` : ''}
+
+            <!-- Slide Counter Pill -->
+            <span id="galleryCounterBadge" style="position: absolute; top: 12px; left: 12px; background: rgba(15, 23, 42, 0.72); color: #fff; padding: 4px 10px; border-radius: 999px; font-size: 11px; font-weight: 700; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); z-index: 4; border: 1px solid rgba(255,255,255,0.15);">
               1 / ${hostelImages.length}
             </span>
+
+            <!-- Fullscreen Enlarge Action -->
+            <div id="galleryEnlargeBtn" style="position: absolute; bottom: 12px; right: 12px; background: rgba(15, 23, 42, 0.72); color: #fff; padding: 5px 12px; border-radius: 999px; font-size: 11px; font-weight: 700; display: inline-flex; align-items: center; gap: 6px; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); z-index: 4; border: 1px solid rgba(255,255,255,0.2); cursor: pointer; transition: background 0.2s;">
+              <i class="fa-solid fa-expand"></i> Click to enlarge
+            </div>
+
+            ${hostelImages.length > 1 ? `
+              <!-- Carousel Dots Indicator -->
+              <div id="carouselDots" style="position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 6px; z-index: 4; padding: 5px 10px; background: rgba(15, 23, 42, 0.5); border-radius: 999px; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); border: 1px solid rgba(255,255,255,0.15);">
+                ${hostelImages.map((_, idx) => `
+                  <button type="button" class="carousel-dot-btn" data-dot-idx="${idx}" aria-label="Go to photo ${idx + 1}" style="width: ${idx === 0 ? '16px' : '6px'}; height: 6px; border-radius: 999px; background: ${idx === 0 ? 'var(--color-primary-500, #ea580c)' : 'rgba(255,255,255,0.65)'}; border: none; padding: 0; cursor: pointer; transition: all 0.25s ease;"></button>
+                `).join('')}
+              </div>
+            ` : ''}
           </div>
 
           <!-- Horizontal Thumbnails Strip (Scrollable on mobile & desktop) -->
-          <div id="galleryThumbnailsStrip" style="display: flex; gap: 10px; overflow-x: auto; padding-bottom: 6px; scrollbar-width: thin; -webkit-overflow-scrolling: touch;">
+          <div id="galleryThumbnailsStrip">
             ${hostelImages
               .map(
                 (img, idx) => `
-              <button type="button" class="gallery-thumb-btn" data-img-idx="${idx}" style="flex-shrink: 0; width: 80px; height: 60px; border-radius: 10px; overflow: hidden; border: ${idx === 0 ? '2px solid var(--color-primary-600)' : '2px solid transparent'}; padding: 0; background: var(--color-neutral-100); cursor: pointer; transition: all 0.2s ease;">
+              <button type="button" class="gallery-thumb-btn ${idx === 0 ? 'active' : ''}" data-img-idx="${idx}" aria-label="View photo ${idx + 1}">
                 <img src="${getSafeImageUrl(img.imageUrl)}" alt="Thumbnail ${idx + 1}" style="width: 100%; height: 100%; object-fit: cover;" />
               </button>
             `,
@@ -397,11 +420,11 @@ export async function renderProviderDetail(providerId: string) {
           </div>
         </div>
 
-        <div class="provider-detail-grid">
+        <div class="provider-detail-grid" style="width: 100%; max-width: 100%; min-width: 0;">
           <!-- Left Main Column -->
-          <div style="display: flex; flex-direction: column; gap: 24px;">
+          <div style="display: flex; flex-direction: column; gap: 24px; min-width: 0; width: 100%; max-width: 100%; overflow: hidden;">
             <!-- Hostel Images Gallery (Student Read-Only) -->
-            <div id="hostelImagesSection" style="background: #fff; border: 1px solid var(--color-neutral-200); border-radius: 20px; padding: 24px; box-shadow: 0 4px 12px rgba(0,0,0,0.03);">
+            <div id="hostelImagesSection" style="background: #fff; border: 1px solid var(--color-neutral-200); border-radius: 20px; padding: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.03); min-width: 0; width: 100%; max-width: 100%; overflow: hidden; box-sizing: border-box;">
               <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 8px;">
                 <h2 class="font-display" style="font-size: 20px; font-weight: 700; color: var(--color-neutral-900); margin: 0;">
                   <i class="fa-solid fa-images" style="color: var(--color-primary-600); margin-right: 6px;"></i> Hostel Images
@@ -564,12 +587,22 @@ export async function renderProviderDetail(providerId: string) {
       </div>
 
       <!-- Image Lightbox Viewer Modal (Student Read-Only) -->
-      <div id="imageLightboxModal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.92); z-index: 99999; align-items: center; justify-content: center; padding: 16px; backdrop-filter: blur(8px);">
-        <button id="closeLightboxBtn" style="position: absolute; top: 20px; right: 20px; background: rgba(255,255,255,0.2); border: none; color: #fff; width: 44px; height: 44px; border-radius: 50%; font-size: 22px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.2s;">
+      <div id="imageLightboxModal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.94); z-index: 99999; align-items: center; justify-content: center; padding: 16px; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); touch-action: pan-y;">
+        <button id="closeLightboxBtn" style="position: absolute; top: 20px; right: 20px; background: rgba(255,255,255,0.2); border: none; color: #fff; width: 44px; height: 44px; border-radius: 50%; font-size: 22px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.2s; z-index: 10;">
           <i class="fa-solid fa-xmark"></i>
         </button>
-        <div style="max-width: 90vw; max-height: 85vh; display: flex; flex-direction: column; align-items: center; justify-content: center;">
-          <img id="lightboxImage" src="" alt="Hostel photo enlarged" style="max-width: 100%; max-height: 80vh; object-fit: contain; border-radius: 12px; box-shadow: 0 20px 50px rgba(0,0,0,0.5);" />
+
+        ${hostelImages.length > 1 ? `
+          <button type="button" id="lightboxPrevBtn" class="carousel-nav-btn carousel-nav-prev" style="position: absolute; top: 50%; left: 16px; transform: translateY(-50%); width: 44px; height: 44px; border-radius: 50%; z-index: 10;" aria-label="Previous Photo">
+            <i class="fa-solid fa-chevron-left"></i>
+          </button>
+          <button type="button" id="lightboxNextBtn" class="carousel-nav-btn carousel-nav-next" style="position: absolute; top: 50%; right: 16px; transform: translateY(-50%); width: 44px; height: 44px; border-radius: 50%; z-index: 10;" aria-label="Next Photo">
+            <i class="fa-solid fa-chevron-right"></i>
+          </button>
+        ` : ''}
+
+        <div style="max-width: 90vw; max-height: 85vh; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative;">
+          <img id="lightboxImage" src="" alt="Hostel photo enlarged" style="max-width: 100%; max-height: 80vh; object-fit: contain; border-radius: 12px; box-shadow: 0 20px 50px rgba(0,0,0,0.5); transition: opacity 0.2s ease;" />
           <span id="lightboxCaption" style="color: rgba(255,255,255,0.85); font-size: 14px; font-weight: 600; margin-top: 14px;"></span>
         </div>
       </div>
@@ -577,29 +610,75 @@ export async function renderProviderDetail(providerId: string) {
 
     document.getElementById('backBtn')?.addEventListener('click', () => navigate('#/providers'));
 
-    // Gallery Thumbnail & Lightbox View Handlers (Read-Only)
+    // Gallery Carousel, Thumbnail & Lightbox View Handlers (Read-Only)
     let currentGalleryIdx = 0;
-    const updateGalleryMain = (idx: number) => {
-      if (!hostelImages[idx]) return;
-      currentGalleryIdx = idx;
+    const totalImages = hostelImages.length;
+
+    const updateGalleryMain = (idx: number, smoothThumbnail = true) => {
+      if (totalImages === 0) return;
+      currentGalleryIdx = (idx + totalImages) % totalImages;
+
       const mainImg = document.getElementById('galleryMainImage') as HTMLImageElement;
-      if (mainImg) {
-        mainImg.src = getSafeImageUrl(hostelImages[idx].imageUrl);
+      if (mainImg && hostelImages[currentGalleryIdx]) {
+        mainImg.style.opacity = '0.35';
+        setTimeout(() => {
+          mainImg.src = getSafeImageUrl(hostelImages[currentGalleryIdx].imageUrl);
+          mainImg.style.opacity = '1';
+        }, 100);
       }
+
       const counterBadge = document.getElementById('galleryCounterBadge');
       if (counterBadge) {
-        counterBadge.innerText = `${idx + 1} / ${hostelImages.length}`;
+        counterBadge.innerText = `${currentGalleryIdx + 1} / ${totalImages}`;
       }
+
+      // Update thumbnails active state
       document.querySelectorAll('.gallery-thumb-btn').forEach((btn) => {
         const btnIdx = Number(btn.getAttribute('data-img-idx'));
-        if (btnIdx === idx) {
-          (btn as HTMLElement).style.border = '2px solid var(--color-primary-600)';
+        if (btnIdx === currentGalleryIdx) {
+          btn.classList.add('active');
+          if (smoothThumbnail) {
+            btn.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+          }
         } else {
-          (btn as HTMLElement).style.border = '2px solid transparent';
+          btn.classList.remove('active');
+        }
+      });
+
+      // Update dots active state
+      document.querySelectorAll('.carousel-dot-btn').forEach((dot) => {
+        const dotIdx = Number(dot.getAttribute('data-dot-idx'));
+        if (dotIdx === currentGalleryIdx) {
+          (dot as HTMLElement).style.width = '16px';
+          (dot as HTMLElement).style.background = 'var(--color-primary-500, #ea580c)';
+        } else {
+          (dot as HTMLElement).style.width = '6px';
+          (dot as HTMLElement).style.background = 'rgba(255,255,255,0.65)';
         }
       });
     };
 
+    // Carousel Navigation Arrows
+    document.getElementById('carouselPrevBtn')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      updateGalleryMain(currentGalleryIdx - 1);
+    });
+
+    document.getElementById('carouselNextBtn')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      updateGalleryMain(currentGalleryIdx + 1);
+    });
+
+    // Dot indicators
+    document.querySelectorAll('.carousel-dot-btn').forEach((dot) => {
+      dot.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const idx = Number((e.currentTarget as HTMLElement).getAttribute('data-dot-idx'));
+        updateGalleryMain(idx);
+      });
+    });
+
+    // Thumbnails click
     document.querySelectorAll('.gallery-thumb-btn').forEach((btn) => {
       btn.addEventListener('click', (e) => {
         const idx = Number((e.currentTarget as HTMLElement).getAttribute('data-img-idx'));
@@ -607,16 +686,73 @@ export async function renderProviderDetail(providerId: string) {
       });
     });
 
+    // Touch Swipe on Carousel (Mobile)
+    const carouselWrapper = document.getElementById('galleryMainImageWrapper');
+    if (carouselWrapper && totalImages > 1) {
+      let touchStartX = 0;
+      let touchStartY = 0;
+      let touchStartTime = 0;
+
+      carouselWrapper.addEventListener(
+        'touchstart',
+        (e: TouchEvent) => {
+          if (e.touches.length === 1) {
+            touchStartX = e.touches[0].clientX;
+            touchStartY = e.touches[0].clientY;
+            touchStartTime = Date.now();
+          }
+        },
+        { passive: true },
+      );
+
+      carouselWrapper.addEventListener(
+        'touchend',
+        (e: TouchEvent) => {
+          const touchEndX = e.changedTouches[0].clientX;
+          const touchEndY = e.changedTouches[0].clientY;
+          const deltaX = touchEndX - touchStartX;
+          const deltaY = touchEndY - touchStartY;
+          const deltaTime = Date.now() - touchStartTime;
+
+          // Detect swipe: horizontal distance > 35px, more horizontal than vertical, swipe within 600ms
+          if (Math.abs(deltaX) > 35 && Math.abs(deltaX) > Math.abs(deltaY) && deltaTime < 600) {
+            if (deltaX < 0) {
+              // Swiped left -> Next photo
+              updateGalleryMain(currentGalleryIdx + 1);
+            } else {
+              // Swiped right -> Previous photo
+              updateGalleryMain(currentGalleryIdx - 1);
+            }
+          }
+        },
+        { passive: true },
+      );
+    }
+
+    // Lightbox modal logic
     const lightboxModal = document.getElementById('imageLightboxModal');
     const lightboxImg = document.getElementById('lightboxImage') as HTMLImageElement;
     const lightboxCaption = document.getElementById('lightboxCaption');
 
+    const updateLightbox = (idx: number) => {
+      if (totalImages === 0) return;
+      currentGalleryIdx = (idx + totalImages) % totalImages;
+      if (lightboxImg && hostelImages[currentGalleryIdx]) {
+        lightboxImg.style.opacity = '0.35';
+        setTimeout(() => {
+          lightboxImg.src = getSafeImageUrl(hostelImages[currentGalleryIdx].imageUrl);
+          lightboxImg.style.opacity = '1';
+        }, 100);
+      }
+      if (lightboxCaption) {
+        lightboxCaption.innerText = `Photo ${currentGalleryIdx + 1} of ${totalImages}`;
+      }
+      updateGalleryMain(currentGalleryIdx, true);
+    };
+
     const openLightbox = (idx: number) => {
       if (!hostelImages[idx] || !lightboxModal || !lightboxImg) return;
-      lightboxImg.src = getSafeImageUrl(hostelImages[idx].imageUrl);
-      if (lightboxCaption) {
-        lightboxCaption.innerText = `Photo ${idx + 1} of ${hostelImages.length}`;
-      }
+      updateLightbox(idx);
       lightboxModal.style.display = 'flex';
       document.body.style.overflow = 'hidden';
     };
@@ -628,17 +764,79 @@ export async function renderProviderDetail(providerId: string) {
       }
     };
 
-    document.getElementById('galleryMainImageWrapper')?.addEventListener('click', () => {
+    document.getElementById('lightboxPrevBtn')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      updateLightbox(currentGalleryIdx - 1);
+    });
+
+    document.getElementById('lightboxNextBtn')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      updateLightbox(currentGalleryIdx + 1);
+    });
+
+    document.getElementById('galleryEnlargeBtn')?.addEventListener('click', (e) => {
+      e.stopPropagation();
       openLightbox(currentGalleryIdx);
     });
+
+    carouselWrapper?.addEventListener('click', (e) => {
+      const target = e.target as HTMLElement;
+      if (
+        target.closest('#carouselPrevBtn') ||
+        target.closest('#carouselNextBtn') ||
+        target.closest('.carousel-dot-btn') ||
+        target.closest('#galleryEnlargeBtn')
+      ) {
+        return;
+      }
+      openLightbox(currentGalleryIdx);
+    });
+
+    // Touch Swipe inside Lightbox (Mobile)
+    if (lightboxModal && totalImages > 1) {
+      let lbTouchStartX = 0;
+      let lbTouchStartY = 0;
+
+      lightboxModal.addEventListener(
+        'touchstart',
+        (e: TouchEvent) => {
+          if (e.touches.length === 1) {
+            lbTouchStartX = e.touches[0].clientX;
+            lbTouchStartY = e.touches[0].clientY;
+          }
+        },
+        { passive: true },
+      );
+
+      lightboxModal.addEventListener(
+        'touchend',
+        (e: TouchEvent) => {
+          const lbTouchEndX = e.changedTouches[0].clientX;
+          const lbTouchEndY = e.changedTouches[0].clientY;
+          const deltaX = lbTouchEndX - lbTouchStartX;
+          const deltaY = lbTouchEndY - lbTouchStartY;
+
+          if (Math.abs(deltaX) > 40 && Math.abs(deltaX) > Math.abs(deltaY)) {
+            if (deltaX < 0) {
+              updateLightbox(currentGalleryIdx + 1);
+            } else {
+              updateLightbox(currentGalleryIdx - 1);
+            }
+          }
+        },
+        { passive: true },
+      );
+    }
 
     document.getElementById('closeLightboxBtn')?.addEventListener('click', closeLightbox);
     lightboxModal?.addEventListener('click', (e) => {
       if (e.target === lightboxModal) closeLightbox();
     });
     window.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape' && lightboxModal && lightboxModal.style.display === 'flex') {
-        closeLightbox();
+      if (lightboxModal && lightboxModal.style.display === 'flex') {
+        if (e.key === 'Escape') closeLightbox();
+        if (e.key === 'ArrowLeft') updateLightbox(currentGalleryIdx - 1);
+        if (e.key === 'ArrowRight') updateLightbox(currentGalleryIdx + 1);
       }
     });
 

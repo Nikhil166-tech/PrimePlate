@@ -537,7 +537,7 @@ export async function renderHome() {
                 <i class="fa-solid fa-chevron-down faq-chevron"></i>
               </button>
               <div id="faq-ans-10" class="faq-answer" role="region" aria-labelledby="faq-q-10">
-                <p>You can contact PrimePlate through WhatsApp at +91 8639296593 or email support.primeplate@gmail.com.</p>
+                <p>You can contact PrimePlate through WhatsApp at +91 8639296593 or email <a href="mailto:primeplatesupport@gmail.com" style="color: inherit; text-decoration: underline; font-weight: 600;">primeplatesupport@gmail.com</a>.</p>
               </div>
             </div>
 

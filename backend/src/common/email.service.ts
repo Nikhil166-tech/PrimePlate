@@ -97,7 +97,7 @@ If you did not request this, you can ignore this email.`;
     utrReference?: string;
   }): Promise<void> {
     const supportEmail =
-      this.configService.get<string>('SUPPORT_EMAIL') || 'support.primeplate@gmail.com';
+      this.configService.get<string>('SUPPORT_EMAIL') || 'primeplatesupport@gmail.com';
     const apiKey = this.configService.get<string>('EMAIL_PROVIDER_API_KEY');
     let fromEmail =
       this.configService.get<string>('EMAIL_FROM') || 'PrimePlate <onboarding@resend.dev>';

@@ -244,6 +244,9 @@ describe('PrimePlate PrimeMate Transactions & Payment Support Center Specificati
       expect(details.payment.amount).toBe(4500);
       expect(details.payment.status).toBe('SUCCESS');
       expect(details.subscription?.status).toBe('ACTIVE');
+      const messCardEvent = details.timeline.find((t: any) => t.event === 'MESSCARD_ACTIVATED');
+      expect(messCardEvent).toBeDefined();
+      expect(messCardEvent.timestamp).toEqual(mockPaymentsStore[0].createdAt);
     });
 
     it('should throw ForbiddenException when Student 1 attempts to view Student 2 order details (IDOR Prevention)', async () => {

@@ -17,6 +17,10 @@ import { renderAdminPortal } from './pages/admin';
 import { renderForgotPassword } from './pages/forgot-password';
 import { renderResetPassword } from './pages/reset-password';
 import { renderTransactions } from './pages/transactions';
+import { inject } from '@vercel/analytics';
+
+// Initialize Vercel Web Analytics
+inject();
 
 // Auth & Role guard
 function requireRole(allowedRoles: string[], callback: () => void) {

@@ -8,6 +8,29 @@ export class EmailService {
 
   constructor(private readonly configService: ConfigService) {}
 
+  private getGmailTransporter() {
+    const smtpUser =
+      this.configService.get<string>('SMTP_USER') ||
+      this.configService.get<string>('GMAIL_USER');
+    const smtpPass =
+      this.configService.get<string>('SMTP_PASS') ||
+      this.configService.get<string>('GMAIL_PASS');
+
+    if (smtpUser && smtpPass) {
+      return {
+        transporter: nodemailer.createTransport({
+          service: 'gmail',
+          auth: {
+            user: smtpUser,
+            pass: smtpPass,
+          },
+        }),
+        smtpUser,
+      };
+    }
+    return null;
+  }
+
   async sendPasswordResetEmail(
     toEmail: string,
     rawToken: string,
@@ -16,15 +39,6 @@ export class EmailService {
       this.configService.get<string>('FRONTEND_URL') || 'http://localhost:5173';
     const cleanFrontendUrl = frontendUrl.replace(/\/+$/, '');
     const resetUrl = `${cleanFrontendUrl}/#/reset-password?token=${encodeURIComponent(rawToken)}`;
-
-    const apiKey = this.configService.get<string>('EMAIL_PROVIDER_API_KEY');
-    let fromEmail =
-      this.configService.get<string>('EMAIL_FROM') || 'PrimePlate <onboarding@resend.dev>';
-
-    // If default primeplate.com sender is configured without explicit domain verification, use Resend onboarding sender
-    if (fromEmail.includes('primeplate.com') && this.configService.get<string>('EMAIL_DOMAIN_VERIFIED') !== 'true') {
-      fromEmail = 'PrimePlate <onboarding@resend.dev>';
-    }
 
     const subject = 'PrimePlate Password Reset';
     const textContent = `Someone requested a password reset for your PrimePlate account.
@@ -49,7 +63,42 @@ If you did not request this, you can ignore this email.`;
       </div>
     `;
 
+    // 1. Primary: Direct Gmail SMTP
+    const gmail = this.getGmailTransporter();
+    if (gmail) {
+      try {
+        await gmail.transporter.sendMail({
+          from: `"PrimePlate" <${gmail.smtpUser}>`,
+          to: toEmail,
+          subject,
+          text: textContent,
+          html: htmlContent,
+        });
+
+        this.logger.log(
+          `Password reset email delivered to ${toEmail} via Nodemailer Gmail SMTP (${gmail.smtpUser}).`,
+        );
+        return;
+      } catch (smtpErr: any) {
+        this.logger.error(
+          `Gmail SMTP Password reset email delivery failed: ${smtpErr.message}`,
+        );
+      }
+    }
+
+    // 2. Secondary fallback: Resend API (if configured)
+    const apiKey = this.configService.get<string>('EMAIL_PROVIDER_API_KEY');
     if (apiKey) {
+      let fromEmail =
+        this.configService.get<string>('EMAIL_FROM') || 'PrimePlate <infoprimeplate@gmail.com>';
+      const resendFrom =
+        !fromEmail ||
+        fromEmail.includes('primeplate.com') ||
+        fromEmail.includes('gmail.com') ||
+        this.configService.get<string>('EMAIL_DOMAIN_VERIFIED') !== 'true'
+          ? 'PrimePlate <onboarding@resend.dev>'
+          : fromEmail;
+
       try {
         const response = await fetch('https://api.resend.com/emails', {
           method: 'POST',
@@ -58,7 +107,7 @@ If you did not request this, you can ignore this email.`;
             Authorization: `Bearer ${apiKey}`,
           },
           body: JSON.stringify({
-            from: fromEmail,
+            from: resendFrom,
             to: [toEmail],
             subject,
             html: htmlContent,
@@ -68,22 +117,60 @@ If you did not request this, you can ignore this email.`;
 
         if (!response.ok) {
           const errBody = await response.text();
+          if (
+            response.status === 403 &&
+            errBody.includes('testing emails to your own email address')
+          ) {
+            const ownerEmailMatch = errBody.match(/\(([^)]+)\)/);
+            const ownerEmail = ownerEmailMatch
+              ? ownerEmailMatch[1]
+              : 'itharajunikhil61@gmail.com';
+            this.logger.warn(
+              `Resend sandbox mode: delivering reset email for ${toEmail} to registered owner (${ownerEmail})...`,
+            );
+
+            const retryResponse = await fetch('https://api.resend.com/emails', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${apiKey}`,
+              },
+              body: JSON.stringify({
+                from: resendFrom,
+                to: [ownerEmail],
+                subject: `[TESTING - FOR ${toEmail}] ${subject}`,
+                html: htmlContent,
+                text: textContent,
+              }),
+            });
+
+            if (retryResponse.ok) {
+              this.logger.log(
+                `Password reset email delivered to Resend owner inbox (${ownerEmail}) for ${toEmail}.`,
+              );
+              return;
+            }
+          }
           this.logger.error(
             `Resend API Email delivery failed (${response.status}): ${errBody}`,
           );
         } else {
           this.logger.log(
-            `Password reset email successfully dispatched to ${toEmail}.`,
+            `Password reset email successfully dispatched to ${toEmail} via Resend.`,
           );
+          return;
         }
       } catch (err: any) {
-        this.logger.error(`Error sending password reset email: ${err.message}`);
+        this.logger.error(
+          `Error sending password reset email via Resend: ${err.message}`,
+        );
       }
-    } else {
-      this.logger.log(
-        `[EmailService] Password reset link generated for ${toEmail}: ${resetUrl}`,
-      );
     }
+
+    // 3. Fallback log for development/testing
+    this.logger.log(
+      `[EmailService] Password reset link generated for ${toEmail}: ${resetUrl}`,
+    );
   }
 
   async sendSupportTicketEmail(ticketData: {
@@ -97,14 +184,7 @@ If you did not request this, you can ignore this email.`;
     utrReference?: string;
   }): Promise<void> {
     const supportEmail =
-      this.configService.get<string>('SUPPORT_EMAIL') || 'primeplatesupport@gmail.com';
-    const apiKey = this.configService.get<string>('EMAIL_PROVIDER_API_KEY');
-    let fromEmail =
-      this.configService.get<string>('EMAIL_FROM') || 'PrimePlate <onboarding@resend.dev>';
-
-    if (fromEmail.includes('primeplate.com') && this.configService.get<string>('EMAIL_DOMAIN_VERIFIED') !== 'true') {
-      fromEmail = 'PrimePlate <onboarding@resend.dev>';
-    }
+      this.configService.get<string>('SUPPORT_EMAIL') || 'infoprimeplate@gmail.com';
 
     const subject = `[SUPPORT TICKET] #${ticketData.ticketNumber} - ${ticketData.issueType}`;
     const textContent = `New Payment Support Ticket Raised:
@@ -140,36 +220,42 @@ ${ticketData.description}`;
       </div>
     `;
 
-    const smtpUser = this.configService.get<string>('SMTP_USER') || this.configService.get<string>('GMAIL_USER');
-    const smtpPass = this.configService.get<string>('SMTP_PASS') || this.configService.get<string>('GMAIL_PASS');
-
-    if (smtpUser && smtpPass) {
+    // 1. Primary: Direct Gmail SMTP
+    const gmail = this.getGmailTransporter();
+    if (gmail) {
       try {
-        const transporter = nodemailer.createTransport({
-          service: 'gmail',
-          auth: {
-            user: smtpUser,
-            pass: smtpPass,
-          },
-        });
-
-        await transporter.sendMail({
-          from: `"PrimePlate Support" <${smtpUser}>`,
+        await gmail.transporter.sendMail({
+          from: `"PrimePlate Support" <${gmail.smtpUser}>`,
           to: supportEmail,
+          replyTo: ticketData.studentEmail,
           subject,
           text: textContent,
           html: htmlContent,
         });
-        this.logger.log(`Support ticket email #${ticketData.ticketNumber} delivered to ${supportEmail} via Nodemailer Gmail SMTP.`);
+
+        this.logger.log(
+          `Support ticket email #${ticketData.ticketNumber} delivered to ${supportEmail} via Nodemailer Gmail SMTP (${gmail.smtpUser}).`,
+        );
         return;
       } catch (smtpErr: any) {
         this.logger.error(`SMTP Email delivery failed: ${smtpErr.message}`);
       }
     }
 
+    // 2. Secondary fallback: Resend API (if configured)
+    const apiKey = this.configService.get<string>('EMAIL_PROVIDER_API_KEY');
     if (apiKey) {
+      let fromEmail =
+        this.configService.get<string>('EMAIL_FROM') || 'PrimePlate <infoprimeplate@gmail.com>';
+      const resendFrom =
+        !fromEmail ||
+        fromEmail.includes('primeplate.com') ||
+        fromEmail.includes('gmail.com') ||
+        this.configService.get<string>('EMAIL_DOMAIN_VERIFIED') !== 'true'
+          ? 'PrimePlate <onboarding@resend.dev>'
+          : fromEmail;
+
       try {
-        let targetTo = [supportEmail];
         let response = await fetch('https://api.resend.com/emails', {
           method: 'POST',
           headers: {
@@ -177,8 +263,9 @@ ${ticketData.description}`;
             Authorization: `Bearer ${apiKey}`,
           },
           body: JSON.stringify({
-            from: fromEmail,
-            to: targetTo,
+            from: resendFrom,
+            to: [supportEmail],
+            reply_to: ticketData.studentEmail,
             subject,
             html: htmlContent,
             text: textContent,
@@ -187,11 +274,17 @@ ${ticketData.description}`;
 
         if (!response.ok) {
           const errBody = await response.text();
-          // If Resend returns 403 sandbox error requiring email to account owner (itharajunikhil61@gmail.com)
-          if (response.status === 403 && errBody.includes('testing emails to your own email address')) {
+          if (
+            response.status === 403 &&
+            errBody.includes('testing emails to your own email address')
+          ) {
             const ownerEmailMatch = errBody.match(/\(([^)]+)\)/);
-            const ownerEmail = ownerEmailMatch ? ownerEmailMatch[1] : 'itharajunikhil61@gmail.com';
-            this.logger.warn(`Resend sandbox mode detected. Retrying delivery to registered owner (${ownerEmail})...`);
+            const ownerEmail = ownerEmailMatch
+              ? ownerEmailMatch[1]
+              : 'itharajunikhil61@gmail.com';
+            this.logger.warn(
+              `Resend sandbox mode detected. Retrying delivery to registered owner (${ownerEmail})...`,
+            );
 
             const retryResponse = await fetch('https://api.resend.com/emails', {
               method: 'POST',
@@ -200,7 +293,7 @@ ${ticketData.description}`;
                 Authorization: `Bearer ${apiKey}`,
               },
               body: JSON.stringify({
-                from: fromEmail,
+                from: resendFrom,
                 to: [ownerEmail],
                 subject: `[TESTING - INTENDED FOR ${supportEmail}] ${subject}`,
                 html: htmlContent,
@@ -209,22 +302,33 @@ ${ticketData.description}`;
             });
 
             if (retryResponse.ok) {
-              this.logger.log(`Support ticket email #${ticketData.ticketNumber} delivered to Resend account owner inbox (${ownerEmail}).`);
+              this.logger.log(
+                `Support ticket email #${ticketData.ticketNumber} delivered to Resend account owner inbox (${ownerEmail}).`,
+              );
+              return;
             } else {
               const retryErr = await retryResponse.text();
               this.logger.error(`Resend sandbox retry failed: ${retryErr}`);
             }
           } else {
-            this.logger.error(`Resend API Support Email delivery failed (${response.status}): ${errBody}`);
+            this.logger.error(
+              `Resend API Support Email delivery failed (${response.status}): ${errBody}`,
+            );
           }
         } else {
-          this.logger.log(`Support ticket email #${ticketData.ticketNumber} successfully delivered to ${supportEmail} via Resend.`);
+          this.logger.log(
+            `Support ticket email #${ticketData.ticketNumber} successfully delivered to ${supportEmail} via Resend.`,
+          );
+          return;
         }
       } catch (err: any) {
         this.logger.error(`Error sending support email: ${err.message}`);
       }
-    } else {
-      this.logger.log(`[EmailService] Support ticket email #${ticketData.ticketNumber} logged for ${supportEmail}: ${subject}`);
     }
+
+    // 3. Fallback log
+    this.logger.log(
+      `[EmailService] Support ticket email #${ticketData.ticketNumber} logged for ${supportEmail}: ${subject}`,
+    );
   }
 }

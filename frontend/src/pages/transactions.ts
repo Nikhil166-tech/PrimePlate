@@ -350,6 +350,58 @@ function renderMainContent() {
   });
 }
 
+export function formatPlanAndDurationTitle(
+  mealPlanTitle?: string | null,
+  durationDays?: number,
+): { title: string; durationLabel: string } {
+  const days = Number(durationDays) || 30;
+
+  let durationLabel = '';
+  let standardTitle = '';
+
+  if (days === 1) {
+    durationLabel = '1 Day';
+    standardTitle = '1 Day Plan (1 Day)';
+  } else if (days === 7) {
+    durationLabel = '7 Days';
+    standardTitle = '7 Days Plan (7 Days)';
+  } else if (days === 15) {
+    durationLabel = '15 Days';
+    standardTitle = '15 Days Plan (15 Days)';
+  } else if (days === 30) {
+    durationLabel = '30 Days (1 Month)';
+    standardTitle = '1 Month Plan (30 Days)';
+  } else {
+    const unit = days === 1 ? 'Day' : 'Days';
+    durationLabel = `${days} ${unit}`;
+    standardTitle = `${days} Days Plan (${days} ${unit})`;
+  }
+
+  // Exactly as requested: 1 Day should display "1 Day Plan (1 Day)"
+  if (days === 1) {
+    return { title: '1 Day Plan (1 Day)', durationLabel };
+  }
+
+  const raw = (mealPlanTitle || '').trim();
+
+  // If raw title is generic or has conflicting prefix like "Weekly Executive Lunch Plan" / "Monthly Deluxe Veg Thali"
+  if (
+    !raw ||
+    /^(weekly|monthly)\s+(executive|veg|non-veg)?.*plan$/i.test(raw) ||
+    raw.toLowerCase().includes('standard mess')
+  ) {
+    return { title: standardTitle, durationLabel };
+  }
+
+  // If raw title is a specific dish/meal name
+  const cleanTitle = raw.replace(/^(Weekly|Monthly)\s+/i, '').trim();
+  const unit = days === 1 ? 'Day' : 'Days';
+  return {
+    title: `${cleanTitle} (${days} ${unit})`,
+    durationLabel,
+  };
+}
+
 function renderTransactionCard(t: PaymentTransaction): string {
   let badgeBg = '#f3f4f6';
   let badgeColor = '#374151';
@@ -378,9 +430,11 @@ function renderTransactionCard(t: PaymentTransaction): string {
     badgeText = 'REFUNDED';
   }
 
-  const mealTitle = t.mealPlan?.title || 'Standard Mess Plan';
+  const { title: displayPlanTitle } = formatPlanAndDurationTitle(
+    t.mealPlan?.title,
+    t.durationDays,
+  );
   const providerName = t.provider?.name || 'Mess Provider';
-  const durationText = t.durationDays ? `${t.durationDays} Days` : '30 Days';
 
   return `
     <div class="tx-card-item" data-order-id="${escapeHtml(t.razorpayOrderId)}" style="background: #fff; border: 1px solid var(--color-neutral-200); border-radius: 16px; padding: 16px; cursor: pointer; transition: all 0.2s ease; box-shadow: 0 2px 6px rgba(0,0,0,0.02);">
@@ -404,11 +458,12 @@ function renderTransactionCard(t: PaymentTransaction): string {
           </div>
 
           <h4 class="font-display" style="font-size: 15px; font-weight: 800; color: var(--color-neutral-900); margin: 0 0 3px 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-            ${escapeHtml(mealTitle)} <span style="font-size: 11px; font-weight: 600; color: var(--color-neutral-500);">(${durationText})</span>
+            ${escapeHtml(displayPlanTitle)}
           </h4>
 
-          <p style="font-size: 12px; color: var(--color-neutral-600); margin: 0 0 4px 0;">
-            <i class="fa-solid fa-building-user" style="color: var(--color-primary-600);"></i> ${escapeHtml(providerName)}
+          <p style="font-size: 12px; color: var(--color-neutral-600); margin: 0 0 4px 0; display: flex; align-items: center; gap: 5px;">
+            <i class="fa-solid fa-building-user" style="color: var(--color-primary-600);"></i>
+            <span style="font-weight: 600; color: var(--color-neutral-800);">${escapeHtml(providerName)}</span>
           </p>
 
           <div style="display: flex; gap: 10px; font-size: 11px; color: var(--color-neutral-500); flex-wrap: wrap;">
@@ -493,6 +548,10 @@ function renderDrawerContent() {
   if (!body || !selectedOrderDetail) return;
 
   const { payment, purchaseDetails, subscription, timeline, supportTicket } = selectedOrderDetail;
+  const { title: drawerPlanTitle, durationLabel } = formatPlanAndDurationTitle(
+    purchaseDetails.mealPlanTitle,
+    purchaseDetails.durationDays,
+  );
 
   let badgeBg = '#f3f4f6';
   let badgeColor = '#374151';
@@ -535,15 +594,15 @@ function renderDrawerContent() {
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 12px;">
           <div>
             <span style="color: var(--color-neutral-500); display: block; font-size: 10px; font-weight: 700;">MEAL PLAN</span>
-            <span style="font-weight: 700; color: var(--color-neutral-900);">${escapeHtml(purchaseDetails.mealPlanTitle)}</span>
+            <span style="font-weight: 700; color: var(--color-neutral-900);">${escapeHtml(drawerPlanTitle)}</span>
           </div>
           <div>
             <span style="color: var(--color-neutral-500); display: block; font-size: 10px; font-weight: 700;">DURATION</span>
-            <span style="font-weight: 700; color: var(--color-neutral-900);">${purchaseDetails.durationDays} Days</span>
+            <span style="font-weight: 700; color: var(--color-neutral-900);">${durationLabel}</span>
           </div>
           <div>
-            <span style="color: var(--color-neutral-500); display: block; font-size: 10px; font-weight: 700;">MESS PROVIDER</span>
-            <span style="font-weight: 700; color: var(--color-neutral-900);">${escapeHtml(purchaseDetails.providerName)}</span>
+            <span style="color: var(--color-neutral-500); display: block; font-size: 10px; font-weight: 700;">HOSTEL / MESS PROVIDER</span>
+            <span style="font-weight: 700; color: var(--color-neutral-900);">${escapeHtml(purchaseDetails.providerName || 'Mess Provider')}</span>
           </div>
           <div>
             <span style="color: var(--color-neutral-500); display: block; font-size: 10px; font-weight: 700;">PAYMENT METHOD</span>

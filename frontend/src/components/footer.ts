@@ -88,14 +88,14 @@ export function renderFooter(): string {
               </a>
 
               <a
-                href="mailto:primeplatesupport@gmail.com?subject=PrimePlate%20Support%20Request"
+                href="mailto:infoprimeplate@gmail.com?subject=PrimePlate%20Support%20Request"
                 class="footer-support-item footer-support-mail"
                 aria-label="Email PrimePlate support"
               >
                 <i class="fa-solid fa-envelope footer-support-icon"></i>
                 <div class="footer-support-text">
                   <span class="footer-support-title">Email Support</span>
-                  <span class="footer-support-detail">primeplatesupport@gmail.com</span>
+                  <span class="footer-support-detail">infoprimeplate@gmail.com</span>
                 </div>
               </a>
             </div>

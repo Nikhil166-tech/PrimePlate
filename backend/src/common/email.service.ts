@@ -62,6 +62,68 @@ export class EmailService {
     return null;
   }
 
+  private async sendViaBrevo(params: {
+    toEmail: string;
+    subject: string;
+    htmlContent: string;
+    textContent: string;
+    replyToEmail?: string;
+  }): Promise<boolean> {
+    const brevoApiKey =
+      this.configService.get<string>('BREVO_API_KEY') ||
+      this.configService.get<string>('SENDINBLUE_API_KEY');
+
+    if (!brevoApiKey) return false;
+
+    const senderEmail =
+      this.configService.get<string>('BREVO_SENDER_EMAIL') ||
+      this.configService.get<string>('SMTP_USER') ||
+      this.configService.get<string>('GMAIL_USER') ||
+      'infoprimeplate@gmail.com';
+    const senderName = 'PrimePlate';
+
+    try {
+      const payload: any = {
+        sender: { name: senderName, email: senderEmail },
+        to: [{ email: params.toEmail }],
+        subject: params.subject,
+        htmlContent: params.htmlContent,
+        textContent: params.textContent,
+      };
+
+      if (params.replyToEmail) {
+        payload.replyTo = { email: params.replyToEmail };
+      }
+
+      const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+        method: 'POST',
+        headers: {
+          accept: 'application/json',
+          'api-key': brevoApiKey,
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (response.ok) {
+        const resData = await response.json().catch(() => ({}));
+        this.logger.log(
+          `Email dispatched to ${params.toEmail} via Brevo HTTP API (msgId: ${resData?.messageId || 'ok'}).`,
+        );
+        return true;
+      }
+
+      const errText = await response.text();
+      this.logger.error(
+        `Brevo HTTP API delivery failed (${response.status}): ${errText}`,
+      );
+      return false;
+    } catch (err: any) {
+      this.logger.error(`Error sending email via Brevo HTTP API: ${err.message}`);
+      return false;
+    }
+  }
+
   async sendPasswordResetEmail(
     toEmail: string,
     rawToken: string,
@@ -94,7 +156,16 @@ If you did not request this, you can ignore this email.`;
       </div>
     `;
 
-    // 1. Primary: Direct Gmail SMTP
+    // 1. Primary for Cloud Environments: Brevo HTTP REST API (Port 443 HTTPS - Never blocked by Render)
+    const brevoSent = await this.sendViaBrevo({
+      toEmail,
+      subject,
+      htmlContent,
+      textContent,
+    });
+    if (brevoSent) return;
+
+    // 2. Direct Gmail SMTP (Port 587 STARTTLS)
     const gmail = await this.getGmailTransporter();
     if (gmail) {
       try {
@@ -226,7 +297,17 @@ ${ticketData.description}`;
       </div>
     `;
 
-    // 1. Primary: Direct Gmail SMTP
+    // 1. Primary for Cloud Environments: Brevo HTTP REST API (Port 443 HTTPS - Never blocked by Render)
+    const brevoSent = await this.sendViaBrevo({
+      toEmail: supportEmail,
+      subject,
+      htmlContent,
+      textContent,
+      replyToEmail: ticketData.studentEmail,
+    });
+    if (brevoSent) return;
+
+    // 2. Direct Gmail SMTP
     const gmail = await this.getGmailTransporter();
     if (gmail) {
       try {

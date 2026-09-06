@@ -106,7 +106,7 @@ export function renderFooter(): string {
             <h4 class="footer-col-title">Connect</h4>
             <div class="footer-social-row">
               <a
-                href="https://www.instagram.com/primeplate0.01/"
+                href="https://www.instagram.com/primeplate0.1/"
                 target="_blank"
                 rel="noopener noreferrer"
                 class="footer-social-icon-btn footer-social-ig"

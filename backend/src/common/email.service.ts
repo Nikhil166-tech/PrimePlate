@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as nodemailer from 'nodemailer';
+import { promises as dnsPromises } from 'dns';
 
 @Injectable()
 export class EmailService {
@@ -8,7 +9,7 @@ export class EmailService {
 
   constructor(private readonly configService: ConfigService) {}
 
-  private getGmailTransporter() {
+  private async getGmailTransporter() {
     const smtpUser =
       this.configService.get<string>('SMTP_USER') ||
       this.configService.get<string>('GMAIL_USER');
@@ -21,15 +22,35 @@ export class EmailService {
       Number(this.configService.get<number>('SMTP_PORT')) || 587;
 
     if (smtpUser && smtpPass) {
+      // Directly resolve smtpHost to pure IPv4 address.
+      // Nodemailer's internal resolveHostname otherwise queries both IPv4 and IPv6 and
+      // randomly selects an address, which picks Gmail IPv6 (2607:f8b0:...) and crashes
+      // with ENETUNREACH on cloud containers (Render/Docker) that lack IPv6 routes.
+      let resolvedHost = smtpHost;
+      try {
+        const ipv4List = await dnsPromises.resolve4(smtpHost);
+        if (ipv4List && ipv4List.length > 0) {
+          resolvedHost = ipv4List[0];
+        }
+      } catch (dnsErr: any) {
+        this.logger.warn(
+          `Direct IPv4 DNS lookup for ${smtpHost} failed: ${dnsErr.message}. Using hostname.`,
+        );
+      }
+
       return {
         transporter: nodemailer.createTransport({
-          host: smtpHost,
+          host: resolvedHost,
           port: smtpPort,
           secure: smtpPort === 465,
-          family: 4, // Explicitly force IPv4 socket to avoid ENETUNREACH on Render/Docker
+          servername: smtpHost,
           auth: {
             user: smtpUser,
             pass: smtpPass,
+          },
+          tls: {
+            servername: smtpHost,
+            rejectUnauthorized: false,
           },
           connectionTimeout: 15000,
           greetingTimeout: 15000,
@@ -74,7 +95,7 @@ If you did not request this, you can ignore this email.`;
     `;
 
     // 1. Primary: Direct Gmail SMTP
-    const gmail = this.getGmailTransporter();
+    const gmail = await this.getGmailTransporter();
     if (gmail) {
       try {
         await gmail.transporter.sendMail({
@@ -103,9 +124,9 @@ If you did not request this, you can ignore this email.`;
         this.configService.get<string>('EMAIL_FROM') || 'PrimePlate <infoprimeplate@gmail.com>';
       const resendFrom =
         !fromEmail ||
-        fromEmail.includes('primeplate.com') ||
-        fromEmail.includes('gmail.com') ||
-        this.configService.get<string>('EMAIL_DOMAIN_VERIFIED') !== 'true'
+          fromEmail.includes('primeplate.com') ||
+          fromEmail.includes('gmail.com') ||
+          this.configService.get<string>('EMAIL_DOMAIN_VERIFIED') !== 'true'
           ? 'PrimePlate <onboarding@resend.dev>'
           : fromEmail;
 
@@ -131,39 +152,14 @@ If you did not request this, you can ignore this email.`;
             response.status === 403 &&
             errBody.includes('testing emails to your own email address')
           ) {
-            const ownerEmailMatch = errBody.match(/\(([^)]+)\)/);
-            const ownerEmail = ownerEmailMatch
-              ? ownerEmailMatch[1]
-              : 'itharajunikhil61@gmail.com';
             this.logger.warn(
-              `Resend sandbox mode: delivering reset email for ${toEmail} to registered owner (${ownerEmail})...`,
+              `Resend sandbox mode: cannot deliver password reset to external recipient (${toEmail}). Domain verification required in Resend dashboard.`,
             );
-
-            const retryResponse = await fetch('https://api.resend.com/emails', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                Authorization: `Bearer ${apiKey}`,
-              },
-              body: JSON.stringify({
-                from: resendFrom,
-                to: [ownerEmail],
-                subject: `[TESTING - FOR ${toEmail}] ${subject}`,
-                html: htmlContent,
-                text: textContent,
-              }),
-            });
-
-            if (retryResponse.ok) {
-              this.logger.log(
-                `Password reset email delivered to Resend owner inbox (${ownerEmail}) for ${toEmail}.`,
-              );
-              return;
-            }
+          } else {
+            this.logger.error(
+              `Resend API Email delivery failed (${response.status}): ${errBody}`,
+            );
           }
-          this.logger.error(
-            `Resend API Email delivery failed (${response.status}): ${errBody}`,
-          );
         } else {
           this.logger.log(
             `Password reset email successfully dispatched to ${toEmail} via Resend.`,
@@ -231,7 +227,7 @@ ${ticketData.description}`;
     `;
 
     // 1. Primary: Direct Gmail SMTP
-    const gmail = this.getGmailTransporter();
+    const gmail = await this.getGmailTransporter();
     if (gmail) {
       try {
         await gmail.transporter.sendMail({
@@ -259,9 +255,9 @@ ${ticketData.description}`;
         this.configService.get<string>('EMAIL_FROM') || 'PrimePlate <infoprimeplate@gmail.com>';
       const resendFrom =
         !fromEmail ||
-        fromEmail.includes('primeplate.com') ||
-        fromEmail.includes('gmail.com') ||
-        this.configService.get<string>('EMAIL_DOMAIN_VERIFIED') !== 'true'
+          fromEmail.includes('primeplate.com') ||
+          fromEmail.includes('gmail.com') ||
+          this.configService.get<string>('EMAIL_DOMAIN_VERIFIED') !== 'true'
           ? 'PrimePlate <onboarding@resend.dev>'
           : fromEmail;
 

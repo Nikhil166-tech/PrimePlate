@@ -12,7 +12,7 @@ export async function renderAdminPortal() {
 
   if (!token || role !== 'ADMIN') {
     showToast('Admin authorization required', 'error');
-    navigate('#/login');
+    navigate('/login');
     return;
   }
 

@@ -15,16 +15,26 @@ export class EmailService {
     const smtpPass =
       this.configService.get<string>('SMTP_PASS') ||
       this.configService.get<string>('GMAIL_PASS');
+    const smtpHost =
+      this.configService.get<string>('SMTP_HOST') || 'smtp.gmail.com';
+    const smtpPort =
+      Number(this.configService.get<number>('SMTP_PORT')) || 587;
 
     if (smtpUser && smtpPass) {
       return {
         transporter: nodemailer.createTransport({
-          service: 'gmail',
+          host: smtpHost,
+          port: smtpPort,
+          secure: smtpPort === 465,
+          family: 4, // Explicitly force IPv4 socket to avoid ENETUNREACH on Render/Docker
           auth: {
             user: smtpUser,
             pass: smtpPass,
           },
-        }),
+          connectionTimeout: 15000,
+          greetingTimeout: 15000,
+          socketTimeout: 20000,
+        } as any),
         smtpUser,
       };
     }
@@ -38,7 +48,7 @@ export class EmailService {
     const frontendUrl =
       this.configService.get<string>('FRONTEND_URL') || 'http://localhost:5173';
     const cleanFrontendUrl = frontendUrl.replace(/\/+$/, '');
-    const resetUrl = `${cleanFrontendUrl}/#/reset-password?token=${encodeURIComponent(rawToken)}`;
+    const resetUrl = `${cleanFrontendUrl}/reset-password?token=${encodeURIComponent(rawToken)}`;
 
     const subject = 'PrimePlate Password Reset';
     const textContent = `Someone requested a password reset for your PrimePlate account.

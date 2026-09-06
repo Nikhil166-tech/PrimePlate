@@ -55,7 +55,7 @@ export async function renderProviderDetail(providerId: string) {
         </div>
       </div>`;
 
-    document.getElementById('detailBackBtn')?.addEventListener('click', () => navigate('#/providers'));
+    document.getElementById('detailBackBtn')?.addEventListener('click', () => navigate('/providers'));
     document.getElementById('retryDetailBtn')?.addEventListener('click', () => renderProviderDetail(providerId));
   };
 
@@ -608,7 +608,7 @@ export async function renderProviderDetail(providerId: string) {
       </div>
     `;
 
-    document.getElementById('backBtn')?.addEventListener('click', () => navigate('#/providers'));
+    document.getElementById('backBtn')?.addEventListener('click', () => navigate('/providers'));
 
     // Gallery Carousel, Thumbnail & Lightbox View Handlers (Read-Only)
     let currentGalleryIdx = 0;
@@ -874,7 +874,7 @@ export async function renderProviderDetail(providerId: string) {
       const selectedRadio = document.querySelector('input[name="durationPlanSelect"]:checked') as HTMLInputElement;
       const selectedDays = selectedRadio ? Number(selectedRadio.value) : 30;
       const targetPlanId = mealPlans[0] ? mealPlans[0].id : providerId;
-      navigate(`#/checkout/${targetPlanId}?days=${selectedDays}`);
+      navigate(`/checkout/${targetPlanId}?days=${selectedDays}`);
     });
 
     // Mobile Subscribe Button
@@ -882,7 +882,7 @@ export async function renderProviderDetail(providerId: string) {
       const selectedRadio = document.querySelector('input[name="mobileDurationPlanSelect"]:checked') as HTMLInputElement;
       const selectedDays = selectedRadio ? Number(selectedRadio.value) : 30;
       const targetPlanId = mealPlans[0] ? mealPlans[0].id : providerId;
-      navigate(`#/checkout/${targetPlanId}?days=${selectedDays}`);
+      navigate(`/checkout/${targetPlanId}?days=${selectedDays}`);
     });
 
     // Create Review Form Listener

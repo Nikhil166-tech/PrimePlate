@@ -1,5 +1,6 @@
 import axios from 'axios';
 import type { AxiosInstance, AxiosResponse, InternalAxiosRequestConfig } from 'axios';
+import { navigate } from './router';
 
 // Strict production API URL validation
 const isProd = import.meta.env.PROD;
@@ -67,8 +68,8 @@ api.interceptors.response.use(
       sessionStorage.removeItem('pendingPaymentOrderId');
       sessionStorage.removeItem('pendingPaymentPlanId');
 
-      if (!window.location.hash.includes('#/login')) {
-        window.location.hash = '#/login';
+      if (!window.location.pathname.includes('/login')) {
+        navigate('/login');
       }
     } else if (response?.status === 401 && isRefreshEndpoint) {
       // Direct liquidation if /auth/refresh itself returned 401 (prevent infinite loop)
@@ -79,8 +80,8 @@ api.interceptors.response.use(
       sessionStorage.removeItem('pendingPaymentOrderId');
       sessionStorage.removeItem('pendingPaymentPlanId');
 
-      if (!window.location.hash.includes('#/login')) {
-        window.location.hash = '#/login';
+      if (!window.location.pathname.includes('/login')) {
+        navigate('/login');
       }
     }
 

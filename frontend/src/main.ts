@@ -1,5 +1,11 @@
 import './style.css';
-import { initRouter, registerRoute, navigate } from './router';
+import {
+  initRouter,
+  registerRoute,
+  navigate,
+  getCurrentPath,
+  getPathSegments,
+} from './router';
 import { renderHome } from './pages/home';
 import { renderLogin } from './pages/login';
 import { renderProviders } from './pages/providers';
@@ -19,10 +25,11 @@ function requireRole(allowedRoles: string[], callback: () => void) {
 
   if (!token) {
     // Save target route so visitor returns directly after login/register
-    if (window.location.hash && window.location.hash !== '#/login') {
-      localStorage.setItem('redirectAfterAuth', window.location.hash);
+    const currentPath = getCurrentPath();
+    if (currentPath && currentPath !== '/login') {
+      localStorage.setItem('redirectAfterAuth', currentPath);
     }
-    navigate('#/login');
+    navigate('/login');
     return;
   }
 
@@ -31,33 +38,43 @@ function requireRole(allowedRoles: string[], callback: () => void) {
   } else {
     // Redirect based on role if attempting to access forbidden route
     if (role === 'ADMIN') {
-      navigate('#/admin');
+      navigate('/admin');
     } else if (role === 'PROVIDER' || role === 'MEAL_PROVIDER') {
-      navigate('#/owner');
+      navigate('/owner');
     } else {
-      navigate('#/student/dashboard');
+      navigate('/student/dashboard');
     }
   }
 }
 
-// Register routes
-registerRoute('#/home', renderHome);
-registerRoute('#/login', renderLogin);
-registerRoute('#/forgot-password', renderForgotPassword);
-registerRoute('#/reset-password', renderResetPassword);
-registerRoute('#/providers', renderProviders);
-registerRoute('#/dashboard', () => requireRole(['STUDENT'], renderDashboard));
-registerRoute('#/student/dashboard', () => requireRole(['STUDENT'], renderDashboard));
-registerRoute('#/student/transactions', () => requireRole(['STUDENT'], renderTransactions));
-registerRoute('#/student/transactions/:orderId', () => requireRole(['STUDENT'], renderTransactions));
-registerRoute('#/owner', () => requireRole(['PROVIDER', 'MEAL_PROVIDER'], renderOwnerPortal));
-registerRoute('#/admin', () => requireRole(['ADMIN'], renderAdminPortal));
-registerRoute('#/providers/:id', () => {
-  const id = window.location.hash.split('/')[2];
+// Register clean production routes
+registerRoute('/home', renderHome);
+registerRoute('/login', renderLogin);
+registerRoute('/forgot-password', renderForgotPassword);
+registerRoute('/reset-password', renderResetPassword);
+registerRoute('/providers', renderProviders);
+registerRoute('/dashboard', () => requireRole(['STUDENT'], renderDashboard));
+registerRoute('/student/dashboard', () =>
+  requireRole(['STUDENT'], renderDashboard),
+);
+registerRoute('/student/transactions', () =>
+  requireRole(['STUDENT'], renderTransactions),
+);
+registerRoute('/student/transactions/:orderId', () =>
+  requireRole(['STUDENT'], renderTransactions),
+);
+registerRoute('/owner', () =>
+  requireRole(['PROVIDER', 'MEAL_PROVIDER'], renderOwnerPortal),
+);
+registerRoute('/admin', () => requireRole(['ADMIN'], renderAdminPortal));
+registerRoute('/providers/:id', () => {
+  const parts = getPathSegments();
+  const id = parts[1];
   renderProviderDetail(id);
 });
-registerRoute('#/checkout/:planId', () => {
-  const planId = window.location.hash.split('/')[2];
+registerRoute('/checkout/:planId', () => {
+  const parts = getPathSegments();
+  const planId = parts[1];
   requireRole(['STUDENT'], () => renderCheckout(planId));
 });
 

@@ -29,7 +29,7 @@ export function renderFooter(): string {
         <div class="footer-grid">
           <!-- Brand Column -->
           <div class="footer-brand-col">
-            <a href="#/home" class="footer-brand" aria-label="PrimePlate Home">
+            <a href="/home" class="footer-brand" aria-label="PrimePlate Home">
               <div class="footer-brand-logo">
                 <i class="fa-solid fa-utensils"></i>
               </div>
@@ -45,10 +45,10 @@ export function renderFooter(): string {
           <div class="footer-col">
             <h4 class="footer-col-title">Quick Links</h4>
             <ul class="footer-links">
-              <li><a href="#/home" class="footer-link"><i class="fa-solid fa-chevron-right footer-link-arrow"></i> Home</a></li>
-              <li><a href="#/providers" class="footer-link"><i class="fa-solid fa-chevron-right footer-link-arrow"></i> Browse Mess</a></li>
-              <li><a href="#/home#why-primeplate" class="footer-link"><i class="fa-solid fa-chevron-right footer-link-arrow"></i> Why Choose Us</a></li>
-              <li><a href="#/home#faq" class="footer-link footer-faq-link"><i class="fa-solid fa-chevron-right footer-link-arrow"></i> FAQs</a></li>
+              <li><a href="/home" class="footer-link"><i class="fa-solid fa-chevron-right footer-link-arrow"></i> Home</a></li>
+              <li><a href="/providers" class="footer-link"><i class="fa-solid fa-chevron-right footer-link-arrow"></i> Browse Mess</a></li>
+              <li><a href="/home#why-primeplate" class="footer-link"><i class="fa-solid fa-chevron-right footer-link-arrow"></i> Why Choose Us</a></li>
+              <li><a href="/home#faq" class="footer-link footer-faq-link"><i class="fa-solid fa-chevron-right footer-link-arrow"></i> FAQs</a></li>
             </ul>
           </div>
 
@@ -56,8 +56,8 @@ export function renderFooter(): string {
           <div class="footer-col">
             <h4 class="footer-col-title">For PrimeMates</h4>
             <ul class="footer-links">
-              <li><a href="#/providers" class="footer-link"><i class="fa-solid fa-chevron-right footer-link-arrow"></i> Find Messes</a></li>
-              <li><a href="#/dashboard" class="footer-link"><i class="fa-solid fa-chevron-right footer-link-arrow"></i> PrimeMate Dashboard</a></li>
+              <li><a href="/providers" class="footer-link"><i class="fa-solid fa-chevron-right footer-link-arrow"></i> Find Messes</a></li>
+              <li><a href="/student/dashboard" class="footer-link"><i class="fa-solid fa-chevron-right footer-link-arrow"></i> PrimeMate Dashboard</a></li>
             </ul>
           </div>
 
@@ -65,7 +65,7 @@ export function renderFooter(): string {
           <div class="footer-col">
             <h4 class="footer-col-title">For Providers</h4>
             <ul class="footer-links">
-              <li><a href="#/owner" class="footer-link"><i class="fa-solid fa-chevron-right footer-link-arrow"></i> Provider Portal</a></li>
+              <li><a href="/owner" class="footer-link"><i class="fa-solid fa-chevron-right footer-link-arrow"></i> Provider Portal</a></li>
             </ul>
           </div>
 
@@ -136,10 +136,10 @@ export function renderFooter(): string {
             <p class="footer-cta-subtitle">Discover top-rated messes and fresh thali options near your location.</p>
           </div>
           <div class="footer-cta-actions">
-            <a href="#/providers" class="btn-primary-action footer-cta-btn">
+            <a href="/providers" class="btn-primary-action footer-cta-btn">
               <i class="fa-solid fa-magnifying-glass"></i> Find a Meal Plan
             </a>
-            <a href="#/owner" class="btn-outline-action footer-cta-btn footer-cta-btn-outline">
+            <a href="/owner" class="btn-outline-action footer-cta-btn footer-cta-btn-outline">
               <i class="fa-solid fa-store"></i> Provider Portal
             </a>
           </div>

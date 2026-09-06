@@ -156,7 +156,7 @@ export async function renderProviders() {
     grid.querySelectorAll('.hostel-card').forEach((card) => {
       card.addEventListener('click', (e) => {
         const id = (e.currentTarget as HTMLElement).getAttribute('data-id');
-        if (id) navigate(`#/providers/${id}`);
+        if (id) navigate(`/providers/${id}`);
       });
     });
   };

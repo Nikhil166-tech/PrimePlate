@@ -71,7 +71,7 @@ export function renderResetPassword() {
                   </div>
 
                   <a 
-                    href="#/login" 
+                    href="/login" 
                     class="btn-primary-action" 
                     style="width: 100%; justify-content: center; padding: 12px; text-decoration: none; box-sizing: border-box; display: inline-flex;"
                   >
@@ -133,7 +133,7 @@ export function renderResetPassword() {
                   </form>
 
                   <div style="margin-top: 24px; text-align: center; border-top: 1px solid var(--color-neutral-200); padding-top: 16px;">
-                    <a href="#/login" style="font-size: 14px; font-weight: 600; color: var(--color-neutral-600); text-decoration: none; display: inline-flex; align-items: center; gap: 6px;">
+                    <a href="/login" style="font-size: 14px; font-weight: 600; color: var(--color-neutral-600); text-decoration: none; display: inline-flex; align-items: center; gap: 6px;">
                       <i class="fa-solid fa-arrow-left"></i>
                       <span>Back to Login</span>
                     </a>

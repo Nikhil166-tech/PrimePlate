@@ -70,7 +70,7 @@ export function renderForgotPassword() {
             </form>
 
             <div style="margin-top: 24px; text-align: center; border-top: 1px solid var(--color-neutral-200); padding-top: 16px;">
-              <a href="#/login" style="font-size: 14px; font-weight: 600; color: var(--color-neutral-600); text-decoration: none; display: inline-flex; align-items: center; gap: 6px;">
+              <a href="/login" style="font-size: 14px; font-weight: 600; color: var(--color-neutral-600); text-decoration: none; display: inline-flex; align-items: center; gap: 6px;">
                 <i class="fa-solid fa-arrow-left"></i>
                 <span>Back to Login</span>
               </a>
@@ -105,8 +105,9 @@ export function renderForgotPassword() {
             res?.message ||
             'If an account exists for this email, a password reset link has been sent.';
           successMessage = msg;
-        } catch (_) {
-          errorMessage = 'Unable to process your request. Please try again.';
+        } catch (err: any) {
+          errorMessage =
+            err?.message || 'Unable to process your request. Please try again.';
         } finally {
           isLoading = false;
           render();

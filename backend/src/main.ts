@@ -5,6 +5,12 @@ import { TransformResponseInterceptor } from './common/transform-response.interc
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
+import * as dns from 'dns';
+
+// Force IPv4-first DNS resolution to eliminate ENETUNREACH errors on cloud container platforms (Render/AWS/Docker)
+if (dns.setDefaultResultOrder) {
+  dns.setDefaultResultOrder('ipv4first');
+}
 
 async function bootstrap() {
   const isProduction = process.env.NODE_ENV === 'production';

@@ -37,7 +37,7 @@ export async function renderOwnerPortal() {
 
   if (!token || (userRole !== 'PROVIDER' && userRole !== 'MEAL_PROVIDER')) {
     showToast('Provider workspace authorization required', 'error');
-    navigate('#/login');
+    navigate('/login');
     return;
   }
 

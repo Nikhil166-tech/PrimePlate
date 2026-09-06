@@ -1,25 +1,25 @@
-import { navigate } from '../router';
+import { navigate, getCurrentPath } from '../router';
 
 export function renderNavbar(): string {
   const token = localStorage.getItem('accessToken');
   const role = (localStorage.getItem('userRole') || 'STUDENT').toUpperCase();
-  const currentHash = window.location.hash || '#/home';
+  const currentPath = getCurrentPath();
 
   const isStudent = role === 'STUDENT';
   const isProvider = role === 'PROVIDER' || role === 'MEAL_PROVIDER';
   const isAdmin = role === 'ADMIN';
 
-  const isWhyActive = currentHash.includes('why-primeplate');
-  const isHomeActive = (currentHash === '#/home' || currentHash === '' || currentHash === '#/') && !isWhyActive;
+  const isWhyActive = window.location.hash.includes('why-primeplate');
+  const isHomeActive = (currentPath === '/home' || currentPath === '/') && !isWhyActive;
 
   const navLinksHtml = `
-    <a href="#/home" class="nav-item-btn ${isHomeActive ? 'active' : ''}">
+    <a href="/home" class="nav-item-btn ${isHomeActive ? 'active' : ''}">
       <i class="fa-solid fa-house"></i> Home
     </a>
-    <a href="#/home#why-primeplate" class="nav-item-btn ${isWhyActive ? 'active' : ''}">
+    <a href="/home#why-primeplate" class="nav-item-btn ${isWhyActive ? 'active' : ''}">
       <i class="fa-solid fa-circle-question"></i> Why Choose Us?
     </a>
-    <a href="#/providers" class="nav-item-btn ${currentHash.startsWith('#/providers') ? 'active' : ''}">
+    <a href="/providers" class="nav-item-btn ${currentPath.startsWith('/providers') ? 'active' : ''}">
       <i class="fa-solid fa-store"></i> Browse Mess
     </a>
     <a href="#footer" class="nav-item-btn nav-contact-btn">
@@ -27,24 +27,24 @@ export function renderNavbar(): string {
     </a>
     ${
       token && isStudent
-        ? `<a href="#/dashboard" class="nav-item-btn ${currentHash === '#/dashboard' || currentHash === '#/student/dashboard' ? 'active' : ''}">
+        ? `<a href="/student/dashboard" class="nav-item-btn ${currentPath === '/dashboard' || currentPath === '/student/dashboard' ? 'active' : ''}">
             <i class="fa-solid fa-qrcode"></i> My Mess Card
           </a>
-          <a href="#/student/transactions" class="nav-item-btn ${currentHash.startsWith('#/student/transactions') ? 'active' : ''}">
+          <a href="/student/transactions" class="nav-item-btn ${currentPath.startsWith('/student/transactions') ? 'active' : ''}">
             <i class="fa-solid fa-receipt"></i> Transactions
           </a>`
         : ''
     }
     ${
       token && isProvider
-        ? `<a href="#/owner" class="nav-item-btn ${currentHash === '#/owner' ? 'active' : ''}">
+        ? `<a href="/owner" class="nav-item-btn ${currentPath === '/owner' ? 'active' : ''}">
             <i class="fa-solid fa-building-user"></i> Provider Portal
           </a>`
         : ''
     }
     ${
       token && isAdmin
-        ? `<a href="#/admin" class="nav-item-btn ${currentHash === '#/admin' ? 'active' : ''}">
+        ? `<a href="/admin" class="nav-item-btn ${currentPath === '/admin' ? 'active' : ''}">
             <i class="fa-solid fa-user-shield"></i> Admin Portal
           </a>`
         : ''
@@ -55,14 +55,14 @@ export function renderNavbar(): string {
     ? `<button class="logoutBtnAction btn-outline-action" style="color: #dc2626; border-color: #fee2e2; background: #fef2f2;">
         <i class="fa-solid fa-right-from-bracket"></i> Sign Out
       </button>`
-    : `<a href="#/login" class="btn-primary-action">
+    : `<a href="/login" class="btn-primary-action">
         <i class="fa-solid fa-user"></i> Sign In
       </a>`;
 
   return `
     <nav class="navbar">
       <div class="navbar-container">
-        <a href="#/home" class="nav-brand">
+        <a href="/home" class="nav-brand">
           <div class="nav-brand-logo">
             <i class="fa-solid fa-utensils"></i>
           </div>
@@ -105,7 +105,7 @@ export function attachNavbarEvents() {
     localStorage.removeItem('userEmail');
     sessionStorage.removeItem('pendingPaymentOrderId');
     sessionStorage.removeItem('pendingPaymentPlanId');
-    navigate('#/login');
+    navigate('/login');
   };
 
   document.querySelectorAll('.logoutBtnAction').forEach((btn) => {
@@ -130,7 +130,7 @@ export function attachNavbarEvents() {
       if (footerEl) {
         footerEl.scrollIntoView({ behavior: 'smooth' });
       } else {
-        navigate('#/home');
+        navigate('/home');
         setTimeout(() => {
           document.querySelector('.footer')?.scrollIntoView({ behavior: 'smooth' });
         }, 150);
@@ -168,12 +168,14 @@ export function attachNavbarEvents() {
     });
 
     document.addEventListener('click', (e) => {
-      if (drawer.classList.contains('open') && !drawer.contains(e.target as Node) && !toggleBtn.contains(e.target as Node)) {
+      if (
+        drawer.classList.contains('open') &&
+        !drawer.contains(e.target as Node) &&
+        !toggleBtn.contains(e.target as Node)
+      ) {
         drawer.classList.remove('open');
         icon.className = 'fa-solid fa-bars';
       }
     });
   }
 }
-
-

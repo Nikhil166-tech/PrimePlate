@@ -24,15 +24,20 @@ export async function renderCheckout(planId: string) {
   const token = localStorage.getItem('accessToken');
 
   if (!token) {
-    localStorage.setItem('redirectAfterAuth', window.location.hash);
-    navigate('#/login');
+    localStorage.setItem('redirectAfterAuth', window.location.pathname + window.location.search);
+    navigate('/login');
     return;
   }
 
-  const hashStr = window.location.hash;
   let initialDays = 30;
-  if (hashStr.includes('?')) {
-    const queryPart = hashStr.split('?')[1];
+  const searchParams = new URLSearchParams(window.location.search);
+  if (searchParams.has('days')) {
+    const d = searchParams.get('days');
+    if (d && !isNaN(Number(d)) && Number(d) > 0) {
+      initialDays = Number(d);
+    }
+  } else if (window.location.hash.includes('?')) {
+    const queryPart = window.location.hash.split('?')[1];
     const params = new URLSearchParams(queryPart);
     const d = params.get('days');
     if (d && !isNaN(Number(d)) && Number(d) > 0) {
@@ -86,7 +91,7 @@ export async function renderCheckout(planId: string) {
     `;
     attachNavbarEvents();
     attachFooterEvents();
-    document.getElementById('checkoutBackBtn')?.addEventListener('click', () => navigate('#/providers'));
+    document.getElementById('checkoutBackBtn')?.addEventListener('click', () => navigate('/providers'));
     return;
   }
 
@@ -279,7 +284,7 @@ export async function renderCheckout(planId: string) {
         sessionStorage.removeItem('pendingPaymentOrderId');
         sessionStorage.removeItem('pendingPaymentPlanId');
         showToast('Payment verified successfully! Your subscription is now ACTIVE 🎉', 'success');
-        navigate('#/student/dashboard');
+        navigate('/student/dashboard');
         return 'SUCCESS';
       } else if (status === 'FAILED') {
         if (pollingTimerId) clearTimeout(pollingTimerId);
@@ -430,7 +435,7 @@ export async function renderCheckout(planId: string) {
             if (isVerified) {
               sessionStorage.removeItem('pendingPaymentOrderId');
               showToast('Payment verified successfully! Your subscription is now ACTIVE 🎉', 'success');
-              navigate('#/student/dashboard');
+              navigate('/student/dashboard');
             } else {
               startBoundedStatusPolling(response.razorpay_order_id);
             }

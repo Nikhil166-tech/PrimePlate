@@ -156,8 +156,14 @@ export async function renderTransactions() {
   const app = document.getElementById('app');
   if (!app) return;
 
-  const hashParts = window.location.hash.split('/');
-  const orderIdFromUrl = hashParts.length >= 4 && hashParts[2] === 'transactions' ? hashParts[3] : null;
+  const segments = window.location.pathname.split('/').filter(Boolean);
+  const hashParts = (window.location.hash || '').split('/').filter(Boolean);
+  let orderIdFromUrl: string | null = null;
+  if (segments.length >= 3 && segments[1] === 'transactions') {
+    orderIdFromUrl = segments[2];
+  } else if (hashParts.length >= 3 && hashParts[1] === 'transactions') {
+    orderIdFromUrl = hashParts[2];
+  }
 
   app.innerHTML = `
     ${renderNavbar()}
@@ -166,7 +172,7 @@ export async function renderTransactions() {
         
         <!-- Mobile & Desktop Header -->
         <div style="margin-bottom: 20px;">
-          <a href="#/student/dashboard" style="font-size: 13px; font-weight: 700; color: var(--color-primary-600); text-decoration: none; display: inline-flex; align-items: center; gap: 6px; margin-bottom: 4px;">
+          <a href="/student/dashboard" style="font-size: 13px; font-weight: 700; color: var(--color-primary-600); text-decoration: none; display: inline-flex; align-items: center; gap: 6px; margin-bottom: 4px;">
             <i class="fa-solid fa-arrow-left"></i> Dashboard
           </a>
           <h1 class="font-display" style="font-size: 22px; font-weight: 800; color: var(--color-neutral-900); margin: 0; display: flex; align-items: center; gap: 8px;">
@@ -511,7 +517,7 @@ async function openTransactionDetail(orderId: string) {
 
   drawer.style.display = 'flex';
   selectedOrderDetail = null;
-  window.location.hash = `#/student/transactions/${encodeURIComponent(orderId)}`;
+  window.history.replaceState({}, '', `/student/transactions/${encodeURIComponent(orderId)}`);
 
   body.innerHTML = `
     <div style="padding: 36px 16px; text-align: center;">
@@ -540,7 +546,7 @@ async function openTransactionDetail(orderId: string) {
 function closeDetailDrawer() {
   const drawer = document.getElementById('transactionDetailDrawer');
   if (drawer) drawer.style.display = 'none';
-  window.location.hash = '#/student/transactions';
+  window.history.replaceState({}, '', '/student/transactions');
 }
 
 function renderDrawerContent() {
@@ -674,7 +680,7 @@ function renderDrawerContent() {
         ${
           payment.status === 'FAILED'
             ? `
-          <a href="#/providers" class="btn-primary-action" style="flex: 1; min-width: 120px; text-decoration: none; justify-content: center; padding: 9px; font-size: 12px;">
+          <a href="/providers" class="btn-primary-action" style="flex: 1; min-width: 120px; text-decoration: none; justify-content: center; padding: 9px; font-size: 12px;">
             <i class="fa-solid fa-rotate-right"></i> Try Again
           </a>
         `
@@ -684,7 +690,7 @@ function renderDrawerContent() {
         ${
           payment.status === 'SUCCESS' && subscription
             ? `
-          <a href="#/student/dashboard" class="btn-primary-action" style="flex: 1; min-width: 130px; text-decoration: none; justify-content: center; padding: 9px; font-size: 12px;">
+          <a href="/student/dashboard" class="btn-primary-action" style="flex: 1; min-width: 130px; text-decoration: none; justify-content: center; padding: 9px; font-size: 12px;">
             <i class="fa-solid fa-qrcode"></i> View Mess Card
           </a>
         `

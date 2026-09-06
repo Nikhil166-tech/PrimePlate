@@ -622,7 +622,7 @@ export async function renderHome() {
       grid.querySelectorAll('.hostel-card').forEach((card) => {
         card.addEventListener('click', (e) => {
           const id = (e.currentTarget as HTMLElement).getAttribute('data-id');
-          if (id) navigate(`#/providers/${id}`);
+          if (id) navigate(`/providers/${id}`);
         });
       });
     } catch (err: any) {
@@ -642,14 +642,12 @@ export async function renderHome() {
 
   await loadProviders();
 
-
-
-  document.getElementById('heroBrowseBtn')?.addEventListener('click', () => navigate('#/providers'));
-  document.getElementById('heroSignUpBtn')?.addEventListener('click', () => navigate('#/login'));
-  document.getElementById('viewAllBtn')?.addEventListener('click', () => navigate('#/providers'));
-  document.getElementById('whyViewPlansBtn')?.addEventListener('click', () => navigate('#/providers'));
-  document.getElementById('whyCtaFindPlanBtn')?.addEventListener('click', () => navigate('#/providers'));
-  document.getElementById('whyCtaExploreOptionsBtn')?.addEventListener('click', () => navigate('#/providers'));
+  document.getElementById('heroBrowseBtn')?.addEventListener('click', () => navigate('/providers'));
+  document.getElementById('heroSignUpBtn')?.addEventListener('click', () => navigate('/login'));
+  document.getElementById('viewAllBtn')?.addEventListener('click', () => navigate('/providers'));
+  document.getElementById('whyViewPlansBtn')?.addEventListener('click', () => navigate('/providers'));
+  document.getElementById('whyCtaFindPlanBtn')?.addEventListener('click', () => navigate('/providers'));
+  document.getElementById('whyCtaExploreOptionsBtn')?.addEventListener('click', () => navigate('/providers'));
 
   // FAQ Accordion Handlers
   document.querySelectorAll('.faq-trigger').forEach((trigger) => {

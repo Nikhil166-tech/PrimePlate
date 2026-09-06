@@ -73,7 +73,7 @@ export function renderLogin() {
 
               ${!isRegisterMode
                 ? `<div style="text-align: right; margin-top: -10px; margin-bottom: 18px;">
-                    <a href="#/forgot-password" id="forgotPasswordLink" style="font-size: 13px; font-weight: 600; color: var(--color-primary-600); text-decoration: none;">
+                    <a href="/forgot-password" id="forgotPasswordLink" style="font-size: 13px; font-weight: 600; color: var(--color-primary-600); text-decoration: none;">
                       Forgot Password?
                     </a>
                   </div>`
@@ -207,20 +207,22 @@ export function renderLogin() {
 
         if (
           pendingRedirect &&
+          pendingRedirect !== '/login' &&
           pendingRedirect !== '#/login' &&
           pendingRedirect !== '#' &&
-          pendingRedirect !== '#/'
+          pendingRedirect !== '#/' &&
+          pendingRedirect !== '/'
         ) {
           navigate(pendingRedirect);
           return;
         }
 
         if (role === 'ADMIN') {
-          navigate('#/admin');
+          navigate('/admin');
         } else if (role === 'PROVIDER' || role === 'MEAL_PROVIDER') {
-          navigate('#/owner');
+          navigate('/owner');
         } else {
-          navigate('#/student/dashboard');
+          navigate('/student/dashboard');
         }
       } catch (err: any) {
         showToast(err.message || 'Authentication failed', 'error');

@@ -62,7 +62,7 @@ export async function renderDashboard() {
   const userPhone = localStorage.getItem('userPhone') || 'Not available';
 
   if (!token) {
-    navigate('#/login');
+    navigate('/login');
     return;
   }
 
@@ -303,7 +303,7 @@ export async function renderDashboard() {
     attachNavbarEvents();
     attachFooterEvents();
 
-    document.getElementById('dashNewSubBtn')?.addEventListener('click', () => navigate('#/providers'));
+    document.getElementById('dashNewSubBtn')?.addEventListener('click', () => navigate('/providers'));
 
     document.getElementById('tabActivePasses')?.addEventListener('click', () => {
       activeTab = 'PASSES';
@@ -409,7 +409,7 @@ export async function renderDashboard() {
               <i class="fa-solid fa-utensils"></i> Browse Mess
             </button>
           </div>`;
-        document.getElementById('emptyBrowseBtn')?.addEventListener('click', () => navigate('#/providers'));
+        document.getElementById('emptyBrowseBtn')?.addEventListener('click', () => navigate('/providers'));
         return;
       }
 
@@ -566,7 +566,7 @@ export async function renderDashboard() {
       subsGrid.querySelectorAll('.view-kitchen-btn').forEach((btn) => {
         btn.addEventListener('click', (e) => {
           const pId = (e.currentTarget as HTMLElement).getAttribute('data-prov-id');
-          if (pId) navigate(`#/providers/${pId}`);
+          if (pId) navigate(`/providers/${pId}`);
         });
       });
 
@@ -575,9 +575,9 @@ export async function renderDashboard() {
           const planId = (e.currentTarget as HTMLElement).getAttribute('data-plan-id');
           const provId = (e.currentTarget as HTMLElement).getAttribute('data-prov-id');
           if (planId) {
-            navigate(`#/checkout/${planId}`);
+            navigate(`/checkout/${planId}`);
           } else if (provId) {
-            navigate(`#/providers/${provId}`);
+            navigate(`/providers/${provId}`);
           }
         });
       });
@@ -610,7 +610,7 @@ export async function renderDashboard() {
               <i class="fa-solid fa-utensils"></i> Browse Mess
             </button>
           </div>`;
-        document.getElementById('historyEmptyBrowseBtn')?.addEventListener('click', () => navigate('#/providers'));
+        document.getElementById('historyEmptyBrowseBtn')?.addEventListener('click', () => navigate('/providers'));
         return;
       }
 

@@ -20,7 +20,9 @@ import { renderTransactions } from './pages/transactions';
 import { inject } from '@vercel/analytics';
 
 // Initialize Vercel Web Analytics
-inject();
+inject({
+  mode: 'production',
+});
 
 // Auth & Role guard
 function requireRole(allowedRoles: string[], callback: () => void) {

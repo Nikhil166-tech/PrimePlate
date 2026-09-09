@@ -359,8 +359,8 @@ export async function renderHome() {
 
               <div class="why-value-card">
                 <div class="why-value-icon">🔄</div>
-                <h3 class="why-value-title">Meal Credits <span style="font-size: 10px; font-weight: 500; color: var(--color-neutral-400); font-style: italic; display: block; sm:inline;">(Provider specific)</span></h3>
-                <p class="why-value-desc">If supported by your provider, eligible skipped days can become meal credits per their rules.</p>
+                <h3 class="why-value-title">Skip Meal Credits <span style="font-size: 10px; font-weight: 700; color: #ea580c; display: block;">(Users get only 4 credits)</span></h3>
+                <p class="why-value-desc">On eligible plans, users get only up to 4 Skip Meal Credits to pause meals when away without losing their value.</p>
               </div>
 
             </div>
@@ -397,6 +397,8 @@ export async function renderHome() {
 
         </div>
       </section>
+
+
 
       <!-- Top Rated Mess Grid -->
       <section style="padding: 60px 16px; background: #fff;">
@@ -497,16 +499,7 @@ export async function renderHome() {
               </div>
             </div>
 
-            <!-- FAQ Item 7 -->
-            <div class="faq-item">
-              <button class="faq-trigger font-display" aria-expanded="false" aria-controls="faq-ans-7" id="faq-q-7">
-                <span>Can I get a refund if I don't eat a meal?</span>
-                <i class="fa-solid fa-chevron-down faq-chevron"></i>
-              </button>
-              <div id="faq-ans-7" class="faq-answer" role="region" aria-labelledby="faq-q-7">
-                <p>Refunds are not automatically guaranteed. Any meal-skip or meal-credit benefit depends on the participating provider's policy.</p>
-              </div>
-            </div>
+
 
             <!-- FAQ Item 8 -->
             <div class="faq-item">
@@ -563,7 +556,7 @@ export async function renderHome() {
       if (pCount && summary.approvedProviders) pCount.textContent = String(summary.approvedProviders);
       if (sCount && summary.happyStudents) sCount.textContent = String(summary.happyStudents);
     }
-  }).catch(() => {});
+  }).catch(() => { });
 
   const grid = document.getElementById('homeHostelsGrid')!;
 

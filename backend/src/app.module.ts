@@ -21,12 +21,13 @@ import { Review } from './reviews/review.entity';
 import { WeeklyMenu } from './weekly-menus/weekly-menu.entity';
 import { PasswordResetToken } from './auth/password-reset-token.entity';
 import { WeeklyMenusModule } from './weekly-menus/weekly-menus.module';
-import { SubscriptionBreakRequest } from './subscription-breaks/subscription-break-request.entity';
-import { SubscriptionBreaksModule } from './subscription-breaks/subscription-breaks.module';
 import { ProviderEarning } from './payouts/provider-earning.entity';
 import { PayoutsModule } from './payouts/payouts.module';
 import { SupportTicket } from './support/support-ticket.entity';
 import { SupportModule } from './support/support.module';
+import { MealUsage } from './meal-usage/meal-usage.entity';
+import { MealUsageAudit } from './meal-usage/meal-usage-audit.entity';
+import { MealUsageModule } from './meal-usage/meal-usage.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 
@@ -79,9 +80,10 @@ import { AppService } from './app.service';
       Review,
       WeeklyMenu,
       PasswordResetToken,
-      SubscriptionBreakRequest,
       ProviderEarning,
       SupportTicket,
+      MealUsage,
+      MealUsageAudit,
     ]),
     AuthModule,
     UsersModule,
@@ -95,7 +97,7 @@ import { AppService } from './app.service';
     ReviewsModule,
     AnalyticsModule,
     WeeklyMenusModule,
-    SubscriptionBreaksModule,
+    MealUsageModule,
   ],
   controllers: [AppController],
   providers: [AppService, SeedService],

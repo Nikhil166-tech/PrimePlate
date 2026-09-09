@@ -137,6 +137,13 @@ export function renderLogin() {
       e.preventDefault();
       const email = (form.querySelector('#email') as HTMLInputElement).value;
       const password = (form.querySelector('#password') as HTMLInputElement).value;
+      const submitBtn = form.querySelector('button[type="submit"]') as HTMLButtonElement | null;
+      const originalBtnHtml = submitBtn ? submitBtn.innerHTML : '';
+
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> <span>${isRegisterMode ? 'Creating Account...' : 'Signing In...'}</span>`;
+      }
 
       try {
         let res: any = null;
@@ -147,10 +154,18 @@ export function renderLogin() {
 
           if (!name) {
             showToast('Please enter your full name', 'error');
+            if (submitBtn) {
+              submitBtn.disabled = false;
+              submitBtn.innerHTML = originalBtnHtml;
+            }
             return;
           }
           if (!phone || phone.length < 8) {
             showToast('Please enter a valid phone number', 'error');
+            if (submitBtn) {
+              submitBtn.disabled = false;
+              submitBtn.innerHTML = originalBtnHtml;
+            }
             return;
           }
 
@@ -162,6 +177,10 @@ export function renderLogin() {
             !/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>/?~`]/.test(password)
           ) {
             showToast('Password must be at least 8 characters long and include an uppercase letter, lowercase letter, number, and special character', 'error');
+            if (submitBtn) {
+              submitBtn.disabled = false;
+              submitBtn.innerHTML = originalBtnHtml;
+            }
             return;
           }
 
@@ -205,26 +224,40 @@ export function renderLogin() {
         const pendingRedirect = localStorage.getItem('redirectAfterAuth');
         localStorage.removeItem('redirectAfterAuth');
 
+        if (role === 'ADMIN') {
+          navigate('/admin');
+          return;
+        }
+
+        if (role === 'PROVIDER' || role === 'MEAL_PROVIDER') {
+          if (pendingRedirect && pendingRedirect.startsWith('/owner')) {
+            navigate(pendingRedirect);
+          } else {
+            navigate('/owner');
+          }
+          return;
+        }
+
         if (
           pendingRedirect &&
           pendingRedirect !== '/login' &&
           pendingRedirect !== '#/login' &&
           pendingRedirect !== '#' &&
           pendingRedirect !== '#/' &&
-          pendingRedirect !== '/'
+          pendingRedirect !== '/' &&
+          !pendingRedirect.startsWith('/admin') &&
+          !pendingRedirect.startsWith('/owner')
         ) {
           navigate(pendingRedirect);
           return;
         }
 
-        if (role === 'ADMIN') {
-          navigate('/admin');
-        } else if (role === 'PROVIDER' || role === 'MEAL_PROVIDER') {
-          navigate('/owner');
-        } else {
-          navigate('/student/dashboard');
-        }
+        navigate('/student/dashboard');
       } catch (err: any) {
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = originalBtnHtml;
+        }
         showToast(err.message || 'Authentication failed', 'error');
       }
     });

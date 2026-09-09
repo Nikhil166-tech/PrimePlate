@@ -1,20 +1,21 @@
 import api, {
-  getProviderSubscriptionBreaks,
-  approveSubscriptionBreak,
-  rejectSubscriptionBreak,
-  updateProviderBreakSettings,
   getProviderEarningsSummary,
   getProviderEarningsHistory,
   uploadProviderHostelImage,
   replaceProviderHostelImage,
   getMyHostelImages,
   deleteProviderHostelImage,
+  getProviderMealQr,
+  getProviderTodayCheckIns,
+  getProviderSubscriberAttendanceHistory,
+  correctProviderCheckIn,
 } from '../api';
 import { navigate } from '../router';
 import { showToast } from '../components/toast';
 import { renderNavbar, attachNavbarEvents } from '../components/navbar';
 import { renderFooter, attachFooterEvents } from '../components/footer';
 import { escapeHtml, getSafeImageUrl } from '../utils/sanitize';
+import { mountMealCalendar } from '../components/MealCalendar';
 
 const DAYS_OF_WEEK = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
@@ -41,6 +42,21 @@ export async function renderOwnerPortal() {
     return;
   }
 
+  // Render instant loading state so screen never stays static on login form
+  container.innerHTML = `
+    ${renderNavbar()}
+    <main class="main-content" style="padding-top: 88px; min-height: 80vh; display: flex; align-items: center; justify-content: center; background: var(--color-neutral-50);">
+      <div style="text-align: center; padding: 48px; background: #fff; border: 1px solid var(--color-neutral-200); border-radius: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); max-width: 420px; width: 90%;">
+        <div style="width: 56px; height: 56px; border-radius: 16px; background: var(--color-primary-50); color: var(--color-primary-600); display: flex; align-items: center; justify-content: center; margin: 0 auto 16px; font-size: 24px;">
+          <i class="fa-solid fa-spinner fa-spin"></i>
+        </div>
+        <h3 class="font-display" style="font-size: 18px; font-weight: 700; color: var(--color-neutral-900); margin-bottom: 6px;">Loading Provider Portal...</h3>
+        <p style="color: var(--color-neutral-500); font-size: 13px; margin: 0;">Preparing your kitchen dashboard and subscribers.</p>
+      </div>
+    </main>
+  `;
+  attachNavbarEvents();
+
   let hostels: any[] = [];
   let selectedHostel: any = null;
   let showModal = false;
@@ -49,8 +65,24 @@ export async function renderOwnerPortal() {
   let showEditProfileModal = false;
   let showSubscriberDetailsModal = false;
   let selectedSubscriberForDetails: any = null;
+  let subscriberAttendanceLoading = false;
+  let subscriberAttendanceData: any = null;
+  let subscriberAttendanceError: string | null = null;
+  let subscriberCalendarUnmount: (() => void) | null = null;
   let showManagePanel = false;
-  let mobileSheet: 'NONE' | 'MANAGE_PG' | 'BREAK_REQUESTS' | 'SUBSCRIBERS' | 'WEEKLY_MENU' | 'REVIEWS' | 'BREAK_SETTINGS' | 'EARNINGS_HISTORY' | 'HOSTEL_IMAGES' = 'NONE';
+  let mobileSheet: 'NONE' | 'MANAGE_PG' | 'SUBSCRIBERS' | 'WEEKLY_MENU' | 'REVIEWS' | 'EARNINGS_HISTORY' | 'HOSTEL_IMAGES' | 'MEAL_QR' | 'TODAYS_CHECKINS' = 'NONE';
+  let mealQrData: { providerId: string; providerName: string; qrToken: string; qrCodeDataUrl: string } | null = null;
+  let mealQrLoading = false;
+  let todayCheckInsData: {
+    today: string;
+    summary: { todayCheckIns: number; activeSubscribers: number; notCheckedIn: number };
+    subscribers: any[];
+  } | null = null;
+  let todayCheckInsLoading = false;
+  let showCorrectionModal = false;
+  let correctionSubTarget: any = null;
+  let correctionReasonInput = '';
+  let isSubmittingCorrection = false;
   let hostelImages: any[] = [];
   let imagesLoading = false;
   let uploadQueue: ImageQueueItem[] = [];
@@ -129,15 +161,20 @@ export async function renderOwnerPortal() {
     try {
       const data: any = await api.get('/providers/my');
       hostels = Array.isArray(data) ? data : [];
-      if (hostels.length > 0 && !selectedHostel) {
-        selectedHostel = hostels[0];
+      if (hostels.length > 0) {
+        if (!selectedHostel || !hostels.some((h: any) => h.id === selectedHostel.id)) {
+          selectedHostel = hostels[0];
+        } else {
+          selectedHostel = hostels.find((h: any) => h.id === selectedHostel.id) || hostels[0];
+        }
+      } else {
+        selectedHostel = null;
       }
     } catch (err: any) {
       hostels = [];
+      selectedHostel = null;
     }
   };
-
-  await fetchHostels();
 
   let liveSubs: any[] = [];
   let subscribersLoading = false;
@@ -192,25 +229,6 @@ export async function renderOwnerPortal() {
     }
   };
 
-  let providerBreakRequests: any[] = [];
-  let breakRequestsLoading = false;
-
-  const fetchProviderBreakRequests = async () => {
-    if (!selectedHostel || selectedHostel.approvalStatus !== 'APPROVED') {
-      providerBreakRequests = [];
-      breakRequestsLoading = false;
-      return;
-    }
-    breakRequestsLoading = true;
-    try {
-      const data: any = await getProviderSubscriptionBreaks(selectedHostel.id);
-      providerBreakRequests = Array.isArray(data) ? data : [];
-    } catch (_) {
-      providerBreakRequests = [];
-    } finally {
-      breakRequestsLoading = false;
-    }
-  };
 
   const fetchEarningsData = async () => {
     earningsLoading = true;
@@ -250,12 +268,60 @@ export async function renderOwnerPortal() {
     }
   };
 
-  await fetchLiveSubs();
-  await fetchWeeklyMenus();
-  await fetchProviderReviews();
-  await fetchProviderBreakRequests();
-  await fetchEarningsData();
-  await fetchHostelImages();
+  const fetchMealQr = async () => {
+    if (!selectedHostel) {
+      mealQrData = null;
+      mealQrLoading = false;
+      return;
+    }
+    mealQrLoading = true;
+    try {
+      const data: any = await getProviderMealQr(selectedHostel.id);
+      mealQrData = data && data.qrToken ? data : null;
+    } catch (_) {
+      mealQrData = null;
+    } finally {
+      mealQrLoading = false;
+    }
+  };
+
+  const fetchTodayCheckIns = async () => {
+    if (!selectedHostel) {
+      todayCheckInsData = null;
+      todayCheckInsLoading = false;
+      return;
+    }
+    todayCheckInsLoading = true;
+    try {
+      const data: any = await getProviderTodayCheckIns(selectedHostel.id);
+      todayCheckInsData = data;
+    } catch (_) {
+      todayCheckInsData = null;
+    } finally {
+      todayCheckInsLoading = false;
+    }
+  };
+
+  const fetchSubscriberAttendance = async (subscriptionId: string) => {
+    if (!subscriptionId) return;
+    subscriberAttendanceLoading = true;
+    subscriberAttendanceError = null;
+    subscriberAttendanceData = null;
+    render();
+    try {
+      const res: any = await getProviderSubscriberAttendanceHistory(
+        subscriptionId,
+        selectedHostel?.id,
+      );
+      subscriberAttendanceData = res.data || res;
+    } catch (err: any) {
+      subscriberAttendanceError =
+        err.response?.data?.message || err.message || 'Unable to load attendance records.';
+    } finally {
+      subscriberAttendanceLoading = false;
+      render();
+    }
+  };
 
   const render = () => {
     const totalSubscribersCount = liveSubs.length;
@@ -373,103 +439,7 @@ export async function renderOwnerPortal() {
             <i class="fa-solid ${selectedHostel.acceptingSubscriptions !== false ? 'fa-door-closed' : 'fa-door-open'}"></i> ${selectedHostel.acceptingSubscriptions !== false ? 'Close Kitchen' : 'Open Kitchen'}
           </button>
         </div>
-
-        <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 12px 14px; background: #fff7ed; border: 1px solid #ffedd5; border-radius: 14px; flex-wrap: wrap;">
-          <div>
-            <span style="font-size: 11px; font-weight: 700; color: #c2410c; text-transform: uppercase; display: block; margin-bottom: 2px;">Subscription Breaks</span>
-            <span style="font-size: 13px; font-weight: 700; color: ${selectedHostel.subscriptionBreaksEnabled ? '#15803d' : '#64748b'};">
-              ${selectedHostel.subscriptionBreaksEnabled ? '● ENABLED (Max 4 Days)' : '● DISABLED'}
-            </span>
-          </div>
-          <button type="button" class="open-break-settings-sheet-btn btn-outline-action" style="padding: 8px 14px; font-size: 12px; font-weight: 700; background: #fff; border-radius: 8px; min-height: 40px; cursor: pointer;">
-            <i class="fa-solid fa-sliders"></i> Configure Settings
-          </button>
-        </div>
       </div>
-    `;
-
-    const renderBreakRequestsContent = () => `
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
-        <span style="font-size: 12px; font-weight: 700; background: #ffedd5; color: #c2410c; padding: 4px 12px; border-radius: 999px;">
-          ${providerBreakRequests.filter((r) => r.status === 'PENDING').length} Pending Requests
-        </span>
-      </div>
-      ${breakRequestsLoading
-        ? `<div style="text-align: center; padding: 36px;"><i class="fa-solid fa-spinner fa-spin" style="font-size: 24px; color: var(--color-primary-600);"></i></div>`
-        : providerBreakRequests.length === 0
-          ? `<div style="text-align: center; padding: 32px; background: var(--color-neutral-50); border: 1px dashed var(--color-neutral-300); border-radius: 16px;">
-              <i class="fa-solid fa-inbox" style="font-size: 28px; color: var(--color-neutral-400); margin-bottom: 8px;"></i>
-              <p style="font-size: 14px; color: var(--color-neutral-600); margin: 0;">No subscription break requests submitted yet.</p>
-            </div>`
-          : `<div style="display: flex; flex-direction: column; gap: 12px;">
-              ${providerBreakRequests
-            .map((r) => {
-              const isPending = r.status === 'PENDING';
-              const isApproved = r.status === 'APPROVED';
-              const isRejected = r.status === 'REJECTED';
-
-              let statusBadgeHtml = '';
-              if (isPending) {
-                statusBadgeHtml = `<span style="font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 6px; background: #fef3c7; color: #d97706;">PENDING</span>`;
-              } else if (isApproved) {
-                statusBadgeHtml = `<span style="font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 6px; background: #dcfce7; color: #15803d;">Approved ✅</span>`;
-              } else if (isRejected) {
-                statusBadgeHtml = `<span style="font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 6px; background: #fee2e2; color: #b91c1c;">Rejected</span>`;
-              }
-
-              return `
-                    <div style="background: var(--color-neutral-50); border: 1px solid var(--color-neutral-200); border-radius: 14px; padding: 16px; display: flex; flex-direction: column; gap: 10px;">
-                      <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 8px;">
-                        <div>
-                          <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 2px;">
-                            <strong style="font-size: 15px; color: var(--color-neutral-900);">${escapeHtml(r.studentName)}</strong>
-                            ${statusBadgeHtml}
-                          </div>
-                          <span style="font-size: 12px; color: var(--color-neutral-600);"><i class="fa-solid fa-bookmark"></i> ${escapeHtml(r.planTitle)}</span>
-                        </div>
-                        <span style="font-size: 12px; font-weight: 700; color: var(--color-primary-700); background: #ffedd5; padding: 3px 10px; border-radius: 20px;">
-                          Approved Breaks: ${r.approvedBreakDaysCount || 0} / 4 Days
-                        </span>
-                      </div>
-
-                      <div style="background: #ffffff; border: 1px solid var(--color-neutral-200); border-radius: 10px; padding: 10px 12px; font-size: 13px; display: flex; flex-direction: column; gap: 4px;">
-                        <div style="display: flex; justify-content: space-between;">
-                          <span style="color: var(--color-neutral-500);">Break Period:</span>
-                          <strong style="color: var(--color-neutral-900);">${escapeHtml(r.fromDate)} → ${escapeHtml(r.toDate)} (${r.breakDays} days)</strong>
-                        </div>
-                        ${r.reason ? `
-                          <div style="display: flex; justify-content: space-between;">
-                            <span style="color: var(--color-neutral-500);">Reason:</span>
-                            <span style="color: var(--color-neutral-800); font-weight: 600;">${escapeHtml(r.reason)}</span>
-                          </div>
-                        ` : ''}
-                        <div style="display: flex; justify-content: space-between; border-top: 1px dashed var(--color-neutral-200); padding-top: 4px; margin-top: 2px;">
-                          <span style="color: var(--color-neutral-500);">Subscription Extension:</span>
-                          <span style="font-size: 12px;">
-                            <span style="text-decoration: line-through; color: var(--color-neutral-400);">${escapeHtml(r.currentEndDate || '')}</span>
-                            <i class="fa-solid fa-arrow-right" style="font-size: 10px; margin: 0 4px; color: var(--color-primary-600);"></i>
-                            <strong style="color: var(--color-success-600);">${escapeHtml(r.calculatedNewEndDate || '')}</strong>
-                          </span>
-                        </div>
-                      </div>
-
-                      ${isPending
-                  ? `<div style="display: flex; gap: 8px; justify-content: flex-end;">
-                              <button class="approve-break-btn btn-primary-action" data-req-id="${escapeHtml(r.id)}" style="padding: 8px 16px; font-size: 13px; background: #16a34a; border-color: #16a34a;">
-                                <i class="fa-solid fa-check"></i> Approve Break
-                              </button>
-                              <button class="reject-break-btn btn-outline-action" data-req-id="${escapeHtml(r.id)}" style="padding: 8px 16px; font-size: 13px; color: #dc2626; border-color: #fca5a5; background: #fff;">
-                                <i class="fa-solid fa-xmark"></i> Reject
-                              </button>
-                            </div>`
-                  : ''
-                }
-                    </div>
-                  `;
-            })
-            .join('')}
-            </div>`
-      }
     `;
 
     const renderSubscribersContent = () => `
@@ -581,24 +551,7 @@ export async function renderOwnerPortal() {
       }
     `;
 
-    const renderBreakSettingsContent = () => `
-      <div style="display: flex; flex-direction: column; gap: 14px;" class="break-settings-container">
-        <div style="display: flex; justify-content: space-between; align-items: center; background: var(--color-neutral-50); padding: 14px; border-radius: 14px; border: 1px solid var(--color-neutral-200);">
-          <div>
-            <strong style="font-size: 14px; color: var(--color-neutral-900); display: block;">Enable Subscription Breaks</strong>
-            <span style="font-size: 12px; color: var(--color-neutral-500);">Allow PrimeMates on 1-Month plans to request breaks (max 4 days)</span>
-          </div>
-          <label class="toggle-switch">
-            <input type="checkbox" class="subscription-breaks-toggle-input" ${selectedHostel.subscriptionBreaksEnabled ? 'checked' : ''} />
-            <span class="toggle-slider"></span>
-          </label>
-        </div>
 
-        <button class="save-break-settings-btn btn-primary-action" style="width: 100%; justify-content: center; padding: 12px; font-size: 14px;">
-          <i class="fa-solid fa-floppy-disk"></i> Save Settings
-        </button>
-      </div>
-    `;
 
     const renderEarningsSummaryContent = () => `
       <div style="background: #fff; border: 1px solid var(--color-neutral-200); border-radius: 20px; padding: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.03);">
@@ -928,6 +881,202 @@ export async function renderOwnerPortal() {
       </div>
     `;
 
+    const renderMealQrContent = () => `
+      <div style="display: flex; flex-direction: column; align-items: center; text-align: center; padding: 12px 0;">
+        <p style="font-size: 14px; color: var(--color-neutral-600); max-width: 480px; margin: 0 0 20px 0; line-height: 1.5;">
+          Show this QR at your mess so students can check in. Each student scans once per calendar day.
+        </p>
+
+        ${mealQrLoading ? `
+          <div style="padding: 48px; text-align: center;">
+            <i class="fa-solid fa-spinner fa-spin" style="font-size: 32px; color: var(--color-primary-600);"></i>
+            <p style="font-size: 13px; color: var(--color-neutral-500); margin-top: 12px;">Loading permanent QR code...</p>
+          </div>
+        ` : mealQrData && mealQrData.qrCodeDataUrl ? `
+          <!-- Printable Standee Container -->
+          <div id="printableStandeeCard" style="
+            background: #ffffff;
+            border: 2px solid var(--color-neutral-200);
+            border-radius: 24px;
+            padding: 28px 24px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.06);
+            max-width: 360px;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-bottom: 24px;
+          ">
+            <div style="display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; color: var(--color-primary-600); margin-bottom: 8px;">
+              <i class="fa-solid fa-utensils"></i> PrimePlate Official Mess QR
+            </div>
+            <h3 class="font-display" style="font-size: 20px; font-weight: 800; color: var(--color-neutral-900); margin: 0 0 4px 0; text-align: center;">
+              ${escapeHtml(selectedHostel?.name || mealQrData.providerName)}
+            </h3>
+            <p style="font-size: 12px; color: var(--color-neutral-500); margin: 0 0 16px 0;">
+              ${escapeHtml(selectedHostel?.address || selectedHostel?.city || 'Verified Mess Kitchen')}
+            </p>
+
+            <!-- Large Scannable QR Code -->
+            <div style="
+              background: #ffffff;
+              padding: 12px;
+              border-radius: 20px;
+              border: 2px solid var(--color-neutral-900);
+              box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+              margin-bottom: 16px;
+              width: 240px;
+              height: 240px;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+            ">
+              <img src="${mealQrData.qrCodeDataUrl}" alt="Mess Check-in QR Code" style="width: 100%; height: 100%; object-fit: contain; display: block;" />
+            </div>
+
+            <p style="font-size: 13px; font-weight: 700; color: var(--color-neutral-800); margin: 0 0 4px 0;">
+              Scan with PrimePlate App
+            </p>
+            <span style="font-size: 11px; color: var(--color-neutral-500);">
+              1 meal check-in per student per calendar day
+            </span>
+          </div>
+
+          <!-- Action Buttons -->
+          <div style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
+            <button type="button" class="print-meal-qr-btn btn-primary-action" style="padding: 10px 24px; font-size: 14px; font-weight: 700; border-radius: 12px;">
+              <i class="fa-solid fa-print"></i> Print QR
+            </button>
+            <button type="button" class="download-meal-qr-btn btn-outline-action" style="padding: 10px 24px; font-size: 14px; font-weight: 700; border-radius: 12px; background: #fff; cursor: pointer; display: inline-flex; align-items: center; gap: 8px;">
+              <i class="fa-solid fa-download"></i> Download QR
+            </button>
+          </div>
+        ` : `
+          <div style="padding: 32px; text-align: center; background: var(--color-neutral-50); border: 1px dashed var(--color-neutral-300); border-radius: 16px; width: 100%; max-width: 400px;">
+            <p style="font-size: 14px; color: var(--color-neutral-600); margin-bottom: 12px;">Permanent QR token ready to initialize.</p>
+            <button type="button" class="refresh-meal-qr-btn btn-primary-action" style="padding: 10px 20px;">
+              <i class="fa-solid fa-qrcode"></i> Load My Meal QR
+            </button>
+          </div>
+        `}
+      </div>
+    `;
+
+    const renderTodayCheckInsContent = () => {
+      const summary = todayCheckInsData?.summary || { todayCheckIns: 0, activeSubscribers: 0, notCheckedIn: 0 };
+      const subscribers = todayCheckInsData?.subscribers || [];
+
+      return `
+        <div>
+          <!-- 3 Operational Summary Stat Cards -->
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; margin-bottom: 24px;">
+            <div style="background: var(--color-success-50); border: 1px solid #bbf7d0; border-radius: 16px; padding: 16px;">
+              <div style="display: flex; align-items: center; gap: 8px; color: #15803d; font-size: 13px; font-weight: 700; margin-bottom: 4px;">
+                <i class="fa-solid fa-circle-check"></i> Today's Check-ins
+              </div>
+              <p style="font-size: 28px; font-weight: 800; color: #166534; margin: 0;">${summary.todayCheckIns}</p>
+              <span style="font-size: 11px; color: #15803d;">Recorded today</span>
+            </div>
+
+            <div style="background: var(--color-primary-50); border: 1px solid var(--color-primary-200); border-radius: 16px; padding: 16px;">
+              <div style="display: flex; align-items: center; gap: 8px; color: var(--color-primary-700); font-size: 13px; font-weight: 700; margin-bottom: 4px;">
+                <i class="fa-solid fa-users"></i> Active Subscribers
+              </div>
+              <p style="font-size: 28px; font-weight: 800; color: var(--color-primary-800); margin: 0;">${summary.activeSubscribers}</p>
+              <span style="font-size: 11px; color: var(--color-primary-600);">Eligible for meals today</span>
+            </div>
+
+            <div style="background: #fffbeb; border: 1px solid #fde68a; border-radius: 16px; padding: 16px;">
+              <div style="display: flex; align-items: center; gap: 8px; color: #b45309; font-size: 13px; font-weight: 700; margin-bottom: 4px;">
+                <i class="fa-solid fa-clock"></i> Not Checked In
+              </div>
+              <p style="font-size: 28px; font-weight: 800; color: #92400e; margin: 0;">${summary.notCheckedIn}</p>
+              <span style="font-size: 11px; color: #b45309;">Awaiting meal check-in</span>
+            </div>
+          </div>
+
+          <!-- Subscriber Attendance Roster -->
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; flex-wrap: wrap; gap: 8px;">
+            <h4 style="font-size: 15px; font-weight: 700; color: var(--color-neutral-900); margin: 0;">
+              Subscriber Attendance (${subscribers.length})
+            </h4>
+            <button type="button" class="refresh-today-checkins-btn btn-outline-action" style="padding: 6px 12px; font-size: 12px; font-weight: 700; border-radius: 8px; background: #fff;">
+              <i class="fa-solid fa-rotate-right"></i> Refresh
+            </button>
+          </div>
+
+          ${todayCheckInsLoading ? `
+            <div style="text-align: center; padding: 36px;"><i class="fa-solid fa-spinner fa-spin" style="font-size: 24px; color: var(--color-primary-600);"></i></div>
+          ` : subscribers.length === 0 ? `
+            <div style="text-align: center; padding: 36px 20px; background: var(--color-neutral-50); border: 1px dashed var(--color-neutral-300); border-radius: 16px;">
+              <div style="width: 48px; height: 48px; border-radius: 14px; background: #fff; display: flex; align-items: center; justify-content: center; margin: 0 auto 10px; color: var(--color-neutral-400); font-size: 20px;">
+                <i class="fa-solid fa-user-xmark"></i>
+              </div>
+              <h4 style="font-size: 14px; font-weight: 700; color: var(--color-neutral-800); margin: 0 0 4px 0;">No active subscribers today</h4>
+              <p style="font-size: 12px; color: var(--color-neutral-500); margin: 0;">Active subscribers will appear here when subscribed to your kitchen.</p>
+            </div>
+          ` : `
+            <div style="overflow-x: auto; border: 1px solid var(--color-neutral-200); border-radius: 16px;">
+              <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 13px;">
+                <thead>
+                  <tr style="background: var(--color-neutral-50); border-bottom: 1px solid var(--color-neutral-200); color: var(--color-neutral-700); font-weight: 700; font-size: 12px;">
+                    <th style="padding: 12px 16px;">Student</th>
+                    <th style="padding: 12px 16px;">Plan</th>
+                    <th style="padding: 12px 16px;">Attendance Status</th>
+                    <th style="padding: 12px 16px;">Time</th>
+                    <th style="padding: 12px 16px; text-align: right;">Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${subscribers.map((sub: any) => `
+                    <tr style="border-bottom: 1px solid var(--color-neutral-100); transition: background 0.1s ease;">
+                      <td style="padding: 12px 16px;">
+                        <strong style="color: var(--color-neutral-900); display: block;">${escapeHtml(sub.studentName)}</strong>
+                        <span style="font-size: 11px; color: var(--color-neutral-500);">${escapeHtml(sub.studentPhone || sub.studentEmail)}</span>
+                      </td>
+                      <td style="padding: 12px 16px; color: var(--color-neutral-700);">
+                        ${escapeHtml(sub.planTitle)}
+                      </td>
+                      <td style="padding: 12px 16px;">
+                        ${sub.checkedIn ? `
+                          <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                            <span style="font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 999px; background: #dcfce7; color: #166534; display: inline-flex; align-items: center; gap: 4px;">
+                              <i class="fa-solid fa-circle-check"></i> Checked In
+                            </span>
+                            ${sub.source === 'PROVIDER_CORRECTION' ? `
+                              <span style="font-size: 10px; font-weight: 700; background: #fef3c7; color: #92400e; padding: 2px 6px; border-radius: 4px;" title="${escapeHtml(sub.correctionReason || 'Manual correction')}">
+                                Audited Correction
+                              </span>
+                            ` : ''}
+                          </div>
+                        ` : `
+                          <span style="font-size: 11px; font-weight: 600; color: var(--color-neutral-500); display: inline-flex; align-items: center; gap: 4px;">
+                            <i class="fa-solid fa-minus"></i> Not Checked In
+                          </span>
+                        `}
+                      </td>
+                      <td style="padding: 12px 16px; color: var(--color-neutral-600);">
+                        ${sub.time ? escapeHtml(sub.time) : '<span style="color: var(--color-neutral-400);">—</span>'}
+                      </td>
+                      <td style="padding: 12px 16px; text-align: right;">
+                        ${!sub.checkedIn ? `
+                          <button type="button" class="open-correction-modal-btn btn-outline-action" data-sub-id="${escapeHtml(sub.subscriptionId)}" data-student-name="${escapeHtml(sub.studentName)}" style="padding: 6px 12px; font-size: 11px; font-weight: 700; border-radius: 8px; background: #fff; color: var(--color-primary-700); border-color: var(--color-primary-300);">
+                            <i class="fa-solid fa-wrench"></i> Correct Check-in
+                          </button>
+                        ` : `
+                          <span style="font-size: 11px; color: #16a34a; font-weight: 700;">Recorded</span>
+                        `}
+                      </td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            </div>
+          `}
+        </div>
+      `;
+    };
+
     container.innerHTML = `
       ${renderNavbar()}
       <main class="main-content" style="padding-top: 88px; padding-bottom: 60px; background: #f8fafc;">
@@ -1198,23 +1347,31 @@ export async function renderOwnerPortal() {
 
                   <div class="compact-action-card">
                     <div>
-                      <span style="font-size: 14px; font-weight: 700; color: var(--color-neutral-900); display: block;"><i class="fa-solid fa-plane-departure" style="color: var(--color-primary-600); margin-right: 6px;"></i> Subscription Breaks</span>
-                      <span style="font-size: 12px; font-weight: 600; color: ${providerBreakRequests.filter((r) => r.status === 'PENDING').length > 0 ? '#c2410c' : 'var(--color-neutral-500)'};">
-                        ${providerBreakRequests.filter((r) => r.status === 'PENDING').length} Pending Requests
-                      </span>
-                    </div>
-                    <button class="open-break-requests-sheet-btn btn-outline-action" style="padding: 8px 14px; font-size: 12px; font-weight: 700; border-radius: 10px; min-height: 40px; background: #fff;">
-                      Review Break Requests
-                    </button>
-                  </div>
-
-                  <div class="compact-action-card">
-                    <div>
                       <span style="font-size: 14px; font-weight: 700; color: var(--color-neutral-900); display: block;"><i class="fa-solid fa-users" style="color: #22c55e; margin-right: 6px;"></i> Subscribers</span>
                       <span style="font-size: 12px; font-weight: 600; color: var(--color-neutral-600);">${activeSubscribersCount} Active Subscribers</span>
                     </div>
                     <button class="open-subscribers-sheet-btn btn-outline-action" style="padding: 8px 14px; font-size: 12px; font-weight: 700; border-radius: 10px; min-height: 40px; background: #fff;">
                       View Subscribers
+                    </button>
+                  </div>
+
+                  <div class="compact-action-card">
+                    <div>
+                      <span style="font-size: 14px; font-weight: 700; color: var(--color-neutral-900); display: block;"><i class="fa-solid fa-qrcode" style="color: var(--color-primary-600); margin-right: 6px;"></i> My Meal QR</span>
+                      <span style="font-size: 12px; font-weight: 600; color: var(--color-neutral-600);">Display & Print Mess QR</span>
+                    </div>
+                    <button class="open-meal-qr-sheet-btn btn-outline-action" style="padding: 8px 14px; font-size: 12px; font-weight: 700; border-radius: 10px; min-height: 40px; background: #fff;">
+                      View Meal QR
+                    </button>
+                  </div>
+
+                  <div class="compact-action-card">
+                    <div>
+                      <span style="font-size: 14px; font-weight: 700; color: var(--color-neutral-900); display: block;"><i class="fa-solid fa-clipboard-check" style="color: #0284c7; margin-right: 6px;"></i> Today's Check-ins</span>
+                      <span style="font-size: 12px; font-weight: 600; color: var(--color-neutral-600);">${todayCheckInsData?.summary?.todayCheckIns ?? 0} Checked In Today</span>
+                    </div>
+                    <button class="open-todays-checkins-sheet-btn btn-outline-action" style="padding: 8px 14px; font-size: 12px; font-weight: 700; border-radius: 10px; min-height: 40px; background: #fff;">
+                      View Check-ins
                     </button>
                   </div>
 
@@ -1326,18 +1483,6 @@ export async function renderOwnerPortal() {
                   </div>
                 </div>
 
-                <!-- Subscription Breaks Settings Card -->
-                <div id="breakSettingsSection" style="background: #fff; border: 1px solid var(--color-neutral-200); border-radius: 20px; padding: 20px; margin-bottom: 24px; box-shadow: 0 4px 12px rgba(0,0,0,0.03);">
-                  <h3 class="font-display" style="font-size: 18px; font-weight: 700; color: var(--color-neutral-900); margin-bottom: 16px;"><i class="fa-solid fa-plane-departure" style="color: var(--color-primary-600);"></i> Subscription Breaks Settings</h3>
-                  ${renderBreakSettingsContent()}
-                </div>
-
-                <!-- Subscription Break Requests Queue -->
-                <div id="breakRequestsSection" style="background: #fff; border-radius: 20px; padding: 20px; margin-bottom: 24px; border: 1px solid var(--color-neutral-200); box-shadow: 0 4px 12px rgba(0,0,0,0.03);">
-                  <h3 class="font-display" style="font-size: 18px; font-weight: 700; color: var(--color-neutral-900); margin-bottom: 16px;"><i class="fa-solid fa-clock-rotate-left" style="color: var(--color-primary-600);"></i> Subscription Break Requests Queue</h3>
-                  ${renderBreakRequestsContent()}
-                </div>
-
                 <!-- 2-Column Workspace Grid: Weekly Menu & Subscribers -->
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 24px; margin-bottom: 24px;">
                   <div id="weeklyMenuEditorSection" style="background: #fff; border: 1px solid var(--color-neutral-200); border-radius: 24px; padding: 24px; box-shadow: 0 4px 12px rgba(0,0,0,0.03);">
@@ -1367,6 +1512,32 @@ export async function renderOwnerPortal() {
                   <h3 class="font-display" style="font-size: 18px; font-weight: 700; color: var(--color-neutral-900); margin-bottom: 16px;"><i class="fa-solid fa-star" style="color: #f59e0b;"></i> Provider Reviews</h3>
                   ${renderReviewsContent()}
                 </div>
+
+                <!-- My Meal QR Section Card -->
+                <div id="mealQrSection" style="background: #fff; border: 1px solid var(--color-neutral-200); border-radius: 24px; padding: 24px; margin-bottom: 24px; box-shadow: 0 4px 12px rgba(0,0,0,0.03);">
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; border-bottom: 1px solid var(--color-neutral-100); padding-bottom: 14px;">
+                    <div>
+                      <h3 class="font-display" style="font-size: 18px; font-weight: 700; color: var(--color-neutral-900); margin: 0 0 2px 0;">
+                        <i class="fa-solid fa-qrcode" style="color: var(--color-primary-600); margin-right: 6px;"></i> My Meal QR
+                      </h3>
+                      <span style="font-size: 12px; color: var(--color-neutral-500);">Printable mess counter attendance QR code</span>
+                    </div>
+                  </div>
+                  ${renderMealQrContent()}
+                </div>
+
+                <!-- Today's Meal Check-ins Section Card -->
+                <div id="todaysCheckInsSection" style="background: #fff; border: 1px solid var(--color-neutral-200); border-radius: 24px; padding: 24px; margin-bottom: 24px; box-shadow: 0 4px 12px rgba(0,0,0,0.03);">
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; border-bottom: 1px solid var(--color-neutral-100); padding-bottom: 14px;">
+                    <div>
+                      <h3 class="font-display" style="font-size: 18px; font-weight: 700; color: var(--color-neutral-900); margin: 0 0 2px 0;">
+                        <i class="fa-solid fa-clipboard-check" style="color: var(--color-primary-600); margin-right: 6px;"></i> Today's Meal Check-ins
+                      </h3>
+                      <span style="font-size: 12px; color: var(--color-neutral-500);">Live attendance tracking for today</span>
+                    </div>
+                  </div>
+                  ${renderTodayCheckInsContent()}
+                </div>
               </div>
             `
       }
@@ -1381,18 +1552,20 @@ export async function renderOwnerPortal() {
               <h3 class="font-display" style="font-size: 20px; font-weight: 800; color: var(--color-neutral-900); margin: 0;">
                 ${mobileSheet === 'MANAGE_PG' ? 'Manage PG' :
           mobileSheet === 'HOSTEL_IMAGES' ? 'Hostel Images' :
-          mobileSheet === 'BREAK_REQUESTS' ? 'Subscription Break Requests' :
+          mobileSheet === 'MEAL_QR' ? 'My Meal QR' :
+          mobileSheet === 'TODAYS_CHECKINS' ? "Today's Meal Check-ins" :
             mobileSheet === 'SUBSCRIBERS' ? 'Subscribers' :
               mobileSheet === 'WEEKLY_MENU' ? 'Weekly Menu Editor' :
                 mobileSheet === 'REVIEWS' ? 'Provider Reviews' :
                   mobileSheet === 'EARNINGS_HISTORY' ? 'Provider Earnings History' :
-                    'Subscription Breaks Settings'}
+                    'Details'}
               </h3>
               <button class="close-mobile-sheet-btn" style="background: none; border: none; font-size: 24px; cursor: pointer; color: var(--color-neutral-500); padding: 4px 8px;">&times;</button>
             </div>
             ${mobileSheet === 'MANAGE_PG' ? renderManagePgContent() :
           mobileSheet === 'HOSTEL_IMAGES' ? renderHostelImagesContent() :
-          mobileSheet === 'BREAK_REQUESTS' ? renderBreakRequestsContent() :
+          mobileSheet === 'MEAL_QR' ? renderMealQrContent() :
+          mobileSheet === 'TODAYS_CHECKINS' ? renderTodayCheckInsContent() :
             mobileSheet === 'SUBSCRIBERS' ? renderSubscribersContent() :
               mobileSheet === 'WEEKLY_MENU' ? renderWeeklyMenuContent() :
                 mobileSheet === 'REVIEWS' ? renderReviewsContent() :
@@ -1407,11 +1580,54 @@ export async function renderOwnerPortal() {
                       </div>
                     </div>
                   ` :
-                    renderBreakSettingsContent()
+                    renderManagePgContent()
         }
           </div>
         </div>
       ` : ''}
+
+      <!-- Modal: Controlled Check-in Correction -->
+      <div id="correctionModal" style="display: ${showCorrectionModal ? 'flex' : 'none'}; position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); align-items: center; justify-content: center; z-index: 2100; padding: 16px;">
+        <div style="background: #fff; border-radius: 24px; max-width: 480px; width: 100%; padding: 28px; box-shadow: 0 20px 50px rgba(0,0,0,0.25);">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <div style="width: 36px; height: 36px; border-radius: 10px; background: var(--color-primary-50); color: var(--color-primary-600); display: flex; align-items: center; justify-content: center; font-size: 16px;">
+                <i class="fa-solid fa-wrench"></i>
+              </div>
+              <h3 class="font-display" style="font-size: 18px; font-weight: 800; color: var(--color-neutral-900); margin: 0;">Correct Meal Check-in</h3>
+            </div>
+            <button id="closeCorrectionModalBtn" type="button" style="background: none; border: none; font-size: 20px; cursor: pointer; color: var(--color-neutral-400);">&times;</button>
+          </div>
+
+          <p style="font-size: 13px; color: var(--color-neutral-600); line-height: 1.5; margin-bottom: 16px;">
+            Use this controlled correction if a genuine scanner or network glitch prevented the student's check-in from recording. An audited record will be preserved.
+          </p>
+
+          <div style="background: var(--color-neutral-50); border: 1px solid var(--color-neutral-200); border-radius: 12px; padding: 12px; margin-bottom: 16px;">
+            <div style="font-size: 12px; color: var(--color-neutral-500); margin-bottom: 2px;">Subscriber</div>
+            <strong style="font-size: 14px; color: var(--color-neutral-900);">${escapeHtml(correctionSubTarget?.studentName || 'Subscriber')}</strong>
+          </div>
+
+          <form id="correctionForm">
+            <div style="margin-bottom: 20px;">
+              <label style="font-size: 12px; font-weight: 700; color: var(--color-neutral-700); display: block; margin-bottom: 6px;">
+                Justification Reason (Mandatory) *
+              </label>
+              <textarea id="correctionReasonInput" rows="3" required placeholder="e.g. Camera scanner glitch reported by student at lunch counter" style="width: 100%; padding: 10px 12px; border: 1px solid var(--color-neutral-300); border-radius: 10px; font-size: 13px; resize: vertical; box-sizing: border-box;">${escapeHtml(correctionReasonInput)}</textarea>
+              <span style="font-size: 11px; color: var(--color-neutral-500); margin-top: 4px; display: block;">
+                Minimum 5 characters. This reason is logged to the immutable audit trail.
+              </span>
+            </div>
+
+            <div style="display: flex; gap: 10px; justify-content: flex-end;">
+              <button type="button" id="cancelCorrectionModalBtn" class="btn-outline-action" style="padding: 10px 16px;">Cancel</button>
+              <button type="submit" id="submitCorrectionBtn" class="btn-primary-action" style="padding: 10px 20px;" ${isSubmittingCorrection ? 'disabled' : ''}>
+                ${isSubmittingCorrection ? '<i class="fa-solid fa-spinner fa-spin"></i> Saving...' : '<i class="fa-solid fa-circle-check"></i> Record Audited Correction'}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
 
       <!-- Modal: Add New Hostel Listing -->
       <div id="hostelModal" style="display: ${showModal ? 'flex' : 'none'}; position: fixed; inset: 0; background: rgba(0,0,0,0.5); align-items: center; justify-content: center; z-index: 2000; padding: 20px;">
@@ -1594,8 +1810,8 @@ export async function renderOwnerPortal() {
       </div>
 
       <!-- Modal: Subscriber Details Popup -->
-      <div id="subscriberDetailsModal" style="display: ${showSubscriberDetailsModal && selectedSubscriberForDetails ? 'flex' : 'none'}; position: fixed; inset: 0; background: rgba(0,0,0,0.55); align-items: center; justify-content: center; z-index: 2100; padding: 16px;">
-        <div id="subscriberDetailsCard" style="background: #fff; border-radius: 24px; max-width: 460px; width: 100%; padding: 24px; box-shadow: 0 20px 40px rgba(0,0,0,0.25); max-height: 90vh; overflow-y: auto; display: flex; flex-direction: column; gap: 18px;">
+      <div id="subscriberDetailsModal" class="subscriber-details-modal-overlay" style="display: ${showSubscriberDetailsModal && selectedSubscriberForDetails ? 'flex' : 'none'}; position: fixed; inset: 0; background: rgba(0,0,0,0.55); align-items: center; justify-content: center; z-index: 2100; padding: 16px; box-sizing: border-box;">
+        <div id="subscriberDetailsCard" class="subscriber-details-card" style="background: #fff; border-radius: 24px; max-width: 640px; width: 100%; padding: 24px; box-shadow: 0 20px 40px rgba(0,0,0,0.25); max-height: 90vh; overflow-y: auto; display: flex; flex-direction: column; gap: 18px; box-sizing: border-box;">
           <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--color-neutral-200); padding-bottom: 14px;">
             <div style="display: flex; align-items: center; gap: 10px;">
               <div style="width: 36px; height: 36px; border-radius: 10px; background: var(--color-primary-50); color: var(--color-primary-600); display: flex; align-items: center; justify-content: center; font-size: 16px;">
@@ -1623,7 +1839,7 @@ export async function renderOwnerPortal() {
               </div>
 
               <!-- Plan & Amount -->
-              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+              <div class="subscriber-details-grid-2" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
                 <div style="background: var(--color-neutral-50); border: 1px solid var(--color-neutral-200); border-radius: 12px; padding: 12px;">
                   <span style="font-size: 11px; font-weight: 700; color: var(--color-neutral-500); text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 2px;">Subscription Plan</span>
                   <strong style="font-size: 13px; color: var(--color-neutral-900); word-break: break-word;">${escapeHtml(selectedSubscriberForDetails.mealPlan?.title || selectedSubscriberForDetails.planType || 'Not available')}</strong>
@@ -1635,7 +1851,7 @@ export async function renderOwnerPortal() {
               </div>
 
               <!-- Payment & Subscription Status -->
-              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+              <div class="subscriber-details-grid-2" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
                 <div style="background: var(--color-neutral-50); border: 1px solid var(--color-neutral-200); border-radius: 12px; padding: 12px;">
                   <span style="font-size: 11px; font-weight: 700; color: var(--color-neutral-500); text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 4px;">Payment Status</span>
                   <span style="font-size: 11px; font-weight: 800; padding: 3px 8px; border-radius: 999px; display: inline-block; ${selectedSubscriberForDetails.paymentStatus === 'PAID' ? 'background: #d1fae5; color: #047857;' : 'background: #fee2e2; color: #dc2626;'}">
@@ -1660,6 +1876,49 @@ export async function renderOwnerPortal() {
                   <span style="color: var(--color-neutral-500); font-weight: 600;">End Date:</span>
                   <strong style="color: var(--color-neutral-900);">${formatSubscriberDate(selectedSubscriberForDetails.endDate)}</strong>
                 </div>
+              </div>
+
+              <!-- Whole Month Attendance Section -->
+              <div style="border-top: 1px solid var(--color-neutral-200); padding-top: 16px; display: flex; flex-direction: column; gap: 12px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+                  <div style="display: flex; align-items: center; gap: 8px;">
+                    <div style="width: 30px; height: 30px; border-radius: 8px; background: var(--color-primary-50); color: var(--color-primary-600); display: flex; align-items: center; justify-content: center; font-size: 13px;">
+                      <i class="fa-solid fa-calendar-check"></i>
+                    </div>
+                    <div>
+                      <h4 style="font-size: 15px; font-weight: 700; color: var(--color-neutral-900); margin: 0;">
+                        Monthly Attendance History
+                      </h4>
+                      <span style="font-size: 11px; color: var(--color-neutral-500);">Full subscription check-in roster</span>
+                    </div>
+                  </div>
+                  ${subscriberAttendanceData ? `
+                    <span style="font-size: 12px; font-weight: 800; color: var(--color-primary-700); background: var(--color-primary-50); padding: 4px 10px; border-radius: 999px; border: 1px solid var(--color-primary-200); display: inline-flex; align-items: center; gap: 5px;">
+                      <i class="fa-solid fa-chart-pie" style="font-size: 11px;"></i> ${subscriberAttendanceData.attendanceRate}% Attendance Rate
+                    </span>
+                  ` : ''}
+                </div>
+
+                ${subscriberAttendanceLoading ? `
+                  <div style="text-align: center; padding: 32px; background: var(--color-neutral-50); border-radius: 16px; border: 1px dashed var(--color-neutral-300);">
+                    <i class="fa-solid fa-spinner fa-spin" style="font-size: 22px; color: var(--color-primary-600); margin-bottom: 8px; display: block;"></i>
+                    <span style="font-size: 12px; color: var(--color-neutral-600); font-weight: 600;">Loading subscriber attendance history...</span>
+                  </div>
+                ` : subscriberAttendanceError ? `
+                  <div style="text-align: center; padding: 20px; background: #fef2f2; border: 1px solid #fecaca; border-radius: 14px;">
+                    <p style="color: #dc2626; font-size: 12px; margin: 0 0 8px 0; font-weight: 600;">${escapeHtml(subscriberAttendanceError)}</p>
+                    <button type="button" class="retry-sub-attendance-btn btn-outline-action" data-sub-id="${escapeHtml(selectedSubscriberForDetails.id)}" style="padding: 5px 14px; font-size: 11px; font-weight: 700; border-radius: 8px; background: #fff;">
+                      <i class="fa-solid fa-rotate-right"></i> Retry
+                    </button>
+                  </div>
+                ` : !subscriberAttendanceData || !subscriberAttendanceData.days || subscriberAttendanceData.days.length === 0 ? `
+                  <div style="text-align: center; padding: 24px; background: var(--color-neutral-50); border: 1px dashed var(--color-neutral-300); border-radius: 14px;">
+                    <p style="font-size: 12px; color: var(--color-neutral-500); margin: 0;">No attendance records found for this subscription cycle.</p>
+                  </div>
+                ` : `
+                  <!-- Compact DayPicker Meal Calendar -->
+                  <div id="subscriber-meal-calendar-mount" style="width: 100%; display: flex; justify-content: center; margin-top: 8px;"></div>
+                `}
               </div>
             </div>
           ` : ''}
@@ -1860,14 +2119,217 @@ export async function renderOwnerPortal() {
           await fetchLiveSubs();
           await fetchWeeklyMenus();
           await fetchProviderReviews();
-          await fetchProviderBreakRequests();
           await fetchHostelImages();
+          await fetchMealQr();
+          await fetchTodayCheckIns();
           render();
         }
       });
     });
 
     // Mobile Sheet Open Triggers
+    document.querySelectorAll('.open-meal-qr-sheet-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        mobileSheet = 'MEAL_QR';
+        render();
+      });
+    });
+
+    document.querySelectorAll('.open-todays-checkins-sheet-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        mobileSheet = 'TODAYS_CHECKINS';
+        render();
+      });
+    });
+
+    // Meal QR Actions: Print and Refresh
+    document.querySelectorAll('.print-meal-qr-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        if (!mealQrData?.qrCodeDataUrl) {
+          showToast('No QR code available to print.', 'error');
+          return;
+        }
+        const printWin = window.open('', '_blank', 'width=700,height=800');
+        if (!printWin) {
+          showToast('Pop-up blocked. Please allow pop-ups to print the QR code.', 'error');
+          return;
+        }
+        const messName = escapeHtml(mealQrData.providerName || selectedHostel?.name || 'PrimePlate Mess');
+        printWin.document.write(`
+          <!DOCTYPE html>
+          <html>
+            <head>
+              <title>PrimePlate Mess Counter QR - ${messName}</title>
+              <style>
+                @page { size: A4 portrait; margin: 20mm; }
+                body {
+                  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+                  text-align: center;
+                  padding: 40px 20px;
+                  color: #111827;
+                }
+                .container {
+                  max-width: 500px;
+                  margin: 0 auto;
+                  border: 3px solid #ea580c;
+                  border-radius: 24px;
+                  padding: 36px 24px;
+                }
+                .brand {
+                  font-size: 26px;
+                  font-weight: 800;
+                  color: #ea580c;
+                  margin-bottom: 8px;
+                  letter-spacing: -0.5px;
+                }
+                .mess-name {
+                  font-size: 22px;
+                  font-weight: 700;
+                  margin-bottom: 24px;
+                  color: #1f2937;
+                }
+                .qr-img {
+                  width: 320px;
+                  height: 320px;
+                  margin: 0 auto 20px auto;
+                  display: block;
+                  border-radius: 16px;
+                  border: 1px solid #e5e7eb;
+                  padding: 10px;
+                }
+                .instructions {
+                  font-size: 15px;
+                  font-weight: 600;
+                  color: #374151;
+                  margin-top: 16px;
+                  line-height: 1.5;
+                }
+                .notice {
+                  font-size: 12px;
+                  color: #6b7280;
+                  margin-top: 14px;
+                }
+              </style>
+            </head>
+            <body>
+              <div class="container">
+                <div class="brand">🍽️ PrimePlate</div>
+                <div class="mess-name">${messName}</div>
+                <img class="qr-img" src="${mealQrData.qrCodeDataUrl}" alt="PrimePlate Mess QR Code" />
+                <div class="instructions">
+                  <strong>Scan with PrimePlate to Check In</strong><br />
+                  Students: Open PrimePlate and tap "Scan Meal QR" to record today's meal.
+                </div>
+                <div class="notice">
+                  Official Mess Counter Standee • One check-in per student per calendar day
+                </div>
+              </div>
+              <script>
+                window.onload = function() {
+                  window.focus();
+                  window.print();
+                };
+              </script>
+            </body>
+          </html>
+        `);
+        printWin.document.close();
+      });
+    });
+
+    // Download QR
+    document.querySelectorAll('.download-meal-qr-btn').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (!mealQrData?.qrCodeDataUrl) {
+          showToast('No QR code available to download.', 'error');
+          return;
+        }
+        const fileName = `${(selectedHostel?.name || 'Mess').replace(/\s+/g, '_')}_Meal_QR.png`;
+        const a = document.createElement('a');
+        a.href = mealQrData.qrCodeDataUrl;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        showToast('Meal QR downloaded successfully!', 'success');
+      });
+    });
+
+    document.querySelectorAll('.refresh-meal-qr-btn').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        await fetchMealQr();
+        render();
+        showToast('Meal QR refreshed', 'info');
+      });
+    });
+
+    // Today's Check-ins Actions: Refresh and Correct
+    document.querySelectorAll('.refresh-today-checkins-btn').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        await fetchTodayCheckIns();
+        render();
+        showToast("Today's check-ins refreshed", 'info');
+      });
+    });
+
+    document.querySelectorAll('.open-correction-modal-btn').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        const target = e.currentTarget as HTMLElement;
+        const subscriptionId = target.getAttribute('data-sub-id') || '';
+        const studentName = target.getAttribute('data-student-name') || 'Subscriber';
+        correctionSubTarget = { subscriptionId, studentName };
+        correctionReasonInput = '';
+        showCorrectionModal = true;
+        render();
+      });
+    });
+
+    document.getElementById('closeCorrectionModalBtn')?.addEventListener('click', () => {
+      showCorrectionModal = false;
+      correctionSubTarget = null;
+      correctionReasonInput = '';
+      render();
+    });
+
+    document.getElementById('cancelCorrectionModalBtn')?.addEventListener('click', () => {
+      showCorrectionModal = false;
+      correctionSubTarget = null;
+      correctionReasonInput = '';
+      render();
+    });
+
+    const correctionForm = document.getElementById('correctionForm') as HTMLFormElement;
+    if (correctionForm) {
+      correctionForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        if (!selectedHostel || !correctionSubTarget?.subscriptionId) return;
+        const reason = (document.getElementById('correctionReasonInput') as HTMLTextAreaElement)?.value?.trim();
+        if (!reason || reason.length < 5) {
+          showToast('Please provide a meaningful justification reason (at least 5 characters).', 'error');
+          return;
+        }
+
+        isSubmittingCorrection = true;
+        render();
+
+        try {
+          await correctProviderCheckIn(selectedHostel.id, correctionSubTarget.subscriptionId, reason);
+          showToast(`Audited check-in recorded for ${correctionSubTarget.studentName}!`, 'success');
+          showCorrectionModal = false;
+          correctionSubTarget = null;
+          correctionReasonInput = '';
+          await fetchTodayCheckIns();
+        } catch (err: any) {
+          showToast(err.message || 'Failed to record correction', 'error');
+        } finally {
+          isSubmittingCorrection = false;
+          render();
+        }
+      });
+    }
+
     document.querySelectorAll('.open-hostel-images-sheet-btn').forEach((btn) => {
       btn.addEventListener('click', () => {
         mobileSheet = 'HOSTEL_IMAGES';
@@ -1889,13 +2351,6 @@ export async function renderOwnerPortal() {
       });
     });
 
-    document.querySelectorAll('.open-break-requests-sheet-btn').forEach((btn) => {
-      btn.addEventListener('click', () => {
-        mobileSheet = 'BREAK_REQUESTS';
-        render();
-      });
-    });
-
     document.querySelectorAll('.open-subscribers-sheet-btn').forEach((btn) => {
       btn.addEventListener('click', () => {
         mobileSheet = 'SUBSCRIBERS';
@@ -1913,13 +2368,6 @@ export async function renderOwnerPortal() {
     document.querySelectorAll('.open-reviews-sheet-btn').forEach((btn) => {
       btn.addEventListener('click', () => {
         mobileSheet = 'REVIEWS';
-        render();
-      });
-    });
-
-    document.querySelectorAll('.open-break-settings-sheet-btn').forEach((btn) => {
-      btn.addEventListener('click', () => {
-        mobileSheet = 'BREAK_SETTINGS';
         render();
       });
     });
@@ -2723,61 +3171,6 @@ export async function renderOwnerPortal() {
       });
     });
 
-    // Break Settings Listeners (Desktop + Mobile)
-    document.querySelectorAll('.save-break-settings-btn').forEach((btn) => {
-      btn.addEventListener('click', async (e) => {
-        if (!selectedHostel) return;
-        const parentContainer = (e.currentTarget as HTMLElement).closest('.break-settings-container') || document;
-        const toggle = parentContainer.querySelector('.subscription-breaks-toggle-input') as HTMLInputElement;
-        const enabled = toggle?.checked ?? false;
-
-        try {
-          await updateProviderBreakSettings(selectedHostel.id, enabled);
-          selectedHostel.subscriptionBreaksEnabled = enabled;
-          showToast(`Subscription Breaks updated (${enabled ? 'ENABLED' : 'DISABLED'})`, 'success');
-          render();
-        } catch (err: any) {
-          showToast(err.message || 'Failed to update break settings', 'error');
-        }
-      });
-    });
-
-    // Subscription Break Approve/Reject Listeners
-    document.querySelectorAll('.approve-break-btn').forEach((btn) => {
-      btn.addEventListener('click', async (e) => {
-        const reqId = (e.currentTarget as HTMLElement).getAttribute('data-req-id');
-        if (!reqId) return;
-
-        try {
-          await approveSubscriptionBreak(reqId);
-          showToast('Subscription break approved! End date extended.', 'success');
-          await fetchProviderBreakRequests();
-          await fetchLiveSubs();
-          render();
-        } catch (err: any) {
-          showToast(err.message || 'Failed to approve break request', 'error');
-        }
-      });
-    });
-
-    document.querySelectorAll('.reject-break-btn').forEach((btn) => {
-      btn.addEventListener('click', async (e) => {
-        const reqId = (e.currentTarget as HTMLElement).getAttribute('data-req-id');
-        if (!reqId) return;
-
-        if (!confirm('Reject this subscription break request?')) return;
-
-        try {
-          await rejectSubscriptionBreak(reqId);
-          showToast('Subscription break request rejected.', 'info');
-          await fetchProviderBreakRequests();
-          render();
-        } catch (err: any) {
-          showToast(err.message || 'Failed to reject break request', 'error');
-        }
-      });
-    });
-
     // Subscriber Search Listener
     document.querySelectorAll('.subscriber-search-input').forEach((input) => {
       input.addEventListener('input', (e) => {
@@ -2795,13 +3188,63 @@ export async function renderOwnerPortal() {
           selectedSubscriberForDetails = sub;
           showSubscriberDetailsModal = true;
           render();
+          fetchSubscriberAttendance(sub.id);
         }
       });
     });
 
+    // Retry Subscriber Attendance Fetch
+    document.querySelectorAll('.retry-sub-attendance-btn').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        const subId = (e.currentTarget as HTMLElement).getAttribute('data-sub-id');
+        if (subId) {
+          fetchSubscriberAttendance(subId);
+        }
+      });
+    });
+
+    // Mount DayPicker MealCalendar in Subscriber Details Modal if open and data loaded
+    const subCalMount = document.getElementById('subscriber-meal-calendar-mount');
+    if (subCalMount && subscriberAttendanceData && subscriberAttendanceData.days) {
+      if (subscriberCalendarUnmount) {
+        try { subscriberCalendarUnmount(); } catch (_) {}
+        subscriberCalendarUnmount = null;
+      }
+
+      const usageByDate: Record<string, 'checked-in' | 'missed'> = {};
+      const detailsByDate: Record<string, { time?: string | null; source?: string | null }> = {};
+
+      subscriberAttendanceData.days.forEach((d: any) => {
+        if (d.status === 'CHECKED_IN' || d.checkedIn) {
+          usageByDate[d.date] = 'checked-in';
+        } else if (d.status === 'NOT_CHECKED_IN') {
+          usageByDate[d.date] = 'missed';
+        }
+        if (d.time || d.source || d.correctionReason) {
+          detailsByDate[d.date] = { time: d.time, source: d.source };
+        }
+      });
+
+      subscriberCalendarUnmount = mountMealCalendar(subCalMount, {
+        usageByDate,
+        startDate: subscriberAttendanceData.startDate,
+        endDate: subscriberAttendanceData.endDate,
+        detailsByDate,
+        title: 'Monthly Attendance Roster',
+        subtitle: `${subscriberAttendanceData.attendedDays} of ${subscriberAttendanceData.totalDays} days attended (${subscriberAttendanceData.attendanceRate}%)`,
+      });
+    }
+
     const closeSubscriberModal = () => {
+      if (subscriberCalendarUnmount) {
+        try { subscriberCalendarUnmount(); } catch (_) {}
+        subscriberCalendarUnmount = null;
+      }
       showSubscriberDetailsModal = false;
       selectedSubscriberForDetails = null;
+      subscriberAttendanceData = null;
+      subscriberAttendanceError = null;
+      subscriberAttendanceLoading = false;
       render();
     };
 
@@ -2958,7 +3401,6 @@ export async function renderOwnerPortal() {
           await fetchLiveSubs();
           await fetchWeeklyMenus();
           await fetchProviderReviews();
-          await fetchProviderBreakRequests();
           await fetchEarningsData();
           render();
         } catch (err: any) {
@@ -3078,5 +3520,28 @@ export async function renderOwnerPortal() {
     }
   };
 
-  render();
+  const loadInitialData = async () => {
+    try {
+      await fetchHostels();
+      if (selectedHostel) {
+        await Promise.allSettled([
+          fetchLiveSubs(),
+          fetchWeeklyMenus(),
+          fetchProviderReviews(),
+          fetchEarningsData(),
+          fetchHostelImages(),
+          fetchMealQr(),
+          fetchTodayCheckIns(),
+        ]);
+      } else {
+        await fetchEarningsData().catch(() => {});
+      }
+    } catch (err) {
+      console.error('Initial data load error:', err);
+    } finally {
+      render();
+    }
+  };
+
+  await loadInitialData();
 }

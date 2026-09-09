@@ -18,8 +18,7 @@ export class EmailService {
       this.configService.get<string>('GMAIL_PASS');
     const smtpHost =
       this.configService.get<string>('SMTP_HOST') || 'smtp.gmail.com';
-    const smtpPort =
-      Number(this.configService.get<number>('SMTP_PORT')) || 587;
+    const smtpPort = Number(this.configService.get<number>('SMTP_PORT')) || 587;
 
     if (smtpUser && smtpPass) {
       // Directly resolve smtpHost to pure IPv4 address.
@@ -119,7 +118,9 @@ export class EmailService {
       );
       return false;
     } catch (err: any) {
-      this.logger.error(`Error sending email via Brevo HTTP API: ${err.message}`);
+      this.logger.error(
+        `Error sending email via Brevo HTTP API: ${err.message}`,
+      );
       return false;
     }
   }
@@ -191,13 +192,14 @@ If you did not request this, you can ignore this email.`;
     // 2. Secondary fallback: Resend API (if configured)
     const apiKey = this.configService.get<string>('EMAIL_PROVIDER_API_KEY');
     if (apiKey) {
-      let fromEmail =
-        this.configService.get<string>('EMAIL_FROM') || 'PrimePlate <infoprimeplate@gmail.com>';
+      const fromEmail =
+        this.configService.get<string>('EMAIL_FROM') ||
+        'PrimePlate <infoprimeplate@gmail.com>';
       const resendFrom =
         !fromEmail ||
-          fromEmail.includes('primeplate.com') ||
-          fromEmail.includes('gmail.com') ||
-          this.configService.get<string>('EMAIL_DOMAIN_VERIFIED') !== 'true'
+        fromEmail.includes('primeplate.com') ||
+        fromEmail.includes('gmail.com') ||
+        this.configService.get<string>('EMAIL_DOMAIN_VERIFIED') !== 'true'
           ? 'PrimePlate <onboarding@resend.dev>'
           : fromEmail;
 
@@ -261,7 +263,8 @@ If you did not request this, you can ignore this email.`;
     utrReference?: string;
   }): Promise<void> {
     const supportEmail =
-      this.configService.get<string>('SUPPORT_EMAIL') || 'infoprimeplate@gmail.com';
+      this.configService.get<string>('SUPPORT_EMAIL') ||
+      'infoprimeplate@gmail.com';
 
     const subject = `[SUPPORT TICKET] #${ticketData.ticketNumber} - ${ticketData.issueType}`;
     const textContent = `New Payment Support Ticket Raised:
@@ -332,18 +335,19 @@ ${ticketData.description}`;
     // 2. Secondary fallback: Resend API (if configured)
     const apiKey = this.configService.get<string>('EMAIL_PROVIDER_API_KEY');
     if (apiKey) {
-      let fromEmail =
-        this.configService.get<string>('EMAIL_FROM') || 'PrimePlate <infoprimeplate@gmail.com>';
+      const fromEmail =
+        this.configService.get<string>('EMAIL_FROM') ||
+        'PrimePlate <infoprimeplate@gmail.com>';
       const resendFrom =
         !fromEmail ||
-          fromEmail.includes('primeplate.com') ||
-          fromEmail.includes('gmail.com') ||
-          this.configService.get<string>('EMAIL_DOMAIN_VERIFIED') !== 'true'
+        fromEmail.includes('primeplate.com') ||
+        fromEmail.includes('gmail.com') ||
+        this.configService.get<string>('EMAIL_DOMAIN_VERIFIED') !== 'true'
           ? 'PrimePlate <onboarding@resend.dev>'
           : fromEmail;
 
       try {
-        let response = await fetch('https://api.resend.com/emails', {
+        const response = await fetch('https://api.resend.com/emails', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

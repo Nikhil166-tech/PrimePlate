@@ -2902,3 +2902,100 @@ input:checked+.toggle-slider:before {
     padding-top: 10px;
   }
 }
+
+/* ==========================================================================
+   Mobile Adaptations: Meal History, Subscriber Modal & Check-in
+   ========================================================================== */
+
+@media (max-width: 640px) {
+  .meal-history-subscription-card {
+    padding: 16px 12px !important;
+    border-radius: 20px !important;
+    margin-bottom: 16px !important;
+  }
+
+  .meal-history-sub-header {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 12px !important;
+    margin-bottom: 14px !important;
+    padding-bottom: 12px !important;
+  }
+
+  .meal-history-sub-actions {
+    width: 100% !important;
+    justify-content: space-between !important;
+    gap: 8px !important;
+  }
+
+  .meal-history-sub-actions > div {
+    flex: 1 !important;
+    text-align: left !important;
+    padding: 6px 12px !important;
+  }
+
+  .meal-history-sub-actions button {
+    flex: 1.2 !important;
+    justify-content: center !important;
+  }
+
+  .subscriber-details-card {
+    padding: 16px 12px !important;
+    border-radius: 20px !important;
+    gap: 12px !important;
+    max-height: 92vh !important;
+  }
+}
+
+@media (max-width: 400px) {
+  .meal-history-subscription-card {
+    padding: 14px 8px !important;
+    border-radius: 16px !important;
+  }
+
+  .subscriber-details-modal-overlay {
+    padding: 8px !important;
+  }
+
+  .subscriber-details-card {
+    padding: 14px 8px !important;
+    border-radius: 16px !important;
+    gap: 10px !important;
+  }
+}
+
+@media (max-width: 380px) {
+  .meal-history-sub-actions {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 8px !important;
+  }
+
+  .meal-history-sub-actions > div {
+    width: 100% !important;
+    text-align: center !important;
+    box-sizing: border-box !important;
+  }
+
+  .meal-history-sub-actions button {
+    width: 100% !important;
+    justify-content: center !important;
+    box-sizing: border-box !important;
+  }
+}
+
+@media (max-width: 360px) {
+  .meal-history-subscription-card {
+    padding: 12px 6px !important;
+    border-radius: 14px !important;
+  }
+
+  .subscriber-details-grid-2 {
+    grid-template-columns: 1fr !important;
+    gap: 8px !important;
+  }
+
+  .subscriber-details-card {
+    padding: 12px 6px !important;
+  }
+}

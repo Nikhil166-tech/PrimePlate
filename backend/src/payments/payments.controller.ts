@@ -104,8 +104,7 @@ export class PaymentsController {
 
     const payloadEntity =
       body?.payload?.payment?.entity || body?.payload?.order?.entity;
-    const orderId =
-      payloadEntity?.order_id || payloadEntity?.id || 'unknown';
+    const orderId = payloadEntity?.order_id || payloadEntity?.id || 'unknown';
     const paymentId = payloadEntity?.id || 'unknown';
 
     console.log(
@@ -114,9 +113,7 @@ export class PaymentsController {
 
     const rawBody = (req as Record<string, any>).rawBody;
     const signature =
-      headerSignature ||
-      (req.headers['x-razorpay-signature'] as string) ||
-      '';
+      headerSignature || (req.headers['x-razorpay-signature'] as string) || '';
 
     if (!rawBody) {
       throw new BadRequestException(
@@ -173,7 +170,9 @@ export class PaymentsController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.STUDENT)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Explicitly Recover Unresolved Pending Payments for PrimeMate' })
+  @ApiOperation({
+    summary: 'Explicitly Recover Unresolved Pending Payments for PrimeMate',
+  })
   async recoverPendingPayments(@Req() req: AuthenticatedRequest) {
     return this.paymentsService.recoverPendingPayments(req.user.userId);
   }

@@ -32,7 +32,7 @@ export class ProvidersService {
     private readonly providerImageRepo: Repository<ProviderImage>,
     private readonly usersService: UsersService,
     private readonly uploadsService: UploadsService,
-  ) { }
+  ) {}
 
   private normalizeDescription(desc?: string): string | undefined {
     if (desc === undefined || desc === null) return undefined;
@@ -112,18 +112,18 @@ export class ProvidersService {
     // Sanitize user object to never expose passwordHash
     const safeUser = provider.user
       ? {
-        id: provider.user.id,
-        email: provider.user.email,
-        name: provider.user.name,
-        role: provider.user.role,
-      }
+          id: provider.user.id,
+          email: provider.user.email,
+          name: provider.user.name,
+          role: provider.user.role,
+        }
       : undefined;
 
     const images = this.providerImageRepo
       ? await this.providerImageRepo.find({
-        where: { providerId: provider.id },
-        order: { sortOrder: 'ASC', createdAt: 'ASC' },
-      })
+          where: { providerId: provider.id },
+          order: { sortOrder: 'ASC', createdAt: 'ASC' },
+        })
       : [];
 
     return {
@@ -182,9 +182,9 @@ export class ProvidersService {
       const a =
         Math.sin(dLat / 2) * Math.sin(dLat / 2) +
         Math.cos((lat1 * Math.PI) / 180) *
-        Math.cos((lat2 * Math.PI) / 180) *
-        Math.sin(dLon / 2) *
-        Math.sin(dLon / 2);
+          Math.cos((lat2 * Math.PI) / 180) *
+          Math.sin(dLon / 2) *
+          Math.sin(dLon / 2);
       const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
       return R * c;
     };
@@ -283,10 +283,6 @@ export class ProvidersService {
     if (dto.contactPhone !== undefined)
       provider.contactPhone = dto.contactPhone;
     if (dto.latitude !== undefined) provider.latitude = dto.latitude;
-    if (dto.subscriptionBreaksEnabled !== undefined)
-      provider.subscriptionBreaksEnabled = Boolean(
-        dto.subscriptionBreaksEnabled,
-      );
 
     if (dto.monthlyPrice !== undefined) {
       const parsedPrice = Number(dto.monthlyPrice);
@@ -344,25 +340,6 @@ export class ProvidersService {
     }
     const providers = await this.providerRepo.find({ where });
     return Promise.all(providers.map((p) => this.attachCapacityInfo(p)));
-  }
-
-  async updateBreakSettings(
-    providerId: string,
-    userId: string,
-    enabled: boolean,
-  ): Promise<MealProvider> {
-    const provider = await this.providerRepo.findOne({
-      where: { id: providerId },
-      relations: { user: true },
-    });
-    if (!provider) throw new NotFoundException('Provider not found');
-    if (provider.user?.id !== userId && provider.userId !== userId) {
-      throw new ForbiddenException(
-        'Cannot modify settings for another provider',
-      );
-    }
-    provider.subscriptionBreaksEnabled = enabled;
-    return this.providerRepo.save(provider);
   }
 
   private validateImageBuffer(file: {
@@ -456,7 +433,11 @@ export class ProvidersService {
       'primeplate/hostels',
     );
 
-    if (currentCount === 0 || !provider.imageUrl || provider.imageUrl.includes('pexels.com')) {
+    if (
+      currentCount === 0 ||
+      !provider.imageUrl ||
+      provider.imageUrl.includes('pexels.com')
+    ) {
       provider.imageUrl = uploadResult.secure_url;
       await this.providerRepo.save(provider);
     }
@@ -466,7 +447,8 @@ export class ProvidersService {
       imageUrl: uploadResult.secure_url,
       originalFileName: file.originalname || file.name || 'hostel_image.jpg',
       imageType: file.mimetype || 'image/jpeg',
-      imageCategory: (imageCategory && imageCategory.trim()) ? imageCategory.trim() : 'Other',
+      imageCategory:
+        imageCategory && imageCategory.trim() ? imageCategory.trim() : 'Other',
       sortOrder: currentCount,
     });
 
@@ -505,13 +487,19 @@ export class ProvidersService {
     );
 
     image.imageUrl = uploadResult.secure_url;
-    image.originalFileName = file.originalname || file.name || image.originalFileName;
+    image.originalFileName =
+      file.originalname || file.name || image.originalFileName;
     image.imageType = file.mimetype || image.imageType || 'image/jpeg';
     if (imageCategory && imageCategory.trim()) {
       image.imageCategory = imageCategory.trim();
     }
 
-    if (image.provider && (image.sortOrder === 0 || !image.provider.imageUrl || image.provider.imageUrl.includes('pexels.com'))) {
+    if (
+      image.provider &&
+      (image.sortOrder === 0 ||
+        !image.provider.imageUrl ||
+        image.provider.imageUrl.includes('pexels.com'))
+    ) {
       image.provider.imageUrl = uploadResult.secure_url;
       await this.providerRepo.save(image.provider);
     }

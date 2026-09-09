@@ -14,7 +14,7 @@ import { User } from '../users/user.entity';
 import { MealPlan } from '../meal-plans/meal-plan.entity';
 import { MealProvider } from '../providers/meal-provider.entity';
 import { Payment } from '../payments/payment.entity';
-import { ProviderEarning, ProviderEarningStatus } from '../payouts/provider-earning.entity';
+import { ProviderEarning } from '../payouts/provider-earning.entity';
 import { PaymentsService } from '../payments/payments.service';
 
 @Injectable()
@@ -175,12 +175,19 @@ export class SubscriptionsService {
 
     for (const sub of subs) {
       let activeOrExpiredStatus = sub.status;
-      if (sub.endDate && sub.endDate < todayStr && activeOrExpiredStatus === SubscriptionStatus.ACTIVE) {
+      if (
+        sub.endDate &&
+        sub.endDate < todayStr &&
+        activeOrExpiredStatus === SubscriptionStatus.ACTIVE
+      ) {
         activeOrExpiredStatus = SubscriptionStatus.EXPIRED;
       }
 
       // Allow ACTIVE and EXPIRED subscriptions in history view
-      if (sub.status !== SubscriptionStatus.ACTIVE && sub.status !== SubscriptionStatus.EXPIRED) {
+      if (
+        sub.status !== SubscriptionStatus.ACTIVE &&
+        sub.status !== SubscriptionStatus.EXPIRED
+      ) {
         continue;
       }
 
@@ -193,7 +200,8 @@ export class SubscriptionsService {
           if (matchedPaymentIds.has(p.id)) return false;
           if (p.student?.id !== studentId) return false;
           if (p.mealPlanId && p.mealPlanId !== sub.mealPlan?.id) return false;
-          if (p.provider?.id && p.provider.id !== sub.mealPlan?.provider?.id) return false;
+          if (p.provider?.id && p.provider.id !== sub.mealPlan?.provider?.id)
+            return false;
           if (p.createdAt && sub.createdAt) {
             const pTime = new Date(p.createdAt).getTime();
             const sTime = new Date(sub.createdAt).getTime();

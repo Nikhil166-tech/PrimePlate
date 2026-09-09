@@ -1,17 +1,13 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
-import * as crypto from 'crypto';
-import * as bcrypt from 'bcryptjs';
 import {
   BadRequestException,
   ForbiddenException,
-  NotFoundException,
 } from '@nestjs/common';
 
 // Entities & Services
 import { AnalyticsService } from './analytics/analytics.service';
-import { SubscriptionBreaksService } from './subscription-breaks/subscription-breaks.service';
 import { ReviewsService } from './reviews/reviews.service';
 import { AuthService } from './auth/auth.service';
 import { UsersService } from './users/users.service';
@@ -26,11 +22,6 @@ import {
 } from './subscriptions/subscription.entity';
 import { MealProvider } from './providers/meal-provider.entity';
 import { User } from './users/user.entity';
-import { MealPlan } from './meal-plans/meal-plan.entity';
-import {
-  SubscriptionBreakRequest,
-  SubscriptionBreakStatus,
-} from './subscription-breaks/subscription-break-request.entity';
 import { Review } from './reviews/review.entity';
 import { PasswordResetToken } from './auth/password-reset-token.entity';
 import { RefreshToken } from './auth/refresh-token.entity';
@@ -124,233 +115,6 @@ describe('PrimePlate Comprehensive QA Suite (Sections 19, 24, 26, 27, 28, 30, 40
       expect(calcPrice(7)).toBe(700);
       expect(calcPrice(15)).toBe(1500);
       expect(calcPrice(30)).toBe(3000);
-    });
-  });
-
-  // Section 24 & 30: Subscription Break Rules & Provider Setting
-  describe('SECTION 24 & 30: Subscription Break & Provider Setting', () => {
-    let breaksService: SubscriptionBreaksService;
-    let breakRepo: any;
-    let subRepo: any;
-    let providerRepo: any;
-    let userRepo: any;
-    let dataSource: any;
-
-    const studentUser: any = { id: 'student-1', role: Role.STUDENT };
-    const providerUser: any = { id: 'provider-user-1', role: Role.PROVIDER };
-    const providerEntity: any = {
-      id: 'provider-1',
-      name: 'Test Mess',
-      subscriptionBreaksEnabled: true,
-      user: providerUser,
-      userId: providerUser.id,
-    };
-
-    const oneMonthSub: any = {
-      id: 'sub-month',
-      student: studentUser,
-      status: SubscriptionStatus.ACTIVE,
-      startDate: '2026-09-01',
-      endDate: '2026-09-30',
-      mealPlan: {
-        id: 'plan-1',
-        title: '1 Month Standard Plan',
-        provider: providerEntity,
-      },
-    };
-
-    const oneDaySub: any = {
-      id: 'sub-day',
-      student: studentUser,
-      status: SubscriptionStatus.ACTIVE,
-      startDate: '2026-09-01',
-      endDate: '2026-09-01',
-      mealPlan: {
-        id: 'plan-day',
-        title: '1 Day Plan',
-        provider: providerEntity,
-      },
-    };
-
-    beforeEach(async () => {
-      breakRepo = {
-        find: jest.fn().mockResolvedValue([]),
-        findOne: jest.fn(),
-        create: jest.fn((dto) => ({ ...dto, id: 'break-req-1' })),
-        save: jest.fn((entity) => Promise.resolve(entity)),
-      };
-
-      subRepo = {
-        findOne: jest.fn(),
-        save: jest.fn((entity) => Promise.resolve(entity)),
-      };
-
-      providerRepo = {
-        findOne: jest.fn().mockResolvedValue(providerEntity),
-        save: jest.fn((entity) => Promise.resolve(entity)),
-      };
-
-      userRepo = {
-        findOne: jest.fn().mockResolvedValue(studentUser),
-      };
-
-      dataSource = {
-        transaction: jest.fn(async (cb) => {
-          const manager: any = {
-            findOne: jest.fn((entityClass, opts) => {
-              if (entityClass === SubscriptionBreakRequest) {
-                return Promise.resolve({
-                  id: opts.where.id,
-                  status: SubscriptionBreakStatus.PENDING,
-                  breakDays: 3,
-                  subscriptionId: 'sub-month',
-                  provider: providerEntity,
-                });
-              }
-              if (entityClass === Subscription) {
-                return Promise.resolve({ ...oneMonthSub });
-              }
-              return null;
-            }),
-            find: jest.fn().mockResolvedValue([]),
-            save: jest.fn((entityClass, entity) =>
-              Promise.resolve(entity || entityClass),
-            ),
-          };
-          return cb(manager);
-        }),
-      };
-
-      const module: TestingModule = await Test.createTestingModule({
-        providers: [
-          SubscriptionBreaksService,
-          {
-            provide: getRepositoryToken(SubscriptionBreakRequest),
-            useValue: breakRepo,
-          },
-          { provide: getRepositoryToken(Subscription), useValue: subRepo },
-          { provide: getRepositoryToken(MealProvider), useValue: providerRepo },
-          { provide: getRepositoryToken(User), useValue: userRepo },
-          { provide: DataSource, useValue: dataSource },
-        ],
-      }).compile();
-
-      breaksService = module.get<SubscriptionBreaksService>(
-        SubscriptionBreaksService,
-      );
-    });
-
-    it('rejects break requests for non 1-month subscriptions (e.g. 1-day plan)', async () => {
-      subRepo.findOne.mockResolvedValue(oneDaySub);
-      await expect(
-        breaksService.createBreakRequest('student-1', {
-          subscriptionId: 'sub-day',
-          fromDate: '2026-09-01',
-          toDate: '2026-09-01',
-        }),
-      ).rejects.toThrow(BadRequestException);
-    });
-
-    it('rejects break requests when provider setting subscriptionBreaksEnabled is disabled', async () => {
-      subRepo.findOne.mockResolvedValue(oneMonthSub);
-      providerRepo.findOne.mockResolvedValue({
-        ...providerEntity,
-        subscriptionBreaksEnabled: false,
-      });
-
-      await expect(
-        breaksService.createBreakRequest('student-1', {
-          subscriptionId: 'sub-month',
-          fromDate: '2026-09-10',
-          toDate: '2026-09-12',
-        }),
-      ).rejects.toThrow(
-        'Subscription breaks are not available for this provider.',
-      );
-    });
-
-    it('rejects breaks with duration > 4 days (e.g. 5 days)', async () => {
-      subRepo.findOne.mockResolvedValue(oneMonthSub);
-      providerRepo.findOne.mockResolvedValue(providerEntity);
-
-      await expect(
-        breaksService.createBreakRequest('student-1', {
-          subscriptionId: 'sub-month',
-          fromDate: '2026-09-10',
-          toDate: '2026-09-14', // 5 days inclusive
-        }),
-      ).rejects.toThrow('Break duration must be between 1 and 4 days.');
-    });
-
-    it('allows valid 3-day break (Aug 10 -> Aug 12) with initial status PENDING', async () => {
-      subRepo.findOne.mockResolvedValue(oneMonthSub);
-      providerRepo.findOne.mockResolvedValue(providerEntity);
-
-      const req = await breaksService.createBreakRequest('student-1', {
-        subscriptionId: 'sub-month',
-        fromDate: '2026-09-10',
-        toDate: '2026-09-12', // 3 days
-      });
-
-      expect(req.status).toBe(SubscriptionBreakStatus.PENDING);
-      expect(req.breakDays).toBe(3);
-    });
-
-    it('rejects overlapping break requests', async () => {
-      subRepo.findOne.mockResolvedValue(oneMonthSub);
-      providerRepo.findOne.mockResolvedValue(providerEntity);
-      breakRepo.find.mockResolvedValue([
-        {
-          subscriptionId: 'sub-month',
-          status: SubscriptionBreakStatus.PENDING,
-          fromDate: '2026-09-10',
-          toDate: '2026-09-12',
-        },
-      ]);
-
-      await expect(
-        breaksService.createBreakRequest('student-1', {
-          subscriptionId: 'sub-month',
-          fromDate: '2026-09-11',
-          toDate: '2026-09-13',
-        }),
-      ).rejects.toThrow(
-        'A break request already exists for an overlapping date range.',
-      );
-    });
-
-    it('rejects requests exceeding total 4-day limit for subscription', async () => {
-      subRepo.findOne.mockResolvedValue(oneMonthSub);
-      providerRepo.findOne.mockResolvedValue(providerEntity);
-      breakRepo.find.mockResolvedValue([
-        {
-          subscriptionId: 'sub-month',
-          status: SubscriptionBreakStatus.APPROVED,
-          breakDays: 3,
-        },
-      ]);
-
-      await expect(
-        breaksService.createBreakRequest('student-1', {
-          subscriptionId: 'sub-month',
-          fromDate: '2026-09-20',
-          toDate: '2026-09-21', // 2 days (3 + 2 = 5 > 4)
-        }),
-      ).rejects.toThrow(/exceeds your remaining break allowance/);
-    });
-
-    it('approving a 3-day break extends subscription endDate by exactly 3 days without changing payment/revenue', async () => {
-      const approved = await breaksService.approveBreakRequest(
-        'break-req-1',
-        'provider-user-1',
-      );
-      expect(approved.status).toBe(SubscriptionBreakStatus.APPROVED);
-    });
-
-    it('rejects approval attempt from a different provider user', async () => {
-      await expect(
-        breaksService.approveBreakRequest('break-req-1', 'other-provider-user'),
-      ).rejects.toThrow(ForbiddenException);
     });
   });
 
@@ -693,7 +457,9 @@ describe('PrimePlate Comprehensive QA Suite (Sections 19, 24, 26, 27, 28, 30, 40
                 count: jest.fn().mockResolvedValue(0),
               };
               const mockUploads = {
-                upload: jest.fn().mockResolvedValue({ secure_url: 'https://sample.com/img.jpg' }),
+                upload: jest.fn().mockResolvedValue({
+                  secure_url: 'https://sample.com/img.jpg',
+                }),
               };
               return new ProvidersService(
                 providerRepo,
@@ -890,7 +656,7 @@ describe('PrimePlate Comprehensive QA Suite (Sections 19, 24, 26, 27, 28, 30, 40
 
   // Section 41: End-to-End Cross-Feature Data Consistency
   describe('SECTION 41: Cross-Feature End-to-End Consistency', () => {
-    it('verifies data alignment across Dashboard, Subscriptions, Breaks, Earnings, and Revenue', () => {
+    it('verifies data alignment across Dashboard, Subscriptions, Earnings, and Revenue', () => {
       const paymentRecord = { id: 'pay-101', amount: 3000, status: 'paid' };
       const subscriptionRecord = {
         id: 'sub-101',
@@ -909,13 +675,6 @@ describe('PrimePlate Comprehensive QA Suite (Sections 19, 24, 26, 27, 28, 30, 40
       expect(subscriptionRecord.amountPaid).toBe(paymentRecord.amount);
       expect(providerEarning.grossAmount).toBe(paymentRecord.amount);
 
-      // 2. 2-Day Break approved -> End date extends from Aug 31 to Sep 2 (+2 days)
-      const approvedBreakDays = 2;
-      const initialEnd = new Date('2026-08-31T00:00:00Z');
-      initialEnd.setUTCDate(initialEnd.getUTCDate() + approvedBreakDays);
-      subscriptionRecord.endDate = initialEnd.toISOString().split('T')[0];
-
-      expect(subscriptionRecord.endDate).toBe('2026-09-02');
       // Amounts remain unchanged
       expect(subscriptionRecord.amountPaid).toBe(3000);
       expect(paymentRecord.amount).toBe(3000);

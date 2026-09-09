@@ -1,0 +1,498 @@
+/* ==========================================================================
+   PrimePlate — Compact Meal Calendar Component
+   Built using @daypicker/react (react-day-picker v10)
+   ========================================================================== */
+
+.meal-calendar-card {
+  width: 100%;
+  max-width: 400px;
+  margin: 0 auto;
+  background: #ffffff;
+  border: 1px solid var(--color-neutral-200, #e5e7eb);
+  border-radius: var(--radius-xl, 24px);
+  padding: 20px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  transition: all 0.2s ease;
+}
+
+.meal-calendar-header {
+  width: 100%;
+  text-align: center;
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--color-neutral-100, #f3f4f6);
+}
+
+.meal-calendar-title {
+  font-family: var(--font-display, 'Sora', sans-serif);
+  font-size: 17px;
+  font-weight: 800;
+  color: var(--color-neutral-900, #111827);
+  margin: 0 0 3px 0;
+}
+
+.meal-calendar-subtitle {
+  font-size: 12px;
+  color: var(--color-neutral-500, #6b7280);
+  margin: 0;
+}
+
+/* DayPicker Root & Layout Customization */
+.meal-calendar-card .rdp-root {
+  --rdp-accent-color: var(--color-primary-600, #ea580c);
+  --rdp-accent-background-color: var(--color-primary-50, #fff7ed);
+  --rdp-day-height: 40px;
+  --rdp-day-width: 40px;
+  --rdp-day_button-width: 36px;
+  --rdp-day_button-height: 36px;
+  --rdp-day_button-border-radius: 999px;
+  font-family: var(--font-sans, 'Inter', sans-serif);
+  margin: 0 auto;
+  user-select: none;
+}
+
+.meal-calendar-card .rdp-month {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  width: 100%;
+}
+
+.meal-calendar-card .rdp-month_caption {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  width: 100%;
+  height: 36px;
+  margin-bottom: 8px;
+  padding: 0 44px;
+  box-sizing: border-box;
+}
+
+.meal-calendar-card .rdp-caption_label {
+  font-family: var(--font-display, 'Sora', sans-serif);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--color-neutral-900, #111827);
+  text-transform: capitalize;
+}
+
+/* DayPicker Navigation Buttons (navLayout="around") */
+.meal-calendar-card .rdp-button_previous,
+.meal-calendar-card .rdp-button_next {
+  position: absolute;
+  top: 2px;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid var(--color-neutral-200, #e5e7eb);
+  background: #ffffff;
+  color: var(--color-neutral-700, #374151);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer !important;
+  pointer-events: auto !important;
+  z-index: 20;
+  transition: all 0.15s ease;
+  padding: 0;
+}
+
+.meal-calendar-card .rdp-button_previous {
+  left: 6px;
+}
+
+.meal-calendar-card .rdp-button_next {
+  right: 6px;
+}
+
+.meal-calendar-card .rdp-chevron {
+  width: 14px;
+  height: 14px;
+  fill: currentColor;
+  pointer-events: none;
+}
+
+.meal-calendar-card .rdp-button_previous:hover:not(:disabled),
+.meal-calendar-card .rdp-button_next:hover:not(:disabled) {
+  background: var(--color-neutral-100, #f3f4f6);
+  border-color: var(--color-neutral-300, #d1d5db);
+  color: var(--color-primary-600, #ea580c);
+}
+
+.meal-calendar-card .rdp-button_previous:disabled,
+.meal-calendar-card .rdp-button_next:disabled {
+  opacity: 0.3;
+  cursor: default !important;
+  pointer-events: none;
+}
+
+.meal-calendar-card .rdp-month_grid {
+  width: 100%;
+  max-width: 320px;
+  table-layout: fixed;
+  border-collapse: collapse;
+  margin: 0 auto;
+}
+
+/* Weekday header row */
+.meal-calendar-card .rdp-weekday {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--color-neutral-400, #9ca3af);
+  padding: 4px 0 8px 0;
+  width: auto;
+  text-align: center;
+}
+
+/* Day cell base styling */
+.meal-calendar-card .rdp-day {
+  padding: 2px 0;
+  width: auto;
+  height: var(--rdp-day-height);
+  text-align: center;
+}
+
+.meal-calendar-card .rdp-day_button {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-neutral-800, #1f2937);
+  border: 1.5px solid transparent;
+  transition: all 0.15s ease;
+  margin: 0 auto;
+}
+
+.meal-calendar-card .rdp-day_button:hover:not(:disabled) {
+  background: var(--color-neutral-100, #f3f4f6);
+}
+
+/* 1. CHECKED IN: Green circular/background treatment */
+.meal-calendar-card .meal-day-checked-in .rdp-day_button {
+  background-color: #dcfce7 !important;
+  color: #15803d !important;
+  border-color: #86efac !important;
+  font-weight: 700 !important;
+}
+
+.meal-calendar-card .meal-day-checked-in .rdp-day_button:hover:not(:disabled) {
+  background-color: #bbf7d0 !important;
+}
+
+/* 2. MISSED: Light red/pink background or red circular treatment */
+.meal-calendar-card .meal-day-missed .rdp-day_button {
+  background-color: #fee2e2 !important;
+  color: #b91c1c !important;
+  border-color: #fca5a5 !important;
+  font-weight: 700 !important;
+}
+
+.meal-calendar-card .meal-day-missed .rdp-day_button:hover:not(:disabled) {
+  background-color: #fecaca !important;
+}
+
+/* 3. UPCOMING / NEUTRAL: Normal clean date */
+.meal-calendar-card .meal-day-upcoming .rdp-day_button {
+  color: var(--color-neutral-700, #374151);
+  background-color: transparent;
+}
+
+/* 4. TODAY: PrimePlate orange ring/border */
+.meal-calendar-card .meal-day-today .rdp-day_button {
+  box-shadow: 0 0 0 2px var(--color-primary-600, #ea580c) !important;
+  font-weight: 800 !important;
+}
+
+/* 4.1 TODAY + CHECKED IN (Combined states cleanly) */
+.meal-calendar-card .meal-day-checked-in.meal-day-today .rdp-day_button {
+  background-color: #dcfce7 !important;
+  color: #15803d !important;
+  border-color: #86efac !important;
+  box-shadow: 0 0 0 2px var(--color-primary-600, #ea580c) !important;
+}
+
+/* 4.2 TODAY + MISSED (Combined states cleanly if marked missed) */
+.meal-calendar-card .meal-day-missed.meal-day-today .rdp-day_button {
+  background-color: #fee2e2 !important;
+  color: #b91c1c !important;
+  border-color: #fca5a5 !important;
+  box-shadow: 0 0 0 2px var(--color-primary-600, #ea580c) !important;
+}
+
+/* 5. OUTSIDE SUBSCRIPTION: Disabled & subtle, NOT looking like missed meals */
+.meal-calendar-card .meal-day-outside-sub .rdp-day_button,
+.meal-calendar-card .rdp-day_button:disabled {
+  opacity: 0.25 !important;
+  color: var(--color-neutral-400, #9ca3af) !important;
+  background: transparent !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+  cursor: default !important;
+  pointer-events: none !important;
+}
+
+/* Interactive Details Tooltip (Compact, single-line chip) */
+.meal-calendar-tooltip {
+  margin-top: 12px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: var(--color-neutral-50, #f9fafb);
+  border: 1px solid var(--color-neutral-200, #e5e7eb);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  animation: fadeIn 0.15s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-3px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.meal-calendar-tooltip-date {
+  font-weight: 700;
+  color: var(--color-neutral-800, #1f2937);
+}
+
+.meal-calendar-tooltip-status.checked-in {
+  color: #15803d;
+  font-weight: 700;
+}
+
+.meal-calendar-tooltip-status.missed {
+  color: #b91c1c;
+  font-weight: 700;
+}
+
+.meal-calendar-tooltip-status.upcoming {
+  color: var(--color-neutral-600, #4b5563);
+  font-weight: 600;
+}
+
+.meal-calendar-tooltip-status.outside {
+  color: var(--color-neutral-400, #9ca3af);
+  font-weight: 500;
+}
+
+.meal-calendar-tooltip-time {
+  color: var(--color-neutral-500, #6b7280);
+}
+
+/* Minimal Legend */
+.meal-calendar-legend {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--color-neutral-100, #f3f4f6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  width: 100%;
+}
+
+.meal-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-neutral-600, #4b5563);
+}
+
+.meal-legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  display: inline-block;
+}
+
+.meal-legend-dot.checked-in {
+  background-color: #22c55e;
+  box-shadow: 0 0 0 2px #dcfce7;
+}
+
+.meal-legend-dot.missed {
+  background-color: #ef4444;
+  box-shadow: 0 0 0 2px #fee2e2;
+}
+
+.meal-legend-dot.today {
+  background-color: #ffffff;
+  border: 2px solid var(--color-primary-600, #ea580c);
+}
+
+/* ==========================================================================
+   Responsive Adaptations (Tablet, Mobile 480px, 400px, 360px, 320px)
+   ========================================================================== */
+
+/* Nested inside subscriber details modal or parent cards */
+#subscriber-meal-calendar-mount .meal-calendar-card {
+  border: 1px solid var(--color-neutral-200, #e5e7eb);
+  background: var(--color-neutral-50, #f9fafb);
+  box-shadow: none;
+  max-width: 100%;
+}
+
+@media (max-width: 480px) {
+  .meal-calendar-card {
+    max-width: 100%;
+    padding: 16px 10px;
+    border-radius: 20px;
+    box-sizing: border-box;
+  }
+
+  .meal-calendar-card .rdp-root {
+    --rdp-day-height: 38px;
+    --rdp-day-width: 38px;
+    --rdp-day_button-width: 34px;
+    --rdp-day_button-height: 34px;
+  }
+
+  .meal-calendar-card .rdp-day_button {
+    font-size: 12px;
+  }
+
+  .meal-calendar-legend {
+    gap: 12px;
+    font-size: 11px;
+  }
+
+  #subscriber-meal-calendar-mount .meal-calendar-card {
+    padding: 12px 6px;
+    border-radius: 16px;
+  }
+}
+
+@media (max-width: 400px) {
+  .meal-calendar-card {
+    padding: 14px 6px;
+    border-radius: 18px;
+  }
+
+  .meal-calendar-card .rdp-root {
+    --rdp-day-height: 35px;
+    --rdp-day-width: 35px;
+    --rdp-day_button-width: 31px;
+    --rdp-day_button-height: 31px;
+  }
+
+  .meal-calendar-card .rdp-day_button {
+    font-size: 11.5px;
+  }
+
+  .meal-calendar-card .rdp-weekday {
+    font-size: 10px;
+    padding: 2px 0 6px 0;
+  }
+
+  .meal-calendar-title {
+    font-size: 15px;
+  }
+
+  .meal-calendar-subtitle {
+    font-size: 11px;
+  }
+
+  .meal-calendar-card .rdp-month_caption {
+    padding: 0 38px;
+    height: 32px;
+  }
+
+  .meal-calendar-card .rdp-button_previous,
+  .meal-calendar-card .rdp-button_next {
+    width: 28px;
+    height: 28px;
+  }
+
+  .meal-calendar-legend {
+    gap: 8px;
+    font-size: 10.5px;
+  }
+}
+
+@media (max-width: 360px) {
+  .meal-calendar-card {
+    padding: 10px 4px;
+    border-radius: 14px;
+  }
+
+  .meal-calendar-card .rdp-root {
+    --rdp-day-height: 32px;
+    --rdp-day-width: 32px;
+    --rdp-day_button-width: 28px;
+    --rdp-day_button-height: 28px;
+  }
+
+  .meal-calendar-card .rdp-day_button {
+    font-size: 11px;
+  }
+
+  .meal-calendar-card .rdp-weekday {
+    font-size: 9px;
+    padding: 2px 0 4px 0;
+  }
+
+  .meal-calendar-card .rdp-month_caption {
+    padding: 0 32px;
+    height: 30px;
+  }
+
+  .meal-calendar-card .rdp-caption_label {
+    font-size: 12.5px;
+  }
+
+  .meal-calendar-card .rdp-button_previous,
+  .meal-calendar-card .rdp-button_next {
+    width: 26px;
+    height: 26px;
+    top: 2px;
+  }
+
+  .meal-calendar-card .rdp-button_previous {
+    left: 2px;
+  }
+
+  .meal-calendar-card .rdp-button_next {
+    right: 2px;
+  }
+
+  .meal-calendar-card .rdp-chevron {
+    width: 12px;
+    height: 12px;
+  }
+
+  .meal-calendar-legend {
+    gap: 6px;
+    font-size: 9.5px;
+  }
+}
+
+@media (max-width: 330px) {
+  .meal-calendar-card .rdp-root {
+    --rdp-day-height: 29px;
+    --rdp-day-width: 29px;
+    --rdp-day_button-width: 25px;
+    --rdp-day_button-height: 25px;
+  }
+
+  .meal-calendar-card .rdp-day_button {
+    font-size: 10px;
+  }
+
+  .meal-calendar-card .rdp-weekday {
+    font-size: 8px;
+  }
+
+  .meal-calendar-legend {
+    gap: 4px;
+    font-size: 8.5px;
+  }
+}

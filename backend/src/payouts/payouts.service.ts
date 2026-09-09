@@ -31,7 +31,7 @@ export class PayoutsService {
    * Resolves ALL provider kitchen records associated with the authenticated user ID.
    */
   async getProvidersByUserId(userId: string): Promise<MealProvider[]> {
-    let providers: MealProvider[] = [];
+    const providers: MealProvider[] = [];
 
     // 1. Try single lookup first for max compatibility with mock test repos & simple queries
     if (this.providerRepo && typeof this.providerRepo.findOne === 'function') {

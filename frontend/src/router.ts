@@ -170,10 +170,13 @@ export function initRouter() {
     const href = target.getAttribute('href');
     if (!href) return;
 
-    // Ignore external URLs, telephone, mailto, or new tabs
+    // Ignore external URLs, data URLs, blob URLs, download links, telephone, mailto, or new tabs
     if (
       href.startsWith('http://') ||
       href.startsWith('https://') ||
+      href.startsWith('data:') ||
+      href.startsWith('blob:') ||
+      target.hasAttribute('download') ||
       href.startsWith('mailto:') ||
       href.startsWith('tel:') ||
       target.getAttribute('target') === '_blank'

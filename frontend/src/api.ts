@@ -10,7 +10,7 @@ if (isProd && !rawApiUrl) {
   throw new Error('[PRIMEPLATE CONFIG ERROR] VITE_API_URL environment variable is required in production mode!');
 }
 
-const apiBaseUrl = rawApiUrl || 'http://127.0.0.1:5000/api/v1';
+const apiBaseUrl = (rawApiUrl || 'http://127.0.0.1:5000/api/v1').replace(/\/+$/, '');
 
 const api: AxiosInstance = axios.create({
   baseURL: apiBaseUrl,
@@ -34,9 +34,18 @@ api.interceptors.response.use(
   async (error) => {
     const { response, config } = error;
     const isRefreshEndpoint = config?.url?.includes('/auth/refresh');
+    const isAuthEndpoint =
+      config?.url?.includes('/auth/login') ||
+      config?.url?.includes('/auth/register');
 
     // Handle 401 Unauthorized (expired access token -> attempt refresh token rotation ONCE)
-    if (response?.status === 401 && config && !config._retry401 && !isRefreshEndpoint) {
+    if (
+      response?.status === 401 &&
+      config &&
+      !config._retry401 &&
+      !isRefreshEndpoint &&
+      !isAuthEndpoint
+    ) {
       config._retry401 = true;
       const refreshToken = localStorage.getItem('refreshToken');
 
@@ -93,47 +102,6 @@ api.interceptors.response.use(
     return Promise.reject(err);
   },
 );
-
-export const createSubscriptionBreak = (
-
-  subscriptionId: string,
-  fromDate: string,
-  toDate: string,
-  reason?: string,
-) => api.post('/subscription-breaks', { subscriptionId, fromDate, toDate, reason });
-
-export const getMySubscriptionBreaks = () => api.get('/subscription-breaks/my');
-
-export const getProviderSubscriptionBreaks = (providerId: string) =>
-  api.get(`/subscription-breaks/provider/${providerId}`);
-
-export const approveSubscriptionBreak = (requestId: string) =>
-  api.patch(`/subscription-breaks/${requestId}/approve`);
-
-export const rejectSubscriptionBreak = (requestId: string) =>
-  api.patch(`/subscription-breaks/${requestId}/reject`);
-
-export const updateProviderBreakSettings = async (
-  providerId: string,
-  subscriptionBreaksEnabled: boolean,
-) => {
-  try {
-    return await api.patch(`/providers/${providerId}/subscription-break-settings`, {
-      subscriptionBreaksEnabled,
-    });
-  } catch (err: any) {
-    try {
-      return await api.patch(`/subscription-breaks/provider-settings/${providerId}`, {
-        subscriptionBreaksEnabled,
-      });
-    } catch (_) {
-      return await api.patch(`/subscription-breaks/provider-settings`, {
-        providerId,
-        subscriptionBreaksEnabled,
-      });
-    }
-  }
-};
 
 export const getProviderEarningsSummary = (kitchenId?: string) =>
   api.get(`/payouts/provider/summary${kitchenId ? `?kitchenId=${encodeURIComponent(kitchenId)}` : ''}`);
@@ -194,6 +162,25 @@ export const createSupportTicket = (data: {
 export const getSupportTickets = () => api.get('/support/payment-issues');
 export const getSupportTicketByOrderId = (orderId: string) =>
   api.get(`/support/payment-issues/order/${encodeURIComponent(orderId)}`);
+
+// Meal QR & Daily Check-in APIs
+export const getProviderMealQr = (providerId?: string) =>
+  api.get(`/meal-usage/provider/qr${providerId ? `?providerId=${encodeURIComponent(providerId)}` : ''}`);
+
+export const scanMealCheckIn = (qrToken: string) =>
+  api.post('/meal-usage/check-in', { qrToken });
+
+export const getMyMealHistory = () =>
+  api.get('/meal-usage/my-history');
+
+export const getProviderTodayCheckIns = (providerId?: string) =>
+  api.get(`/meal-usage/provider/today${providerId ? `?providerId=${encodeURIComponent(providerId)}` : ''}`);
+
+export const getProviderSubscriberAttendanceHistory = (subscriptionId: string, providerId?: string) =>
+  api.get(`/meal-usage/provider/subscriber/${encodeURIComponent(subscriptionId)}/history${providerId ? `?providerId=${encodeURIComponent(providerId)}` : ''}`);
+
+export const correctProviderCheckIn = (providerId: string, subscriptionId: string, reason: string) =>
+  api.post('/meal-usage/provider/correct', { providerId, subscriptionId, reason });
 
 export default api;
 

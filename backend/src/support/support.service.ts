@@ -10,7 +10,6 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In } from 'typeorm';
 import {
   SupportTicket,
-  SupportTicketIssueType,
   SupportTicketStatus,
 } from './support-ticket.entity';
 import { Payment } from '../payments/payment.entity';
@@ -68,7 +67,11 @@ export class SupportService {
     // UTR Format Validation if provided
     if (dto.utrReference) {
       const cleanUtr = dto.utrReference.trim();
-      if (cleanUtr.length < 4 || cleanUtr.length > 50 || !/^[a-zA-Z0-9_-]+$/.test(cleanUtr)) {
+      if (
+        cleanUtr.length < 4 ||
+        cleanUtr.length > 50 ||
+        !/^[a-zA-Z0-9_-]+$/.test(cleanUtr)
+      ) {
         throw new BadRequestException(
           'Invalid UTR / Bank Reference format. Must be 4-50 alphanumeric characters.',
         );
@@ -130,7 +133,9 @@ export class SupportService {
           utrReference: saved.utrReference || undefined,
         })
         .catch((err) => {
-          this.logger.error(`Failed to send support ticket email: ${err.message}`);
+          this.logger.error(
+            `Failed to send support ticket email: ${err.message}`,
+          );
         });
     }
 
@@ -144,7 +149,10 @@ export class SupportService {
     });
   }
 
-  async getTicketByOrderId(userId: string, orderId: string): Promise<SupportTicket | null> {
+  async getTicketByOrderId(
+    userId: string,
+    orderId: string,
+  ): Promise<SupportTicket | null> {
     return this.ticketRepo.findOne({
       where: {
         student: { id: userId },
@@ -154,7 +162,10 @@ export class SupportService {
     });
   }
 
-  async getTicketById(userId: string, ticketId: string): Promise<SupportTicket> {
+  async getTicketById(
+    userId: string,
+    ticketId: string,
+  ): Promise<SupportTicket> {
     const ticket = await this.ticketRepo.findOne({
       where: { id: ticketId },
       relations: { student: true, payment: true },
@@ -165,7 +176,9 @@ export class SupportService {
     }
 
     if (ticket.student && ticket.student.id !== userId) {
-      throw new ForbiddenException('You do not have permission to view this ticket.');
+      throw new ForbiddenException(
+        'You do not have permission to view this ticket.',
+      );
     }
 
     return ticket;

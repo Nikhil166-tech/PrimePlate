@@ -105,8 +105,8 @@ export class MealProvider {
   @Column({ nullable: true })
   contactPhone?: string;
 
-  @Column({ default: false })
-  subscriptionBreaksEnabled: boolean = false;
+  @Column({ unique: true, nullable: true })
+  qrToken?: string;
 
   @CreateDateColumn()
   createdAt: Date;

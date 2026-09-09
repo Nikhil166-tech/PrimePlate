@@ -1,4 +1,5 @@
 import { navigate, getCurrentPath } from '../router';
+import { openMealScanner } from './meal-scanner';
 
 export function renderNavbar(): string {
   const token = localStorage.getItem('accessToken');
@@ -27,7 +28,10 @@ export function renderNavbar(): string {
     </a>
     ${
       token && isStudent
-        ? `<a href="/student/dashboard" class="nav-item-btn ${currentPath === '/dashboard' || currentPath === '/student/dashboard' ? 'active' : ''}">
+        ? `<button type="button" class="nav-item-btn nav-scan-qr-btn" style="background: none; border: none; cursor: pointer; color: inherit; font: inherit;">
+            <i class="fa-solid fa-camera"></i> Scan Meal QR
+          </button>
+          <a href="/student/dashboard" class="nav-item-btn ${currentPath === '/dashboard' || currentPath === '/student/dashboard' ? 'active' : ''}">
             <i class="fa-solid fa-qrcode"></i> My Mess Card
           </a>
           <a href="/student/transactions" class="nav-item-btn ${currentPath.startsWith('/student/transactions') ? 'active' : ''}">
@@ -135,6 +139,18 @@ export function attachNavbarEvents() {
           document.querySelector('.footer')?.scrollIntoView({ behavior: 'smooth' });
         }, 150);
       }
+    });
+  });
+
+  document.querySelectorAll('.nav-scan-qr-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      openMealScanner(() => {
+        if (window.location.pathname.includes('/dashboard')) {
+          window.location.reload();
+        } else {
+          navigate('/student/dashboard');
+        }
+      });
     });
   });
 

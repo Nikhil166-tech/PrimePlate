@@ -352,7 +352,11 @@ describe('SubscriptionsService — Paid Subscription Enforcement (PrimeMate)', (
     const mockSub = {
       id: 'sub-hist',
       student: { id: studentAId },
-      mealPlan: { id: 'plan-1', pricePerMonth: 3500, provider: { id: providerIdA } }, // current price 3500
+      mealPlan: {
+        id: 'plan-1',
+        pricePerMonth: 3500,
+        provider: { id: providerIdA },
+      }, // current price 3500
       status: SubscriptionStatus.ACTIVE,
       createdAt: new Date('2026-08-01T10:00:00Z'),
     };

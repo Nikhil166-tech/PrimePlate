@@ -1,21 +1,13 @@
 import api, {
-  createSubscriptionBreak,
-  getMySubscriptionBreaks,
+  getMyMealHistory,
 } from '../api';
+import { openMealScanner } from '../components/meal-scanner';
 import { navigate } from '../router';
 import { showToast } from '../components/toast';
 import { renderNavbar, attachNavbarEvents } from '../components/navbar';
 import { renderFooter, attachFooterEvents } from '../components/footer';
 import { escapeHtml } from '../utils/sanitize';
-
-export function calculateInclusiveDays(fromDateStr: string, toDateStr: string): number {
-  if (!fromDateStr || !toDateStr) return 1;
-  const from = new Date(fromDateStr + 'T00:00:00Z');
-  const to = new Date(toDateStr + 'T00:00:00Z');
-  const diffTime = to.getTime() - from.getTime();
-  if (isNaN(diffTime) || diffTime < 0) return 1;
-  return Math.round(diffTime / (1000 * 60 * 60 * 24)) + 1;
-}
+import { mountMealCalendar } from '../components/MealCalendar';
 
 interface SubscriptionRecord {
   id?: string;
@@ -37,7 +29,6 @@ interface SubscriptionRecord {
       city?: string;
       address?: string;
       contactPhone?: string;
-      subscriptionBreaksEnabled?: boolean;
     };
   };
   provider?: {
@@ -46,7 +37,6 @@ interface SubscriptionRecord {
     city?: string;
     address?: string;
     contactPhone?: string;
-    subscriptionBreaksEnabled?: boolean;
   };
   status?: string;
   startDate?: string;
@@ -66,24 +56,12 @@ export async function renderDashboard() {
     return;
   }
 
-  let activeTab: 'PASSES' | 'HISTORY' = 'PASSES';
+  let activeTab: 'PASSES' | 'HISTORY' | 'MEAL_HISTORY' = 'PASSES';
   let loadedSubs: any[] = [];
-  let loadedBreakRequests: any[] = [];
+  let loadedMealHistory: any[] = [];
+  let calendarUnmountFns: (() => void)[] = [];
   let selectedSubForDetails: any = null;
-  let activeModal: 'NONE' | 'TAKE_BREAK' = 'NONE';
-  let modalTargetSub: any = null;
   const todayStr = new Date().toISOString().split('T')[0];
-  let modalFromDate = todayStr;
-  let modalToDate = todayStr;
-  let modalReason = 'Going home';
-
-  const calculateInclusiveDays = (fromStr: string, toStr: string): number => {
-    if (!fromStr || !toStr || toStr < fromStr) return 0;
-    const from = new Date(fromStr + 'T00:00:00Z');
-    const to = new Date(toStr + 'T00:00:00Z');
-    const diff = to.getTime() - from.getTime();
-    return Math.round(diff / (1000 * 60 * 60 * 24)) + 1;
-  };
 
   const renderPage = () => {
     container.innerHTML = `
@@ -98,7 +76,10 @@ export async function renderDashboard() {
               <p style="color: var(--color-neutral-600); font-size: clamp(0.875rem, 2vw, 0.95rem);">Welcome back, <strong>${escapeHtml(userName)}</strong> 👋 • Phone: <strong>${escapeHtml(userPhone)}</strong> (${escapeHtml(userEmail)})</p>
             </div>
             <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-              <button id="dashNewSubBtn" class="btn-primary-action" style="padding: 10px 20px;">
+              <button id="dashScanQrBtn" class="btn-primary-action" style="padding: 10px 20px; background: linear-gradient(135deg, var(--color-primary-600), var(--color-primary-700)); font-weight: 700; box-shadow: 0 4px 14px rgba(234, 88, 12, 0.25);">
+                <i class="fa-solid fa-camera"></i> Scan Meal QR
+              </button>
+              <button id="dashNewSubBtn" class="btn-outline-action" style="padding: 10px 20px; background: #fff;">
                 <i class="fa-solid fa-plus"></i> New Subscription
               </button>
             </div>
@@ -108,6 +89,9 @@ export async function renderDashboard() {
           <div style="display: flex; gap: 12px; margin-bottom: 24px; border-bottom: 2px solid var(--color-neutral-200); padding-bottom: 12px; overflow-x: auto;">
             <button id="tabActivePasses" class="btn-outline-action" style="font-weight: 700; padding: 10px 20px; border-radius: 12px; background: ${activeTab === 'PASSES' ? 'var(--color-primary-600)' : '#fff'}; color: ${activeTab === 'PASSES' ? '#fff' : 'var(--color-neutral-700)'}; border-color: ${activeTab === 'PASSES' ? 'var(--color-primary-600)' : 'var(--color-neutral-300)'};">
               <i class="fa-solid fa-qrcode"></i> My Active Passes
+            </button>
+            <button id="tabMealChecklist" class="btn-outline-action" style="font-weight: 700; padding: 10px 20px; border-radius: 12px; background: ${activeTab === 'MEAL_HISTORY' ? 'var(--color-primary-600)' : '#fff'}; color: ${activeTab === 'MEAL_HISTORY' ? '#fff' : 'var(--color-neutral-700)'}; border-color: ${activeTab === 'MEAL_HISTORY' ? 'var(--color-primary-600)' : 'var(--color-neutral-300)'};">
+              <i class="fa-solid fa-calendar-check"></i> My Meal History
             </button>
             <button id="tabSubHistory" class="btn-outline-action" style="font-weight: 700; padding: 10px 20px; border-radius: 12px; background: ${activeTab === 'HISTORY' ? 'var(--color-primary-600)' : '#fff'}; color: ${activeTab === 'HISTORY' ? '#fff' : 'var(--color-neutral-700)'}; border-color: ${activeTab === 'HISTORY' ? 'var(--color-primary-600)' : 'var(--color-neutral-300)'};">
               <i class="fa-solid fa-clock-rotate-left"></i> Subscription History
@@ -126,18 +110,7 @@ export async function renderDashboard() {
               <p id="activeCardsCount" class="dashboard-metric-value">0</p>
             </div>
 
-            <div class="dashboard-metric-card meal-credits">
-              <div class="dashboard-metric-header">
-                <div class="dashboard-metric-icon">
-                  <i class="fa-solid fa-plane-departure"></i>
-                </div>
-                <span class="dashboard-metric-label">Subscription Breaks</span>
-              </div>
-              <div>
-                <p id="breakSummaryText" class="dashboard-metric-value" style="color: var(--color-primary-700); font-size: 22px;">Max 4 Days</p>
-                <span style="font-size: 11px; color: var(--color-neutral-600);">Available for 1-Month Subscriptions</span>
-              </div>
-            </div>
+
 
             <div class="dashboard-metric-card total-spent">
               <div class="dashboard-metric-header">
@@ -239,62 +212,6 @@ export async function renderDashboard() {
         ` : ''}
       </div>
 
-      <!-- Take a Subscription Break Modal -->
-      <div id="takeBreakModal" style="display: ${activeModal === 'TAKE_BREAK' && modalTargetSub ? 'flex' : 'none'}; position: fixed; inset: 0; background: rgba(0,0,0,0.55); align-items: center; justify-content: center; z-index: 1000; padding: 20px;">
-        ${activeModal === 'TAKE_BREAK' && modalTargetSub ? `
-          <div style="background: #fff; border-radius: 24px; max-width: 460px; width: 100%; padding: 28px; box-shadow: 0 20px 40px rgba(0,0,0,0.25);">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-              <h3 class="font-display" style="font-size: 20px; font-weight: 800; color: var(--color-neutral-900); margin: 0;">
-                <i class="fa-solid fa-plane-departure" style="color: var(--color-primary-600);"></i> Take a Subscription Break
-              </h3>
-              <button id="closeBreakModalBtn" style="background: none; border: none; font-size: 24px; cursor: pointer; color: var(--color-neutral-500);">&times;</button>
-            </div>
-
-            <p style="color: var(--color-neutral-600); font-size: 14px; line-height: 1.5; margin-bottom: 20px;">
-              Temporarily pause your subscription while away from <strong>${escapeHtml(modalTargetSub.messName)}</strong>. Approved break days extend your subscription end date by the exact break duration.
-            </p>
-
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px;">
-              <div>
-                <label style="font-size: 12px; font-weight: 700; color: var(--color-neutral-700); display: block; margin-bottom: 4px;">From Date *</label>
-                <input type="date" id="breakFromDateInput" value="${modalFromDate}" min="${todayStr}" max="${modalTargetSub.endDate || ''}" style="width: 100%; padding: 10px; border: 1px solid var(--color-neutral-300); border-radius: 10px; font-size: 13px;">
-              </div>
-              <div>
-                <label style="font-size: 12px; font-weight: 700; color: var(--color-neutral-700); display: block; margin-bottom: 4px;">To Date *</label>
-                <input type="date" id="breakToDateInput" value="${modalToDate}" min="${modalFromDate}" max="${modalTargetSub.endDate || ''}" style="width: 100%; padding: 10px; border: 1px solid var(--color-neutral-300); border-radius: 10px; font-size: 13px;">
-              </div>
-            </div>
-
-            <div style="background: var(--color-neutral-50); border: 1px solid var(--color-neutral-200); border-radius: 12px; padding: 12px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center;">
-              <div>
-                <span style="font-size: 12px; color: var(--color-neutral-500); font-weight: 600; display: block;">Calculated Duration</span>
-                <strong id="calcDurationText" style="font-size: 16px; color: var(--color-primary-700);">${calculateInclusiveDays(modalFromDate, modalToDate)} Day(s)</strong>
-              </div>
-              <span style="font-size: 11px; font-weight: 700; background: #ffedd5; color: #c2410c; padding: 4px 10px; border-radius: 20px;">
-                Max 4 Days Limit
-              </span>
-            </div>
-
-            <div style="margin-bottom: 24px;">
-              <label style="font-size: 12px; font-weight: 700; color: var(--color-neutral-700); display: block; margin-bottom: 4px;">Reason (Optional)</label>
-              <select id="breakReasonSelect" style="width: 100%; padding: 10px; border: 1px solid var(--color-neutral-300); border-radius: 10px; font-size: 13px; background: #fff;">
-                <option value="Going home" ${modalReason === 'Going home' ? 'selected' : ''}>Going home</option>
-                <option value="Travel" ${modalReason === 'Travel' ? 'selected' : ''}>Travel</option>
-                <option value="College holidays" ${modalReason === 'College holidays' ? 'selected' : ''}>College holidays</option>
-                <option value="Work travel" ${modalReason === 'Work travel' ? 'selected' : ''}>Work travel</option>
-                <option value="Personal" ${modalReason === 'Personal' ? 'selected' : ''}>Personal</option>
-                <option value="Other" ${modalReason === 'Other' ? 'selected' : ''}>Other</option>
-              </select>
-            </div>
-
-            <div style="display: flex; gap: 12px; justify-content: flex-end;">
-              <button id="cancelBreakModalBtn" class="btn-outline-action" style="padding: 10px 18px;">Cancel</button>
-              <button id="confirmBreakModalBtn" class="btn-primary-action" style="padding: 10px 20px;">
-                <i class="fa-solid fa-paper-plane"></i> Send Request
-              </button>
-            </div>
-          </div>
-        ` : ''}
       </div>
 
       ${renderFooter()}
@@ -305,8 +222,20 @@ export async function renderDashboard() {
 
     document.getElementById('dashNewSubBtn')?.addEventListener('click', () => navigate('/providers'));
 
+    document.getElementById('dashScanQrBtn')?.addEventListener('click', () => {
+      openMealScanner(async () => {
+        await fetchSubs();
+      });
+    });
+
     document.getElementById('tabActivePasses')?.addEventListener('click', () => {
       activeTab = 'PASSES';
+      renderPage();
+      updateContentDisplay();
+    });
+
+    document.getElementById('tabMealChecklist')?.addEventListener('click', () => {
+      activeTab = 'MEAL_HISTORY';
       renderPage();
       updateContentDisplay();
     });
@@ -318,8 +247,6 @@ export async function renderDashboard() {
     });
 
     const closeModal = () => {
-      activeModal = 'NONE';
-      modalTargetSub = null;
       selectedSubForDetails = null;
       renderPage();
       updateContentDisplay();
@@ -327,52 +254,19 @@ export async function renderDashboard() {
 
     document.getElementById('closeDetailsModalBtn')?.addEventListener('click', closeModal);
     document.getElementById('closeDetailsModalBtn2')?.addEventListener('click', closeModal);
-    document.getElementById('closeBreakModalBtn')?.addEventListener('click', closeModal);
-    document.getElementById('cancelBreakModalBtn')?.addEventListener('click', closeModal);
-
-    const fromInput = document.getElementById('breakFromDateInput') as HTMLInputElement;
-    const toInput = document.getElementById('breakToDateInput') as HTMLInputElement;
-    if (fromInput && toInput) {
-      fromInput.addEventListener('change', (e) => {
-        modalFromDate = (e.target as HTMLInputElement).value;
-        if (modalToDate < modalFromDate) modalToDate = modalFromDate;
-        const durEl = document.getElementById('calcDurationText');
-        if (durEl) durEl.innerText = `${calculateInclusiveDays(modalFromDate, modalToDate)} Day(s)`;
-      });
-      toInput.addEventListener('change', (e) => {
-        modalToDate = (e.target as HTMLInputElement).value;
-        const durEl = document.getElementById('calcDurationText');
-        if (durEl) durEl.innerText = `${calculateInclusiveDays(modalFromDate, modalToDate)} Day(s)`;
-      });
-    }
-
-    document.getElementById('confirmBreakModalBtn')?.addEventListener('click', async () => {
-      if (!modalTargetSub) return;
-      const fInput = (document.getElementById('breakFromDateInput') as HTMLInputElement)?.value || modalFromDate;
-      const tInput = (document.getElementById('breakToDateInput') as HTMLInputElement)?.value || modalToDate;
-      const rInput = (document.getElementById('breakReasonSelect') as HTMLSelectElement)?.value || modalReason;
-
-      const breakDays = calculateInclusiveDays(fInput, tInput);
-      if (breakDays < 1 || breakDays > 4) {
-        showToast('Break duration must be between 1 and 4 days.', 'error');
-        return;
-      }
-
-      try {
-        await createSubscriptionBreak(modalTargetSub.id, fInput, tInput, rInput);
-        showToast('Break request sent. Waiting for provider approval.', 'info');
-        activeModal = 'NONE';
-        modalTargetSub = null;
-        await fetchSubs();
-      } catch (err: any) {
-        showToast(err?.message || 'Unable to submit break request', 'error');
-      }
-    });
   };
 
   const updateContentDisplay = () => {
     const subsGrid = document.getElementById('subsGrid');
     if (!subsGrid) return;
+
+    // Cleanly unmount previously mounted React calendars to avoid leaks
+    calendarUnmountFns.forEach((unmount) => {
+      try {
+        unmount();
+      } catch (_) {}
+    });
+    calendarUnmountFns = [];
 
     const subs = loadedSubs;
     const activeSubs = subs.filter((s) => {
@@ -415,90 +309,6 @@ export async function renderDashboard() {
 
       subsGrid.innerHTML = activeSubs
         .map((s) => {
-          // Check if this subscription is a 1-MONTH subscription
-          const startDateObj = new Date(s.startDate);
-          const endDateObj = new Date(s.endDate || s.startDate);
-          const totalInitialDays = Math.round((endDateObj.getTime() - startDateObj.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-          const planTitleLower = (s.planType || '').toLowerCase();
-          const isHalfMonth = planTitleLower.includes('15 day') || planTitleLower.includes('half-month') || planTitleLower.includes('half month');
-          const isOneDay = planTitleLower.includes('1 day') || planTitleLower.includes('one day') || totalInitialDays <= 3;
-          const isOneWeek = planTitleLower.includes('1 week') || planTitleLower.includes('one week') || planTitleLower.includes('7 day');
-          const isOneMonthSub = (s.status || '').toUpperCase() === 'ACTIVE' &&
-            !isHalfMonth && !isOneDay && !isOneWeek &&
-            (totalInitialDays >= 25 || planTitleLower.includes('1 month') || planTitleLower.includes('one month') || (planTitleLower.includes('month') && !planTitleLower.includes('half')));
-
-          // Calculate break requests for this subscription strictly by subscription ID
-          const subBreaks = loadedBreakRequests.filter(
-            (r) =>
-              Boolean(s.id) &&
-              Boolean(r.subscriptionId) &&
-              String(r.subscriptionId) === String(s.id),
-          );
-          const usedBreakDays = subBreaks
-            .filter((r) => r.status === 'APPROVED')
-            .reduce((sum, r) => sum + Number(r.breakDays || 0), 0);
-          const availableBreakDays = Math.max(0, 4 - usedBreakDays);
-          const isProviderBreakEnabled =
-            s.subscriptionBreaksEnabled === true ||
-            s.mealPlan?.provider?.subscriptionBreaksEnabled === true ||
-            s.provider?.subscriptionBreaksEnabled === true;
-
-          let breakSectionHtml = '';
-          // Show Subscription Break section ONLY for eligible active 1-MONTH subscriptions with break enabled
-          if (isOneMonthSub && isProviderBreakEnabled) {
-            if (usedBreakDays >= 4) {
-              breakSectionHtml = `
-                <div class="meal-skip-card" style="background: #fef2f2; border-color: #fee2e2; margin-top: 14px;">
-                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-                    <span class="meal-skip-title"><i class="fa-solid fa-plane-departure" style="color: var(--color-primary-600);"></i> Subscription Break</span>
-                    <span class="meal-skip-counter">4 / 4 Days Used</span>
-                  </div>
-                  <div style="font-size: 12px; font-weight: 600; color: #dc2626;">
-                    <i class="fa-solid fa-circle-exclamation"></i> You've used all 4 break days for this subscription.
-                  </div>
-                </div>`;
-            } else {
-              breakSectionHtml = `
-                <div class="meal-skip-card" style="margin-top: 14px;">
-                  <div class="meal-skip-card-header">
-                    <div>
-                      <span class="meal-skip-title"><i class="fa-solid fa-plane-departure" style="color: var(--color-primary-600);"></i> Subscription Break</span>
-                      <span style="font-size: 11px; color: var(--color-neutral-500); display: block; margin-top: 2px;">Used: <strong>${usedBreakDays} / 4 days</strong> • Available: <strong>${availableBreakDays} days</strong></span>
-                    </div>
-                    <button class="take-break-btn btn-outline-action" data-sub-id="${escapeHtml(s.id)}" style="padding: 6px 14px; font-size: 12px; font-weight: 700; border-color: var(--color-primary-600); color: var(--color-primary-600);">
-                      <i class="fa-solid fa-calendar-plus"></i> Take a Break
-                    </button>
-                  </div>
-
-                  ${subBreaks.length > 0 ? `
-                    <div class="meal-skip-list">
-                      ${subBreaks.map((r) => {
-                        let badgeClass = 'pending';
-                        let statusText = 'Break request sent. Waiting for provider approval.';
-                        if (r.status === 'APPROVED') {
-                          badgeClass = 'approved';
-                          statusText = `✅ Break approved — Subscription extended by ${r.breakDays} days`;
-                        } else if (r.status === 'REJECTED') {
-                          badgeClass = 'rejected';
-                          statusText = 'Break request rejected — No subscription extension';
-                        }
-
-                        return `
-                          <div class="meal-skip-item">
-                            <div>
-                              <span style="font-weight: 700; font-size: 13px; color: var(--color-neutral-900); display: block;">${escapeHtml(r.fromDate)} → ${escapeHtml(r.toDate)} (${r.breakDays} days)</span>
-                              <span style="font-size: 11px; color: var(--color-neutral-500);">${escapeHtml(statusText)}</span>
-                            </div>
-                            <span class="meal-skip-badge ${badgeClass}">${escapeHtml(r.status)}</span>
-                          </div>
-                        `;
-                      }).join('')}
-                    </div>
-                  ` : '<p style="font-size: 12px; color: var(--color-neutral-500); margin: 6px 0 0 0;">No subscription breaks requested yet.</p>'}
-                </div>`;
-            }
-          }
-
           return `
           <div style="background: #fff; border: 1px solid var(--color-neutral-200); border-radius: 24px; overflow: hidden; box-shadow: 0 4px 16px rgba(0,0,0,0.04);">
             <div style="background: linear-gradient(135deg, var(--color-primary-600), var(--color-primary-700)); padding: 24px; color: #fff;">
@@ -547,9 +357,6 @@ export async function renderDashboard() {
                 <span style="font-weight: 700; color: var(--color-primary-600);">${s.daysLeft} Days</span>
               </div>
 
-              <!-- Subscription Break Section (Rendered only for 1-Month Subscriptions) -->
-              ${breakSectionHtml}
-
               <div style="display: flex; gap: 8px; margin-top: 16px;">
                 <button class="btn-outline-action view-kitchen-btn" data-prov-id="${escapeHtml(s.providerId)}" style="flex: 1; padding: 10px; font-size: 13px;">
                   <i class="fa-solid fa-store"></i> View Kitchen
@@ -581,19 +388,112 @@ export async function renderDashboard() {
           }
         });
       });
+    } else if (activeTab === 'MEAL_HISTORY') {
+      // MEAL CHECKLIST TAB
+      if (loadedMealHistory.length === 0) {
+        subsGrid.innerHTML = `
+          <div style="grid-column: 1/-1; background: #fff; border: 1px solid var(--color-neutral-200); border-radius: 24px; padding: 60px; text-align: center;">
+            <div style="width: 72px; height: 72px; border-radius: 999px; background: var(--color-primary-50); color: var(--color-primary-600); display: flex; align-items: center; justify-content: center; font-size: 32px; margin: 0 auto 16px;">
+              <i class="fa-solid fa-calendar-check"></i>
+            </div>
+            <h3 class="font-display" style="font-size: 22px; font-weight: 700; margin-bottom: 8px;">No Meal History Yet</h3>
+            <p style="color: var(--color-neutral-500); margin-bottom: 24px; max-width: 440px; margin-left: auto; margin-right: auto;">
+              Once you subscribe to a mess and scan their QR code at mealtime, your daily attendance checklist will appear here.
+            </p>
+            <div style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
+              <button id="historyScanQrBtn" class="btn-primary-action">
+                <i class="fa-solid fa-camera"></i> Scan Meal QR
+              </button>
+              <button id="mealHistBrowseBtn" class="btn-outline-action" style="background: #fff;">
+                <i class="fa-solid fa-utensils"></i> Browse Mess
+              </button>
+            </div>
+          </div>`;
+        document.getElementById('mealHistBrowseBtn')?.addEventListener('click', () => navigate('/providers'));
+        document.getElementById('historyScanQrBtn')?.addEventListener('click', () => {
+          openMealScanner(async () => {
+            await fetchSubs();
+          });
+        });
+        return;
+      }
 
-      subsGrid.querySelectorAll('.take-break-btn').forEach((btn) => {
-        btn.addEventListener('click', (e) => {
-          const subId = (e.currentTarget as HTMLElement).getAttribute('data-sub-id');
-          const sub = loadedSubs.find((s) => s.id === subId);
-          if (sub) {
-            modalTargetSub = sub;
-            modalFromDate = todayStr;
-            modalToDate = todayStr;
-            activeModal = 'TAKE_BREAK';
-            renderPage();
-            updateContentDisplay();
+      subsGrid.innerHTML = loadedMealHistory
+        .map((subHist) => {
+          const days = subHist.days || [];
+          const usedDaysCount = subHist.totalUsedCount ?? days.filter((d: any) => d.status === 'USED').length;
+
+          return `
+            <div class="meal-history-subscription-card" style="grid-column: 1/-1; background: #fff; border: 1px solid var(--color-neutral-200); border-radius: 24px; padding: 24px; box-shadow: 0 4px 16px rgba(0,0,0,0.03); margin-bottom: 24px; box-sizing: border-box;">
+              <!-- Subscription Header -->
+              <div class="meal-history-sub-header" style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; flex-wrap: wrap; gap: 16px; border-bottom: 1px solid var(--color-neutral-100); padding-bottom: 16px;">
+                <div>
+                  <div style="display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--color-primary-700); background: var(--color-primary-50); padding: 4px 10px; border-radius: 999px; margin-bottom: 6px;">
+                    <i class="fa-solid fa-utensils"></i> ${escapeHtml(subHist.planTitle)}
+                  </div>
+                  <h2 class="font-display" style="font-size: 20px; font-weight: 800; color: var(--color-neutral-900); margin: 0 0 4px 0;">
+                    ${escapeHtml(subHist.providerName)}
+                  </h2>
+                  ${subHist.providerArea ? `
+                    <p style="font-size: 13px; color: var(--color-neutral-500); margin: 0;">
+                      <i class="fa-solid fa-location-dot" style="color: var(--color-primary-600);"></i> ${escapeHtml(subHist.providerArea)}
+                    </p>
+                  ` : ''}
+                </div>
+
+                <div class="meal-history-sub-actions" style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                  <div style="background: var(--color-neutral-50); border: 1px solid var(--color-neutral-200); border-radius: 14px; padding: 8px 16px; text-align: right;">
+                    <span style="font-size: 11px; color: var(--color-neutral-500); font-weight: 600; display: block;">Meals Checked In</span>
+                    <strong style="font-size: 16px; color: var(--color-primary-700);">${usedDaysCount} Day(s)</strong>
+                  </div>
+                  <button class="open-scanner-sub-btn btn-primary-action" style="padding: 10px 16px; font-size: 13px; font-weight: 700; border-radius: 12px;">
+                    <i class="fa-solid fa-camera"></i> Scan Today's Meal
+                  </button>
+                </div>
+              </div>
+
+              <!-- Compact DayPicker Meal Calendar -->
+              <div id="meal-calendar-mount-${escapeHtml(subHist.subscriptionId)}" class="meal-calendar-mount-point" style="width: 100%; display: flex; justify-content: center; margin-top: 20px;"></div>
+            </div>
+          `;
+        })
+        .join('');
+
+      // Mount DayPicker MealCalendar for each subscription
+      loadedMealHistory.forEach((subHist) => {
+        const mountContainer = document.getElementById(`meal-calendar-mount-${subHist.subscriptionId}`);
+        if (!mountContainer) return;
+
+        const usageByDate: Record<string, 'checked-in' | 'missed'> = {};
+        const detailsByDate: Record<string, { time?: string | null; source?: string | null }> = {};
+
+        (subHist.days || []).forEach((d: any) => {
+          if (d.status === 'USED' || d.checkedIn) {
+            usageByDate[d.date] = 'checked-in';
+          } else if (d.status === 'NOT_CHECKED_IN' || d.status === 'MISSED' || d.status === 'missed') {
+            usageByDate[d.date] = 'missed';
           }
+          if (d.time || d.source) {
+            detailsByDate[d.date] = { time: d.time, source: d.source };
+          }
+        });
+
+        const unmount = mountMealCalendar(mountContainer, {
+          usageByDate,
+          startDate: subHist.startDate,
+          endDate: subHist.endDate,
+          detailsByDate,
+          title: 'Meal History',
+          subtitle: 'Track your daily meal usage',
+        });
+        calendarUnmountFns.push(unmount);
+      });
+
+      subsGrid.querySelectorAll('.open-scanner-sub-btn').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          openMealScanner(async () => {
+            await fetchSubs();
+          });
         });
       });
     } else {
@@ -719,12 +619,10 @@ export async function renderDashboard() {
     }
 
     try {
-      const breakData: any = await getMySubscriptionBreaks();
-      if (breakData && typeof breakData === 'object') {
-        loadedBreakRequests = Array.isArray(breakData.requests) ? breakData.requests : [];
-      }
+      const mealHistData: any = await getMyMealHistory();
+      loadedMealHistory = Array.isArray(mealHistData) ? mealHistData : [];
     } catch (_) {
-      loadedBreakRequests = [];
+      loadedMealHistory = [];
     }
 
     loadedSubs = rawSubs.map((s) => {
@@ -735,7 +633,6 @@ export async function renderDashboard() {
       const area = provider.address || provider.city || 'Location not recorded';
       const phone = provider.contactPhone || '';
       const planType = plan.title || 'Meal Subscription Plan';
-      const subscriptionBreaksEnabled = provider.subscriptionBreaksEnabled ?? false;
 
       const rawPaid = s.amountPaid !== undefined && s.amountPaid !== null
         ? s.amountPaid
@@ -791,7 +688,6 @@ export async function renderDashboard() {
         safeRef,
         planId: plan.id || '',
         providerId: provider.id || '',
-        subscriptionBreaksEnabled,
       };
     });
 

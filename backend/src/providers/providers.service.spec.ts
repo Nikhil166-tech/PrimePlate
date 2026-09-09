@@ -7,7 +7,11 @@ import { Subscription } from '../subscriptions/subscription.entity';
 import { UsersService } from '../users/users.service';
 import { UploadsService } from '../uploads/uploads.service';
 import { Role } from '../common/roles.enum';
-import { ForbiddenException, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 
 describe('ProvidersService — Description, Amenities & Hostel Images Specification', () => {
   let service: ProvidersService;
@@ -41,7 +45,10 @@ describe('ProvidersService — Description, Amenities & Hostel Images Specificat
     savedImages.length = 0;
 
     providerRepo = {
-      create: jest.fn((dto) => ({ id: 'prov-' + Math.random().toString(36).substr(2, 5), ...dto })),
+      create: jest.fn((dto) => ({
+        id: 'prov-' + Math.random().toString(36).substr(2, 5),
+        ...dto,
+      })),
       save: jest.fn(async (entity) => {
         const idx = savedProviders.findIndex((p) => p.id === entity.id);
         if (idx >= 0) {
@@ -86,7 +93,10 @@ describe('ProvidersService — Description, Amenities & Hostel Images Specificat
     };
 
     providerImageRepo = {
-      create: jest.fn((dto) => ({ id: 'img-' + Math.random().toString(36).substr(2, 5), ...dto })),
+      create: jest.fn((dto) => ({
+        id: 'img-' + Math.random().toString(36).substr(2, 5),
+        ...dto,
+      })),
       save: jest.fn(async (entity) => {
         const idx = savedImages.findIndex((i) => i.id === entity.id);
         if (idx >= 0) {
@@ -97,7 +107,8 @@ describe('ProvidersService — Description, Amenities & Hostel Images Specificat
         return entity;
       }),
       count: jest.fn(async ({ where }) => {
-        return savedImages.filter((i) => i.providerId === where.providerId).length;
+        return savedImages.filter((i) => i.providerId === where.providerId)
+          .length;
       }),
       find: jest.fn(async ({ where }) => {
         return savedImages.filter((i) => i.providerId === where.providerId);
@@ -174,12 +185,23 @@ describe('ProvidersService — Description, Amenities & Hostel Images Specificat
       address: 'Koramangala 5th Block',
       monthlyPrice: 2999,
       totalCapacity: 50,
-      description: 'Comfortable PG with homemade meals and a clean dining area.',
-      amenities: ['WIFI', 'TV', 'HOT WATER', 'PARKING', 'GYM', 'COOL WATER', '24/7 Security'],
+      description:
+        'Comfortable PG with homemade meals and a clean dining area.',
+      amenities: [
+        'WIFI',
+        'TV',
+        'HOT WATER',
+        'PARKING',
+        'GYM',
+        'COOL WATER',
+        '24/7 Security',
+      ],
     });
 
     expect(created.name).toBe('Nikhil PG');
-    expect(created.description).toBe('Comfortable PG with homemade meals and a clean dining area.');
+    expect(created.description).toBe(
+      'Comfortable PG with homemade meals and a clean dining area.',
+    );
     expect(created.amenities).toEqual([
       'WIFI',
       'TV',
@@ -196,11 +218,26 @@ describe('ProvidersService — Description, Amenities & Hostel Images Specificat
       name: 'Duplicate Test PG',
       city: 'Bangalore',
       description: '   Testing trimming and duplicate amenities   ',
-      amenities: ['WIFI', 'wifi', '  HOT WATER  ', 'hot water', 'GYM', '24/7 Security', '24/7 security'],
+      amenities: [
+        'WIFI',
+        'wifi',
+        '  HOT WATER  ',
+        'hot water',
+        'GYM',
+        '24/7 Security',
+        '24/7 security',
+      ],
     });
 
-    expect(created.description).toBe('Testing trimming and duplicate amenities');
-    expect(created.amenities).toEqual(['WIFI', 'HOT WATER', 'GYM', '24/7 Security']);
+    expect(created.description).toBe(
+      'Testing trimming and duplicate amenities',
+    );
+    expect(created.amenities).toEqual([
+      'WIFI',
+      'HOT WATER',
+      'GYM',
+      '24/7 Security',
+    ]);
   });
 
   it('3. Whitespace-only description is normalized to undefined', async () => {
@@ -227,8 +264,16 @@ describe('ProvidersService — Description, Amenities & Hostel Images Specificat
       amenities: ['WIFI', 'TV', 'HOT WATER', 'RO Water', 'CCTV'],
     });
 
-    expect(updated.description).toBe('Updated fresh description with daily buffet.');
-    expect(updated.amenities).toEqual(['WIFI', 'TV', 'HOT WATER', 'RO Water', 'CCTV']);
+    expect(updated.description).toBe(
+      'Updated fresh description with daily buffet.',
+    );
+    expect(updated.amenities).toEqual([
+      'WIFI',
+      'TV',
+      'HOT WATER',
+      'RO Water',
+      'CCTV',
+    ]);
   });
 
   it('5. Provider A cannot modify Provider B description or amenities (Ownership security)', async () => {
@@ -266,7 +311,10 @@ describe('ProvidersService — Description, Amenities & Hostel Images Specificat
       city: 'Bangalore',
     });
 
-    const jpegBuffer = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46, 0x49, 0x46, 0x00, 0x01, 0x01, 0x00]);
+    const jpegBuffer = Buffer.from([
+      0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46, 0x49, 0x46, 0x00, 0x01,
+      0x01, 0x00,
+    ]);
     const file = {
       buffer: jpegBuffer,
       mimetype: 'image/jpeg',
@@ -274,10 +322,16 @@ describe('ProvidersService — Description, Amenities & Hostel Images Specificat
       originalname: 'room.jpg',
     };
 
-    const uploaded = await service.uploadImage(mockUserProviderA.id, file, providerA.id);
+    const uploaded = await service.uploadImage(
+      mockUserProviderA.id,
+      file,
+      providerA.id,
+    );
     expect(uploaded).toBeDefined();
     expect(uploaded.providerId).toBe(providerA.id);
-    expect(uploaded.imageUrl).toBe('https://res.cloudinary.com/demo/image/upload/sample.jpg');
+    expect(uploaded.imageUrl).toBe(
+      'https://res.cloudinary.com/demo/image/upload/sample.jpg',
+    );
     expect(uploaded.sortOrder).toBe(0);
 
     const images = await service.getProviderImages(providerA.id);
@@ -290,7 +344,10 @@ describe('ProvidersService — Description, Amenities & Hostel Images Specificat
       city: 'Bangalore',
     });
 
-    const pngBuffer = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d, 0x49, 0x48]);
+    const pngBuffer = Buffer.from([
+      0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d,
+      0x49, 0x48,
+    ]);
     const file = {
       buffer: pngBuffer,
       mimetype: 'image/png',
@@ -318,7 +375,10 @@ describe('ProvidersService — Description, Amenities & Hostel Images Specificat
       city: 'Chennai',
     });
 
-    const jpegBuffer = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46, 0x49, 0x46, 0x00, 0x01, 0x01, 0x00]);
+    const jpegBuffer = Buffer.from([
+      0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46, 0x49, 0x46, 0x00, 0x01,
+      0x01, 0x00,
+    ]);
     const file = {
       buffer: jpegBuffer,
       mimetype: 'image/jpeg',
@@ -336,14 +396,21 @@ describe('ProvidersService — Description, Amenities & Hostel Images Specificat
       city: 'Chennai',
     });
 
-    const webpBuffer = Buffer.from([0x52, 0x49, 0x46, 0x46, 0x24, 0x00, 0x00, 0x00, 0x57, 0x45, 0x42, 0x50, 0x56, 0x50]);
+    const webpBuffer = Buffer.from([
+      0x52, 0x49, 0x46, 0x46, 0x24, 0x00, 0x00, 0x00, 0x57, 0x45, 0x42, 0x50,
+      0x56, 0x50,
+    ]);
     const file = {
       buffer: webpBuffer,
       mimetype: 'image/webp',
       size: webpBuffer.length,
     };
 
-    const uploaded = await service.uploadImage(mockUserProviderB.id, file, providerB.id);
+    const uploaded = await service.uploadImage(
+      mockUserProviderB.id,
+      file,
+      providerB.id,
+    );
 
     await expect(
       service.deleteImage(mockUserProviderA.id, uploaded.id),
@@ -356,17 +423,27 @@ describe('ProvidersService — Description, Amenities & Hostel Images Specificat
       city: 'Bangalore',
     });
 
-    const jpegBuffer = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46, 0x49, 0x46, 0x00, 0x01, 0x01, 0x00]);
+    const jpegBuffer = Buffer.from([
+      0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46, 0x49, 0x46, 0x00, 0x01,
+      0x01, 0x00,
+    ]);
     const file = {
       buffer: jpegBuffer,
       mimetype: 'image/jpeg',
       size: jpegBuffer.length,
     };
 
-    const uploaded = await service.uploadImage(mockUserProviderA.id, file, providerA.id);
+    const uploaded = await service.uploadImage(
+      mockUserProviderA.id,
+      file,
+      providerA.id,
+    );
     expect((await service.getProviderImages(providerA.id)).length).toBe(1);
 
-    const deleteResult = await service.deleteImage(mockUserProviderA.id, uploaded.id);
+    const deleteResult = await service.deleteImage(
+      mockUserProviderA.id,
+      uploaded.id,
+    );
     expect(deleteResult.success).toBe(true);
     expect((await service.getProviderImages(providerA.id)).length).toBe(0);
   });
@@ -377,7 +454,9 @@ describe('ProvidersService — Description, Amenities & Hostel Images Specificat
       city: 'Bangalore',
     });
 
-    const invalidBuffer = Buffer.from('<?php echo "evil"; ?>fake-image-contents');
+    const invalidBuffer = Buffer.from(
+      '<?php echo "evil"; ?>fake-image-contents',
+    );
     const file = {
       buffer: invalidBuffer,
       mimetype: 'image/jpeg',
@@ -496,4 +575,3 @@ describe('ProvidersService — Description, Amenities & Hostel Images Specificat
     expect(replaced.imageType).toBe('image/png');
   });
 });
-

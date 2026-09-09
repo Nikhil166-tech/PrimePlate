@@ -2,7 +2,6 @@ import {
   Injectable,
   BadRequestException,
   NotFoundException,
-  UnauthorizedException,
   ForbiddenException,
   Logger,
   Inject,
@@ -294,7 +293,9 @@ export class PaymentsService {
 
   verifyWebhookSignature(rawBody: string | Buffer, signature: string): boolean {
     if (!signature) {
-      this.logger.warn('Webhook signature check failed: signature header is missing');
+      this.logger.warn(
+        'Webhook signature check failed: signature header is missing',
+      );
       return false;
     }
     const cleanSignature = signature.trim();
@@ -305,7 +306,9 @@ export class PaymentsService {
         cleanSignature.startsWith('sig_sandbox_') ||
         cleanSignature.startsWith('sig_e2e_'))
     ) {
-      this.logger.log('Webhook signature bypass matched non-production test signature pattern');
+      this.logger.log(
+        'Webhook signature bypass matched non-production test signature pattern',
+      );
       return true;
     }
     const rawSecret = this.config.get<string>('RAZORPAY_WEBHOOK_SECRET');
@@ -319,7 +322,10 @@ export class PaymentsService {
 
     const bodyBuffer = Buffer.isBuffer(rawBody)
       ? rawBody
-      : Buffer.from(typeof rawBody === 'string' ? rawBody : JSON.stringify(rawBody), 'utf8');
+      : Buffer.from(
+          typeof rawBody === 'string' ? rawBody : JSON.stringify(rawBody),
+          'utf8',
+        );
 
     const expected = crypto
       .createHmac('sha256', webhookSecret)
@@ -492,13 +498,16 @@ export class PaymentsService {
       });
 
       // Capacity renewal exception check: if student already has an active subscription with this provider, renewal does not consume an additional seat
-      const studentExistingActiveForProvider = await manager.findOne(Subscription, {
-        where: {
-          student: { id: student.id },
-          mealPlan: { provider: { id: provider.id } },
-          status: SubscriptionStatus.ACTIVE,
+      const studentExistingActiveForProvider = await manager.findOne(
+        Subscription,
+        {
+          where: {
+            student: { id: student.id },
+            mealPlan: { provider: { id: provider.id } },
+            status: SubscriptionStatus.ACTIVE,
+          },
         },
-      });
+      );
 
       const effectiveActiveSeats = studentExistingActiveForProvider
         ? Math.max(0, activeCount - 1)
@@ -620,10 +629,7 @@ export class PaymentsService {
         existingActiveSub.mealPlan = mealPlan;
         existingActiveSub.status = SubscriptionStatus.ACTIVE;
 
-        savedSubscription = await manager.save(
-          Subscription,
-          existingActiveSub,
-        );
+        savedSubscription = await manager.save(Subscription, existingActiveSub);
       } else {
         // If there was an old subscription whose endDate has already passed, mark it as EXPIRED
         if (existingActiveSub) {
@@ -757,7 +763,7 @@ export class PaymentsService {
         orderEntity?.amount_paid;
 
       // Look up pre-persisted order record to retrieve authoritative metadata
-      let preOrder =
+      const preOrder =
         orderId && orderId !== 'unknown'
           ? await this.paymentRepo.findOne({
               where: { razorpayOrderId: orderId },
@@ -875,7 +881,9 @@ export class PaymentsService {
   async getPaymentStatus(orderId: string, userId: string) {
     if (!orderId) throw new BadRequestException('Order ID is required');
 
-    this.logger.log(`PAYMENT_STATUS_CHECK: orderId=${orderId}, userId=${userId}`);
+    this.logger.log(
+      `PAYMENT_STATUS_CHECK: orderId=${orderId}, userId=${userId}`,
+    );
 
     let payment = await this.paymentRepo.findOne({
       where: { razorpayOrderId: orderId },
@@ -910,7 +918,9 @@ export class PaymentsService {
           s.mealPlan?.id === payment.mealPlanId ||
           s.razorpayOrderId === orderId,
       );
-      this.logger.log(`PAYMENT_STATUS_CHECK: orderId=${orderId}, status=SUCCESS`);
+      this.logger.log(
+        `PAYMENT_STATUS_CHECK: orderId=${orderId}, status=SUCCESS`,
+      );
       return {
         status: 'SUCCESS',
         paymentStatus: 'PAID',
@@ -939,7 +949,8 @@ export class PaymentsService {
 
           const rzpNotes = rzpOrder.notes || {};
           const mealPlanId = payment?.mealPlanId || rzpNotes.mealPlanId;
-          const durationDays = payment?.durationDays || rzpNotes.durationDays || 30;
+          const durationDays =
+            payment?.durationDays || rzpNotes.durationDays || 30;
 
           if (mealPlanId) {
             const result = await this.reconcileCapturedPayment({
@@ -954,7 +965,9 @@ export class PaymentsService {
                 : undefined,
             });
 
-            this.logger.log(`PAYMENT_STATUS_CHECK: orderId=${orderId}, status=SUCCESS`);
+            this.logger.log(
+              `PAYMENT_STATUS_CHECK: orderId=${orderId}, status=SUCCESS`,
+            );
             return {
               status: 'SUCCESS',
               paymentStatus: 'PAID',
@@ -980,7 +993,9 @@ export class PaymentsService {
               payment.status = 'failed';
               await this.paymentRepo.save(payment);
             }
-            this.logger.log(`PAYMENT_STATUS_CHECK: orderId=${orderId}, status=FAILED`);
+            this.logger.log(
+              `PAYMENT_STATUS_CHECK: orderId=${orderId}, status=FAILED`,
+            );
             return {
               status: 'FAILED',
               paymentStatus: 'FAILED',
@@ -990,12 +1005,16 @@ export class PaymentsService {
           }
         }
       } catch (err: any) {
-        this.logger.warn(`Razorpay order status fetch error for ${orderId}: ${err.message}`);
+        this.logger.warn(
+          `Razorpay order status fetch error for ${orderId}: ${err.message}`,
+        );
       }
     }
 
     if (!payment) {
-      this.logger.log(`PAYMENT_STATUS_CHECK: orderId=${orderId}, status=FAILED (not found)`);
+      this.logger.log(
+        `PAYMENT_STATUS_CHECK: orderId=${orderId}, status=FAILED (not found)`,
+      );
       return {
         status: 'FAILED',
         paymentStatus: 'FAILED',
@@ -1005,7 +1024,9 @@ export class PaymentsService {
     }
 
     if (payment.status === 'failed') {
-      this.logger.log(`PAYMENT_STATUS_CHECK: orderId=${orderId}, status=FAILED`);
+      this.logger.log(
+        `PAYMENT_STATUS_CHECK: orderId=${orderId}, status=FAILED`,
+      );
       return {
         status: 'FAILED',
         paymentStatus: 'FAILED',
@@ -1014,7 +1035,9 @@ export class PaymentsService {
       };
     }
 
-    this.logger.log(`PAYMENT_STATUS_CHECK: orderId=${orderId}, status=PROCESSING`);
+    this.logger.log(
+      `PAYMENT_STATUS_CHECK: orderId=${orderId}, status=PROCESSING`,
+    );
     return {
       status: 'PROCESSING',
       paymentStatus: (payment.status || 'PENDING').toUpperCase(),
@@ -1067,7 +1090,9 @@ export class PaymentsService {
 
     if (!pendingPayments || pendingPayments.length === 0) {
       const durationMs = Date.now() - startTime;
-      this.logger.log(`PAYMENT_RECOVERY_COMPLETED: userId=${userId}, checked=0, recovered=0, durationMs=${durationMs}`);
+      this.logger.log(
+        `PAYMENT_RECOVERY_COMPLETED: userId=${userId}, checked=0, recovered=0, durationMs=${durationMs}`,
+      );
       return {
         status: 'NO_PENDING_PAYMENTS',
         totalChecked: 0,
@@ -1086,21 +1111,34 @@ export class PaymentsService {
 
         try {
           // Bounded 5-second fetch timeout per Razorpay call
-          const fetchPromise = this.razorpay.orders.fetch(payment.razorpayOrderId);
+          const fetchPromise = this.razorpay.orders.fetch(
+            payment.razorpayOrderId,
+          );
           const timeoutPromise = new Promise((_, reject) =>
             setTimeout(() => reject(new Error('Razorpay API timeout')), 5000),
           );
 
-          const rzpOrder: any = await Promise.race([fetchPromise, timeoutPromise]);
+          const rzpOrder: any = await Promise.race([
+            fetchPromise,
+            timeoutPromise,
+          ]);
 
-          if (rzpOrder && (rzpOrder.status === 'paid' || rzpOrder.amount_paid > 0)) {
-            const paymentsObj: any = await this.razorpay.orders.fetchPayments(payment.razorpayOrderId);
-            const captured = paymentsObj?.items?.find((p: any) => p.status === 'captured');
+          if (
+            rzpOrder &&
+            (rzpOrder.status === 'paid' || rzpOrder.amount_paid > 0)
+          ) {
+            const paymentsObj: any = await this.razorpay.orders.fetchPayments(
+              payment.razorpayOrderId,
+            );
+            const captured = paymentsObj?.items?.find(
+              (p: any) => p.status === 'captured',
+            );
             const paymentId = captured?.id || `pay_rzp_${Date.now()}`;
             const amountInPaise = captured?.amount || rzpOrder.amount_paid;
             const rzpNotes = rzpOrder.notes || {};
             const mealPlanId = payment.mealPlanId || rzpNotes.mealPlanId;
-            const durationDays = payment.durationDays || rzpNotes.durationDays || 30;
+            const durationDays =
+              payment.durationDays || rzpNotes.durationDays || 30;
 
             if (mealPlanId) {
               await this.reconcileCapturedPayment({
@@ -1110,27 +1148,40 @@ export class PaymentsService {
                 mealPlanId,
                 durationInput: durationDays,
                 skipSignatureCheck: true,
-                paymentAmountInPaise: amountInPaise ? Number(amountInPaise) : undefined,
+                paymentAmountInPaise: amountInPaise
+                  ? Number(amountInPaise)
+                  : undefined,
               });
               recoveredCount++;
               recoveredOrders.push(payment.razorpayOrderId);
             }
-          } else if (rzpOrder && (rzpOrder.status === 'attempted' || rzpOrder.status === 'expired')) {
-            const paymentsObj: any = await this.razorpay.orders.fetchPayments(payment.razorpayOrderId);
-            const allFailed = paymentsObj?.items?.length > 0 && paymentsObj.items.every((p: any) => p.status === 'failed');
+          } else if (
+            rzpOrder &&
+            (rzpOrder.status === 'attempted' || rzpOrder.status === 'expired')
+          ) {
+            const paymentsObj: any = await this.razorpay.orders.fetchPayments(
+              payment.razorpayOrderId,
+            );
+            const allFailed =
+              paymentsObj?.items?.length > 0 &&
+              paymentsObj.items.every((p: any) => p.status === 'failed');
             if (allFailed || rzpOrder.status === 'expired') {
               payment.status = 'failed';
               await this.paymentRepo.save(payment);
             }
           }
         } catch (err: any) {
-          this.logger.error(`Error recovering order ${payment.razorpayOrderId}: ${err.message}`);
+          this.logger.error(
+            `Error recovering order ${payment.razorpayOrderId}: ${err.message}`,
+          );
         }
       }
     }
 
     const durationMs = Date.now() - startTime;
-    this.logger.log(`PAYMENT_RECOVERY_COMPLETED: userId=${userId}, checked=${pendingPayments.length}, recovered=${recoveredCount}, durationMs=${durationMs}`);
+    this.logger.log(
+      `PAYMENT_RECOVERY_COMPLETED: userId=${userId}, checked=${pendingPayments.length}, recovered=${recoveredCount}, durationMs=${durationMs}`,
+    );
 
     return {
       status: 'SUCCESS',
@@ -1148,8 +1199,14 @@ export class PaymentsService {
       order: { createdAt: 'DESC' },
     });
 
-    const mealPlanIds = [...new Set(payments.map((p) => p.mealPlanId).filter((id): id is string => Boolean(id)))];
-    let mealPlansMap: Record<string, any> = {};
+    const mealPlanIds = [
+      ...new Set(
+        payments
+          .map((p) => p.mealPlanId)
+          .filter((id): id is string => Boolean(id)),
+      ),
+    ];
+    const mealPlansMap: Record<string, any> = {};
     if (mealPlanIds.length > 0) {
       const plans = await this.planRepo.find({
         where: { id: In(mealPlanIds) },
@@ -1160,7 +1217,7 @@ export class PaymentsService {
       });
     }
 
-    let ticketsMap: Record<string, any> = {};
+    const ticketsMap: Record<string, any> = {};
     if (this.ticketRepo) {
       const tickets = await this.ticketRepo.find({
         where: { student: { id: userId } },
@@ -1221,13 +1278,13 @@ export class PaymentsService {
               address: p.provider.address || '',
             }
           : plan?.provider
-          ? {
-              id: plan.provider.id,
-              name: plan.provider.name,
-              city: plan.provider.city || '',
-              address: plan.provider.address || '',
-            }
-          : null,
+            ? {
+                id: plan.provider.id,
+                name: plan.provider.name,
+                city: plan.provider.city || '',
+                address: plan.provider.address || '',
+              }
+            : null,
         mealPlan: plan
           ? {
               id: plan.id,
@@ -1361,10 +1418,13 @@ export class PaymentsService {
     let sub: any = null;
     if (statusLower === 'paid') {
       try {
-        const earning = await this.paymentRepo.manager.findOne(ProviderEarning, {
-          where: { paymentId: payment.id },
-          relations: { subscription: { mealPlan: { provider: true } } },
-        });
+        const earning = await this.paymentRepo.manager.findOne(
+          ProviderEarning,
+          {
+            where: { paymentId: payment.id },
+            relations: { subscription: { mealPlan: { provider: true } } },
+          },
+        );
         if (earning?.subscription) {
           sub = earning.subscription;
         }
@@ -1372,7 +1432,8 @@ export class PaymentsService {
 
       if (!sub && this.subscriptionsService) {
         try {
-          const subscriptions = await this.subscriptionsService.findByStudent(userId);
+          const subscriptions =
+            await this.subscriptionsService.findByStudent(userId);
           sub = subscriptions.find(
             (s: any) =>
               s.mealPlan?.id === payment.mealPlanId ||
@@ -1442,7 +1503,8 @@ export class PaymentsService {
       timeline.push({
         event: 'MESSCARD_ACTIVATED',
         title: 'Mess Card Activated',
-        description: 'Digital QR Mess Card active & ready for daily meal scanning',
+        description:
+          'Digital QR Mess Card active & ready for daily meal scanning',
         timestamp: payment.createdAt || sub.createdAt || new Date(),
         status: 'COMPLETED',
       });

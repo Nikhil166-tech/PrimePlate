@@ -12,7 +12,11 @@ import { Payment } from './payment.entity';
 import { PaymentWebhookEvent } from './webhook-event.entity';
 import { MealPlan } from '../meal-plans/meal-plan.entity';
 import { User } from '../users/user.entity';
-import { SupportTicket, SupportTicketStatus, SupportTicketIssueType } from '../support/support-ticket.entity';
+import {
+  SupportTicket,
+  SupportTicketStatus,
+  SupportTicketIssueType,
+} from '../support/support-ticket.entity';
 import { SupportService } from '../support/support.service';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 
@@ -146,7 +150,11 @@ describe('PrimePlate PrimeMate Transactions & Payment Support Center Specificati
       findOne: jest.fn().mockImplementation((opts) => {
         const orderId = opts?.where?.razorpayOrderId;
         const id = opts?.where?.id;
-        return mockPaymentsStore.find((p) => p.razorpayOrderId === orderId || p.id === id) || null;
+        return (
+          mockPaymentsStore.find(
+            (p) => p.razorpayOrderId === orderId || p.id === id,
+          ) || null
+        );
       }),
       save: jest.fn().mockImplementation((p) => {
         const idx = mockPaymentsStore.findIndex((x) => x.id === p.id);
@@ -211,7 +219,10 @@ describe('PrimePlate PrimeMate Transactions & Payment Support Center Specificati
       providers: [
         PaymentsService,
         SupportService,
-        { provide: ConfigService, useValue: { get: jest.fn().mockReturnValue('mock_secret') } },
+        {
+          provide: ConfigService,
+          useValue: { get: jest.fn().mockReturnValue('mock_secret') },
+        },
         { provide: getRepositoryToken(Payment), useValue: paymentRepo },
         { provide: getRepositoryToken(PaymentWebhookEvent), useValue: {} },
         { provide: getRepositoryToken(MealPlan), useValue: planRepo },
@@ -229,7 +240,9 @@ describe('PrimePlate PrimeMate Transactions & Payment Support Center Specificati
     it('should return only payments belonging to the authenticated student', async () => {
       const history = await paymentsService.getHistory(mockStudent1.id);
       expect(history.length).toBe(4);
-      expect(history.every((p) => p.razorpayOrderId !== 'order_paid_student2')).toBe(true);
+      expect(
+        history.every((p) => p.razorpayOrderId !== 'order_paid_student2'),
+      ).toBe(true);
     });
 
     it('should return empty list for student with zero payments without throwing errors', async () => {
@@ -240,18 +253,26 @@ describe('PrimePlate PrimeMate Transactions & Payment Support Center Specificati
 
   describe('3. Payment Details Ownership & IDOR Protection', () => {
     it('should allow student to view their own payment order details', async () => {
-      const details = await paymentsService.getPaymentDetails('order_paid_student1', mockStudent1.id);
+      const details = await paymentsService.getPaymentDetails(
+        'order_paid_student1',
+        mockStudent1.id,
+      );
       expect(details.payment.amount).toBe(4500);
       expect(details.payment.status).toBe('SUCCESS');
       expect(details.subscription?.status).toBe('ACTIVE');
-      const messCardEvent = details.timeline.find((t: any) => t.event === 'MESSCARD_ACTIVATED');
+      const messCardEvent = details.timeline.find(
+        (t: any) => t.event === 'MESSCARD_ACTIVATED',
+      );
       expect(messCardEvent).toBeDefined();
       expect(messCardEvent.timestamp).toEqual(mockPaymentsStore[0].createdAt);
     });
 
     it('should throw ForbiddenException when Student 1 attempts to view Student 2 order details (IDOR Prevention)', async () => {
       await expect(
-        paymentsService.getPaymentDetails('order_paid_student2', mockStudent1.id),
+        paymentsService.getPaymentDetails(
+          'order_paid_student2',
+          mockStudent1.id,
+        ),
       ).rejects.toThrow(ForbiddenException);
     });
   });
@@ -259,25 +280,33 @@ describe('PrimePlate PrimeMate Transactions & Payment Support Center Specificati
   describe('4, 5, 6 & 7. Status Mapping & Refund Handling', () => {
     it('should map paid payment status to SUCCESS', async () => {
       const history = await paymentsService.getHistory(mockStudent1.id);
-      const paid = history.find((p) => p.razorpayOrderId === 'order_paid_student1');
+      const paid = history.find(
+        (p) => p.razorpayOrderId === 'order_paid_student1',
+      );
       expect(paid.status).toBe('SUCCESS');
     });
 
     it('should map created/processing payment status to PENDING', async () => {
       const history = await paymentsService.getHistory(mockStudent1.id);
-      const pending = history.find((p) => p.razorpayOrderId === 'order_pending_student1');
+      const pending = history.find(
+        (p) => p.razorpayOrderId === 'order_pending_student1',
+      );
       expect(pending.status).toBe('PENDING');
     });
 
     it('should map failed payment status to FAILED', async () => {
       const history = await paymentsService.getHistory(mockStudent1.id);
-      const failed = history.find((p) => p.razorpayOrderId === 'order_failed_student1');
+      const failed = history.find(
+        (p) => p.razorpayOrderId === 'order_failed_student1',
+      );
       expect(failed.status).toBe('FAILED');
     });
 
     it('should map refunded payment status to REFUNDED', async () => {
       const history = await paymentsService.getHistory(mockStudent1.id);
-      const refunded = history.find((p) => p.razorpayOrderId === 'order_refunded_student1');
+      const refunded = history.find(
+        (p) => p.razorpayOrderId === 'order_refunded_student1',
+      );
       expect(refunded.status).toBe('REFUNDED');
     });
   });
@@ -285,35 +314,50 @@ describe('PrimePlate PrimeMate Transactions & Payment Support Center Specificati
   describe('8, 9, 10 & 16. Payment Status Verification & Recovery', () => {
     it('should enforce IDOR check on getPaymentStatus', async () => {
       await expect(
-        paymentsService.getPaymentStatus('order_paid_student2', mockStudent1.id),
+        paymentsService.getPaymentStatus(
+          'order_paid_student2',
+          mockStudent1.id,
+        ),
       ).rejects.toThrow(ForbiddenException);
     });
 
     it('should return SUCCESS status for existing paid payment', async () => {
-      const res = await paymentsService.getPaymentStatus('order_paid_student1', mockStudent1.id);
+      const res = await paymentsService.getPaymentStatus(
+        'order_paid_student1',
+        mockStudent1.id,
+      );
       expect(res.status).toBe('SUCCESS');
       expect(res.paymentStatus).toBe('PAID');
     });
 
     it('should return FAILED status for failed order', async () => {
-      const res = await paymentsService.getPaymentStatus('order_failed_student1', mockStudent1.id);
+      const res = await paymentsService.getPaymentStatus(
+        'order_failed_student1',
+        mockStudent1.id,
+      );
       expect(res.status).toBe('FAILED');
     });
 
     it('should return PROCESSING status for pending order when Razorpay API is not configured', async () => {
-      const res = await paymentsService.getPaymentStatus('order_pending_student1', mockStudent1.id);
+      const res = await paymentsService.getPaymentStatus(
+        'order_pending_student1',
+        mockStudent1.id,
+      );
       expect(res.status).toBe('PROCESSING');
     });
   });
 
   describe('11, 12, 13, 14 & 15. Support Ticket Creation, IDOR & Duplicate Protection', () => {
     it('should create a support ticket with server-generated ticket number', async () => {
-      const ticket = await supportService.createPaymentIssueTicket(mockStudent1.id, {
-        razorpayOrderId: 'order_failed_student1',
-        issueType: SupportTicketIssueType.MONEY_DEBITED_PAYMENT_FAILED,
-        description: 'Money debited from UPI account but status is failed',
-        utrReference: 'UTR12345678',
-      });
+      const ticket = await supportService.createPaymentIssueTicket(
+        mockStudent1.id,
+        {
+          razorpayOrderId: 'order_failed_student1',
+          issueType: SupportTicketIssueType.MONEY_DEBITED_PAYMENT_FAILED,
+          description: 'Money debited from UPI account but status is failed',
+          utrReference: 'UTR12345678',
+        },
+      );
 
       expect(ticket.ticketNumber).toMatch(/^TK-\d{8}-\d{4}$/);
       expect(ticket.status).toBe(SupportTicketStatus.OPEN);
@@ -370,7 +414,10 @@ describe('PrimePlate PrimeMate Transactions & Payment Support Center Specificati
 
   describe('17 & 18. Browser-Close Recovery & Non-Duplication', () => {
     it('should return SUCCESS and active subscription for student returning after browser close', async () => {
-      const details = await paymentsService.getPaymentDetails('order_paid_student1', mockStudent1.id);
+      const details = await paymentsService.getPaymentDetails(
+        'order_paid_student1',
+        mockStudent1.id,
+      );
       expect(details.payment.status).toBe('SUCCESS');
       expect(details.subscription?.status).toBe('ACTIVE');
       expect(details.subscription?.messCardAvailable).toBe(true);

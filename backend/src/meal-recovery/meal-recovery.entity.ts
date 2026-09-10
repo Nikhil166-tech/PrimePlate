@@ -64,7 +64,7 @@ export class MealRecovery {
   status: string;
 
   /** Timestamp when recovery was calculated and committed. */
-  @Column({ type: 'datetime', nullable: true })
+  @Column({ nullable: true })
   processedAt?: Date;
 
   @CreateDateColumn()

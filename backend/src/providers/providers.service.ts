@@ -566,4 +566,38 @@ export class ProvidersService {
     await this.providerImageRepo.remove(image);
     return { success: true, message: 'Hostel image deleted successfully' };
   }
+
+  /**
+   * Update provider's meal recovery percentage.
+   * Allowed values: 50, 60, 70, 80, 90, 100. Validates ownership.
+   * Changing the percentage does NOT modify existing MealRecovery records.
+   */
+  async updateRecoveryPercentage(
+    userId: string,
+    providerId: string,
+    percentage: number,
+  ): Promise<{ id: string; name: string; recoveryPercentage: number }> {
+    const ALLOWED = [50, 60, 70, 80, 90, 100];
+    const pct = Number(percentage);
+    if (!ALLOWED.includes(pct)) {
+      throw new BadRequestException(
+        `Invalid recovery percentage. Allowed values: ${ALLOWED.join(', ')}`,
+      );
+    }
+
+    const provider = await this.providerRepo.findOne({
+      where: { id: providerId },
+      relations: { user: true },
+    });
+    if (!provider) throw new NotFoundException('Provider not found');
+    if (provider.user?.id !== userId && provider.userId !== userId) {
+      throw new ForbiddenException(
+        'Cannot change recovery percentage for another provider',
+      );
+    }
+
+    provider.recoveryPercentage = pct;
+    const saved = await this.providerRepo.save(provider);
+    return { id: saved.id, name: saved.name, recoveryPercentage: saved.recoveryPercentage };
+  }
 }

@@ -28,6 +28,8 @@ import { SupportModule } from './support/support.module';
 import { MealUsage } from './meal-usage/meal-usage.entity';
 import { MealUsageAudit } from './meal-usage/meal-usage-audit.entity';
 import { MealUsageModule } from './meal-usage/meal-usage.module';
+import { MealRecovery } from './meal-recovery/meal-recovery.entity';
+import { MealRecoveryModule } from './meal-recovery/meal-recovery.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 
@@ -84,6 +86,7 @@ import { AppService } from './app.service';
       SupportTicket,
       MealUsage,
       MealUsageAudit,
+      MealRecovery,
     ]),
     AuthModule,
     UsersModule,
@@ -98,6 +101,7 @@ import { AppService } from './app.service';
     AnalyticsModule,
     WeeklyMenusModule,
     MealUsageModule,
+    MealRecoveryModule,
   ],
   controllers: [AppController],
   providers: [AppService, SeedService],

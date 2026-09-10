@@ -182,6 +182,22 @@ export const getProviderSubscriberAttendanceHistory = (subscriptionId: string, p
 export const correctProviderCheckIn = (providerId: string, subscriptionId: string, reason: string) =>
   api.post('/meal-usage/provider/correct', { providerId, subscriptionId, reason });
 
+// Meal Recovery APIs
+export const getMyRecoveryBalance = (providerId?: string) =>
+  api.get(`/meal-recovery/my-balance${providerId ? `?providerId=${encodeURIComponent(providerId)}` : ''}`);
+
+export const getProviderRecoveryStats = (providerId?: string) =>
+  api.get(`/meal-recovery/provider/stats${providerId ? `?providerId=${encodeURIComponent(providerId)}` : ''}`);
+
+export const getProviderRecoveryAudit = (providerId?: string) =>
+  api.get(`/meal-recovery/provider/audit${providerId ? `?providerId=${encodeURIComponent(providerId)}` : ''}`);
+
+export const processSubscriptionRecovery = (subscriptionId: string, providerId?: string) =>
+  api.post(`/meal-recovery/process/${encodeURIComponent(subscriptionId)}${providerId ? `?providerId=${encodeURIComponent(providerId)}` : ''}`);
+
+export const updateProviderRecoveryPercentage = (providerId: string, percentage: number) =>
+  api.patch(`/providers/${encodeURIComponent(providerId)}/recovery-percentage`, { percentage });
+
 export default api;
 
 

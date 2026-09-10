@@ -180,4 +180,19 @@ export class ProvidersController {
   async reject(@Param('id') id: string) {
     return this.providersService.reject(id);
   }
+
+  @Patch(':id/recovery-percentage')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.PROVIDER)
+  async updateRecoveryPercentage(
+    @Req() req: AuthenticatedRequest,
+    @Param('id') id: string,
+    @Body('percentage') percentage: number,
+  ) {
+    return this.providersService.updateRecoveryPercentage(
+      req.user.userId,
+      id,
+      percentage,
+    );
+  }
 }

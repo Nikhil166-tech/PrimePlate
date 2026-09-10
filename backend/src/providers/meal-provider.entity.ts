@@ -108,6 +108,10 @@ export class MealProvider {
   @Column({ unique: true, nullable: true })
   qrToken?: string;
 
+  /** Provider-specific meal recovery percentage. Allowed: 50,60,70,80,90,100. Default: 80. */
+  @Column({ type: 'int', default: 80 })
+  recoveryPercentage: number;
+
   @CreateDateColumn()
   createdAt: Date;
 

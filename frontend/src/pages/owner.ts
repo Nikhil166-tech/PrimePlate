@@ -9,6 +9,9 @@ import api, {
   getProviderTodayCheckIns,
   getProviderSubscriberAttendanceHistory,
   correctProviderCheckIn,
+  getProviderRecoveryStats,
+  processSubscriptionRecovery,
+  updateProviderRecoveryPercentage,
 } from '../api';
 import { navigate } from '../router';
 import { showToast } from '../components/toast';
@@ -70,7 +73,21 @@ export async function renderOwnerPortal() {
   let subscriberAttendanceError: string | null = null;
   let subscriberCalendarUnmount: (() => void) | null = null;
   let showManagePanel = false;
-  let mobileSheet: 'NONE' | 'MANAGE_PG' | 'SUBSCRIBERS' | 'WEEKLY_MENU' | 'REVIEWS' | 'EARNINGS_HISTORY' | 'HOSTEL_IMAGES' | 'MEAL_QR' | 'TODAYS_CHECKINS' = 'NONE';
+  let mobileSheet: 'NONE' | 'MANAGE_PG' | 'SUBSCRIBERS' | 'WEEKLY_MENU' | 'REVIEWS' | 'EARNINGS_HISTORY' | 'HOSTEL_IMAGES' | 'MEAL_QR' | 'TODAYS_CHECKINS' | 'MEAL_RECOVERY' = 'NONE';
+  let recoveryStats: {
+    providerId?: string;
+    providerName?: string;
+    recoveryPercentage?: number;
+    missedMealDays?: number;
+    recoveryDaysGranted?: number;
+    recoveryDaysUsed?: number;
+    recoveryDaysRemaining?: number;
+    totalRecords?: number;
+  } | null = null;
+  let recoveryLoading = false;
+  let isUpdatingRecoveryPercentage = false;
+  let processingRecoverySubId: string | null = null;
+  let recoveryProcessResult: { message: string; type: 'success' | 'info' | 'error' } | null = null;
   let mealQrData: { providerId: string; providerName: string; qrToken: string; qrCodeDataUrl: string } | null = null;
   let mealQrLoading = false;
   let todayCheckInsData: {
@@ -302,6 +319,23 @@ export async function renderOwnerPortal() {
     }
   };
 
+  const fetchRecoveryStats = async () => {
+    if (!selectedHostel) {
+      recoveryStats = null;
+      recoveryLoading = false;
+      return;
+    }
+    recoveryLoading = true;
+    try {
+      const data: any = await getProviderRecoveryStats(selectedHostel.id);
+      recoveryStats = data?.data !== undefined ? data.data : data;
+    } catch (_) {
+      recoveryStats = null;
+    } finally {
+      recoveryLoading = false;
+    }
+  };
+
   const fetchSubscriberAttendance = async (subscriptionId: string) => {
     if (!subscriptionId) return;
     subscriberAttendanceLoading = true;
@@ -438,6 +472,46 @@ export async function renderOwnerPortal() {
           <button type="button" class="toggle-open-btn btn-outline-action" style="padding: 8px 14px; font-size: 12px; font-weight: 700; background: #fff; border-radius: 8px; min-height: 40px; cursor: pointer;">
             <i class="fa-solid ${selectedHostel.acceptingSubscriptions !== false ? 'fa-door-closed' : 'fa-door-open'}"></i> ${selectedHostel.acceptingSubscriptions !== false ? 'Close Kitchen' : 'Open Kitchen'}
           </button>
+        </div>
+
+        <!-- Meal Recovery Policy Settings Card -->
+        <div style="display: flex; flex-direction: column; gap: 10px; padding: 14px; background: var(--color-neutral-50); border: 1px solid var(--color-neutral-200); border-radius: 14px;">
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 8px;">
+            <div>
+              <span style="font-size: 11px; font-weight: 700; color: var(--color-neutral-500); text-transform: uppercase; display: block; margin-bottom: 2px;">
+                Meal Recovery Policy
+              </span>
+              <span style="font-size: 14px; font-weight: 800; color: var(--color-neutral-900);">
+                Current Rate: <strong style="color: var(--color-primary-600); font-size: 16px;">${selectedHostel?.recoveryPercentage ?? recoveryStats?.recoveryPercentage ?? 80}%</strong>
+              </span>
+            </div>
+            <span style="font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 999px; background: #ecfdf5; color: #047857; display: inline-flex; align-items: center; gap: 4px;">
+              <i class="fa-solid fa-shield-halved"></i> Active Policy
+            </span>
+          </div>
+
+          <p style="font-size: 12px; color: var(--color-neutral-600); margin: 0; line-height: 1.4;">
+            Students will receive <strong>${selectedHostel?.recoveryPercentage ?? recoveryStats?.recoveryPercentage ?? 80}%</strong> of their unattended meal days as recovery days added to their next subscription at your mess.
+          </p>
+
+          <div style="display: flex; flex-direction: column; gap: 6px; margin-top: 4px;">
+            <span style="font-size: 11px; font-weight: 700; color: var(--color-neutral-500); text-transform: uppercase;">Select Recovery Percentage:</span>
+            <div style="display: flex; gap: 8px; flex-wrap: wrap;" class="recovery-percentage-button-group">
+              ${[50, 60, 70, 80, 90, 100].map((pct) => {
+                const currentPct = selectedHostel?.recoveryPercentage ?? recoveryStats?.recoveryPercentage ?? 80;
+                const isActive = currentPct === pct;
+                return `
+                  <button type="button" class="set-recovery-pct-btn btn-outline-action" data-pct="${pct}" style="padding: 6px 14px; font-size: 12px; font-weight: 800; border-radius: 8px; cursor: pointer; transition: all 0.15s ease; ${
+                    isActive
+                      ? 'background: var(--color-primary-600); color: #fff; border-color: var(--color-primary-600); box-shadow: 0 2px 6px rgba(234, 88, 12, 0.25);'
+                      : 'background: #fff; color: var(--color-neutral-700); border-color: var(--color-neutral-300);'
+                  }">
+                    ${pct}%
+                  </button>
+                `;
+              }).join('')}
+            </div>
+          </div>
         </div>
       </div>
     `;
@@ -1528,7 +1602,7 @@ export async function renderOwnerPortal() {
 
                 <!-- Today's Meal Check-ins Section Card -->
                 <div id="todaysCheckInsSection" style="background: #fff; border: 1px solid var(--color-neutral-200); border-radius: 24px; padding: 24px; margin-bottom: 24px; box-shadow: 0 4px 12px rgba(0,0,0,0.03);">
-                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; border-bottom: 1px solid var(--color-neutral-100); padding-bottom: 14px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; border-bottom: 1px solid var(--color-neutral-100); padding-bottom: 14px;">
                     <div>
                       <h3 class="font-display" style="font-size: 18px; font-weight: 700; color: var(--color-neutral-900); margin: 0 0 2px 0;">
                         <i class="fa-solid fa-clipboard-check" style="color: var(--color-primary-600); margin-right: 6px;"></i> Today's Meal Check-ins
@@ -1537,6 +1611,53 @@ export async function renderOwnerPortal() {
                     </div>
                   </div>
                   ${renderTodayCheckInsContent()}
+                </div>
+
+                <!-- Meal Recovery Stats Section -->
+                <div id="recoveryStatsSection" style="background: #fff; border: 1px solid var(--color-neutral-200); border-radius: 24px; padding: 24px; margin-bottom: 24px; box-shadow: 0 4px 12px rgba(0,0,0,0.03);">
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; border-bottom: 1px solid var(--color-neutral-100); padding-bottom: 14px; flex-wrap: wrap; gap: 8px;">
+                    <div>
+                      <h3 class="font-display" style="font-size: 18px; font-weight: 700; color: var(--color-neutral-900); margin: 0 0 2px 0;">
+                        <i class="fa-solid fa-shield-halved" style="color: #047857; margin-right: 6px;"></i> Meal Recovery Stats
+                      </h3>
+                      <span style="font-size: 12px; color: var(--color-neutral-500);">Cumulative recovery data across all subscribers</span>
+                    </div>
+                  </div>
+                  ${recoveryLoading ? `
+                    <div style="text-align: center; padding: 28px;"><i class="fa-solid fa-spinner fa-spin" style="font-size: 22px; color: var(--color-primary-600);"></i></div>
+                  ` : recoveryStats ? `
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px;">
+                      <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 14px; padding: 14px;">
+                        <span style="font-size: 11px; font-weight: 700; color: #15803d; text-transform: uppercase; display: block; margin-bottom: 4px;">Recovery Rate</span>
+                        <p style="font-size: 26px; font-weight: 800; color: #166534; margin: 0;">${recoveryStats.recoveryPercentage ?? 80}%</p>
+                        <span style="font-size: 11px; color: #15803d;">Current policy</span>
+                      </div>
+                      <div style="background: #fffbeb; border: 1px solid #fde68a; border-radius: 14px; padding: 14px;">
+                        <span style="font-size: 11px; font-weight: 700; color: #92400e; text-transform: uppercase; display: block; margin-bottom: 4px;">Missed Days</span>
+                        <p style="font-size: 26px; font-weight: 800; color: #78350f; margin: 0;">${recoveryStats.missedMealDays ?? 0}</p>
+                        <span style="font-size: 11px; color: #92400e;">Across all subs</span>
+                      </div>
+                      <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 14px; padding: 14px;">
+                        <span style="font-size: 11px; font-weight: 700; color: #1d4ed8; text-transform: uppercase; display: block; margin-bottom: 4px;">Granted</span>
+                        <p style="font-size: 26px; font-weight: 800; color: #1e40af; margin: 0;">${recoveryStats.recoveryDaysGranted ?? 0}</p>
+                        <span style="font-size: 11px; color: #1d4ed8;">Total granted</span>
+                      </div>
+                      <div style="background: #fdf4ff; border: 1px solid #e9d5ff; border-radius: 14px; padding: 14px;">
+                        <span style="font-size: 11px; font-weight: 700; color: #7e22ce; text-transform: uppercase; display: block; margin-bottom: 4px;">Used</span>
+                        <p style="font-size: 26px; font-weight: 800; color: #6b21a8; margin: 0;">${recoveryStats.recoveryDaysUsed ?? 0}</p>
+                        <span style="font-size: 11px; color: #7e22ce;">Consumed</span>
+                      </div>
+                      <div style="background: #f0fdf4; border: 1px solid #86efac; border-radius: 14px; padding: 14px;">
+                        <span style="font-size: 11px; font-weight: 700; color: #15803d; text-transform: uppercase; display: block; margin-bottom: 4px;">Remaining</span>
+                        <p style="font-size: 26px; font-weight: 800; color: #166534; margin: 0;">${recoveryStats.recoveryDaysRemaining ?? 0}</p>
+                        <span style="font-size: 11px; color: #15803d;">Pending use</span>
+                      </div>
+                    </div>
+                  ` : `
+                    <div style="text-align: center; padding: 28px; background: var(--color-neutral-50); border: 1px dashed var(--color-neutral-300); border-radius: 16px;">
+                      <p style="font-size: 13px; color: var(--color-neutral-500); margin: 0;">No recovery records yet. Process a subscription to generate recovery data.</p>
+                    </div>
+                  `}
                 </div>
               </div>
             `
@@ -1878,6 +1999,40 @@ export async function renderOwnerPortal() {
                 </div>
               </div>
 
+              <!-- Meal Recovery — Process Button -->
+              <div style="background: linear-gradient(135deg, #f0fdf4, #ecfdf5); border: 1px solid #bbf7d0; border-radius: 14px; padding: 14px; display: flex; flex-direction: column; gap: 10px;">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 8px;">
+                  <div style="display: flex; align-items: center; gap: 8px;">
+                    <div style="width: 28px; height: 28px; border-radius: 8px; background: #d1fae5; color: #047857; display: flex; align-items: center; justify-content: center; font-size: 13px;">
+                      <i class="fa-solid fa-shield-halved"></i>
+                    </div>
+                    <div>
+                      <h4 style="font-size: 14px; font-weight: 800; color: var(--color-neutral-900); margin: 0;">Meal Recovery</h4>
+                      <span style="font-size: 11px; color: var(--color-neutral-500);">Calculate &amp; grant recovery days for missed meals</span>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    class="process-recovery-btn btn-outline-action"
+                    data-sub-id="${escapeHtml(selectedSubscriberForDetails.id)}"
+                    style="padding: 7px 14px; font-size: 12px; font-weight: 800; border-radius: 10px; background: #fff; color: #047857; border-color: #86efac; cursor: pointer; white-space: nowrap;"
+                    ${processingRecoverySubId === selectedSubscriberForDetails.id ? 'disabled' : ''}
+                  >
+                    <i class="fa-solid fa-shield-halved"></i>
+                    ${processingRecoverySubId === selectedSubscriberForDetails.id ? '<i class="fa-solid fa-spinner fa-spin"></i> Processing...' : 'Process Recovery'}
+                  </button>
+                </div>
+                ${recoveryProcessResult ? `
+                  <div style="font-size: 12px; font-weight: 700; padding: 8px 12px; border-radius: 10px; background: ${
+                    recoveryProcessResult.type === 'success' ? '#d1fae5' : recoveryProcessResult.type === 'info' ? '#dbeafe' : '#fee2e2'
+                  }; color: ${
+                    recoveryProcessResult.type === 'success' ? '#047857' : recoveryProcessResult.type === 'info' ? '#1d4ed8' : '#dc2626'
+                  };">
+                    ${escapeHtml(recoveryProcessResult.message)}
+                  </div>
+                ` : ''}
+              </div>
+
               <!-- Whole Month Attendance Section -->
               <div style="border-top: 1px solid var(--color-neutral-200); padding-top: 16px; display: flex; flex-direction: column; gap: 12px;">
                 <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
@@ -2122,6 +2277,7 @@ export async function renderOwnerPortal() {
           await fetchHostelImages();
           await fetchMealQr();
           await fetchTodayCheckIns();
+          await fetchRecoveryStats();
           render();
         }
       });
@@ -3245,6 +3401,7 @@ export async function renderOwnerPortal() {
       subscriberAttendanceData = null;
       subscriberAttendanceError = null;
       subscriberAttendanceLoading = false;
+      recoveryProcessResult = null;
       render();
     };
 
@@ -3269,6 +3426,67 @@ export async function renderOwnerPortal() {
       };
       window.addEventListener('keydown', handleEscapeKey, { once: true });
     }
+
+    // Recovery Percentage Buttons — update provider's recovery policy
+    document.querySelectorAll('.set-recovery-pct-btn').forEach((btn) => {
+      btn.addEventListener('click', async (e) => {
+        if (!selectedHostel) return;
+        const pct = parseInt((e.currentTarget as HTMLElement).getAttribute('data-pct') || '80', 10);
+        if (isUpdatingRecoveryPercentage) return;
+        isUpdatingRecoveryPercentage = true;
+        try {
+          await updateProviderRecoveryPercentage(selectedHostel.id, pct);
+          selectedHostel.recoveryPercentage = pct;
+          if (recoveryStats) recoveryStats.recoveryPercentage = pct;
+          showToast(`Recovery rate updated to ${pct}%`, 'success');
+          render();
+        } catch (err: any) {
+          showToast(err.message || 'Failed to update recovery rate', 'error');
+        } finally {
+          isUpdatingRecoveryPercentage = false;
+        }
+      });
+    });
+
+    // Process Recovery Button — calculate & grant recovery days for a subscriber
+    document.querySelectorAll('.process-recovery-btn').forEach((btn) => {
+      btn.addEventListener('click', async (e) => {
+        const subId = (e.currentTarget as HTMLElement).getAttribute('data-sub-id');
+        if (!subId || processingRecoverySubId === subId) return;
+        processingRecoverySubId = subId;
+        recoveryProcessResult = null;
+        render();
+        try {
+          const result: any = await processSubscriptionRecovery(subId, selectedHostel?.id);
+          const r = result?.data !== undefined ? result.data : result;
+          if (r?.alreadyProcessed) {
+            recoveryProcessResult = {
+              message: `Already processed: ${r.recoveredDays ?? 0} recovery day(s) granted (${r.missedDays ?? 0} missed @ ${r.recoveryRate ?? 80}%)`,
+              type: 'info',
+            };
+          } else if (r?.processed && (r?.recoveredDays ?? 0) > 0) {
+            recoveryProcessResult = {
+              message: `✓ Recovery granted: ${r.recoveredDays} day(s) from ${r.missedDays} missed meals at ${r.recoveryRate}%`,
+              type: 'success',
+            };
+            await fetchRecoveryStats();
+          } else {
+            recoveryProcessResult = {
+              message: `No recovery days generated (${r?.missedDays ?? 0} missed days @ ${r?.recoveryRate ?? 80}% = 0 days)`,
+              type: 'info',
+            };
+          }
+        } catch (err: any) {
+          recoveryProcessResult = {
+            message: err.message || 'Failed to process recovery',
+            type: 'error',
+          };
+        } finally {
+          processingRecoverySubId = null;
+          render();
+        }
+      });
+    });
 
     // Weekly Menu Inline Edit Listeners
     document.querySelectorAll('.start-edit-menu-btn').forEach((btn) => {
@@ -3532,6 +3750,7 @@ export async function renderOwnerPortal() {
           fetchHostelImages(),
           fetchMealQr(),
           fetchTodayCheckIns(),
+          fetchRecoveryStats(),
         ]);
       } else {
         await fetchEarningsData().catch(() => {});

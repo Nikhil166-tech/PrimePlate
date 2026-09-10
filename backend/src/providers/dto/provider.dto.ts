@@ -72,4 +72,8 @@ export class ProviderDto {
   @Min(-180)
   @Max(180)
   longitude?: number;
+
+  @IsOptional()
+  @IsNumber()
+  recoveryPercentage?: number;
 }

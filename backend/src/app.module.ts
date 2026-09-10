@@ -31,7 +31,6 @@ import { MealUsageModule } from './meal-usage/meal-usage.module';
 import { MealRecovery } from './meal-recovery/meal-recovery.entity';
 import { MealRecoveryModule } from './meal-recovery/meal-recovery.module';
 import { AppController } from './app.controller';
-import { AppService } from './app.service';
 
 @Module({
   imports: [
@@ -104,6 +103,6 @@ import { AppService } from './app.service';
     MealRecoveryModule,
   ],
   controllers: [AppController],
-  providers: [AppService, SeedService],
+  providers: [SeedService],
 })
 export class AppModule {}

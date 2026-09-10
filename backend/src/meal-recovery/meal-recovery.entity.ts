@@ -1,4 +1,4 @@
-﻿import {
+import {
   Entity,
   PrimaryGeneratedColumn,
   Column,
@@ -64,7 +64,7 @@ export class MealRecovery {
   status: string;
 
   /** Timestamp when recovery was calculated and committed. */
-  @Column({ type: 'timestamp with time zone', nullable: true })
+  @Column({ type: 'datetime', nullable: true })
   processedAt?: Date;
 
   @CreateDateColumn()

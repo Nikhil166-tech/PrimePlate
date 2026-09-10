@@ -470,10 +470,11 @@ describe('PrimePlate Payment Security & Recovery Specification', () => {
 
         const start = new Date(createdSub.startDate);
         const end = new Date(createdSub.endDate);
-        const diffDays = Math.round(
-          (end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24),
-        );
-        expect(diffDays).toBe(durationDays);
+        const activeDays =
+          Math.round(
+            (end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24),
+          ) + 1;
+        expect(activeDays).toBe(durationDays);
       },
     );
   });

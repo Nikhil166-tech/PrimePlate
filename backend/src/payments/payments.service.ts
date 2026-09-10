@@ -616,7 +616,12 @@ export class PaymentsService {
       });
 
       let savedSubscription: Subscription;
-      const todayStr = new Date().toISOString().split('T')[0];
+      const todayStr = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Asia/Kolkata',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+      }).format(new Date());
 
       if (
         existingActiveSub &&
@@ -643,7 +648,7 @@ export class PaymentsService {
 
         const startDate = todayStr;
         const startObj = new Date(startDate + 'T00:00:00Z');
-        startObj.setUTCDate(startObj.getUTCDate() + durationDays);
+        startObj.setUTCDate(startObj.getUTCDate() + Math.max(0, durationDays - 1));
         const endDate = startObj.toISOString().split('T')[0];
 
         const subscriptionEntity = manager.create(Subscription, {

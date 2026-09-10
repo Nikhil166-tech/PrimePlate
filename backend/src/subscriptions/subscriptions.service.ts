@@ -119,9 +119,18 @@ export class SubscriptionsService {
         );
       }
 
-      const start = startDate || new Date().toISOString().split('T')[0];
-      const startObj = new Date(start);
-      startObj.setDate(startObj.getDate() + (durationDays || 30));
+      const start =
+        startDate ||
+        new Intl.DateTimeFormat('en-CA', {
+          timeZone: 'Asia/Kolkata',
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+        }).format(new Date());
+      const startObj = new Date(start + 'T00:00:00Z');
+      startObj.setUTCDate(
+        startObj.getUTCDate() + Math.max(0, (durationDays || 30) - 1),
+      );
       const end = endDate || startObj.toISOString().split('T')[0];
 
       const subscription = manager.create(Subscription, {

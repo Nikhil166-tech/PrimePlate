@@ -10,7 +10,6 @@ import { SubscriptionsModule } from '../subscriptions/subscriptions.module';
 import { PayoutsModule } from '../payouts/payouts.module';
 import { PaymentsService } from './payments.service';
 import { PaymentsController } from './payments.controller';
-import { MealRecoveryModule } from '../meal-recovery/meal-recovery.module';
 
 @Module({
   imports: [
@@ -24,7 +23,6 @@ import { MealRecoveryModule } from '../meal-recovery/meal-recovery.module';
     ]),
     forwardRef(() => SubscriptionsModule),
     PayoutsModule,
-    MealRecoveryModule,
   ],
   controllers: [PaymentsController],
   providers: [PaymentsService],

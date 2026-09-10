@@ -5,7 +5,6 @@ import {
   ForbiddenException,
   Logger,
   Inject,
-  Optional,
   forwardRef,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -26,7 +25,6 @@ import {
   ProviderEarningStatus,
 } from '../payouts/provider-earning.entity';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
-import { MealRecoveryService } from '../meal-recovery/meal-recovery.service';
 import * as crypto from 'crypto';
 import Razorpay from 'razorpay';
 
@@ -107,8 +105,6 @@ export class PaymentsService {
     private readonly ticketRepo: Repository<SupportTicket>,
     @Inject(forwardRef(() => SubscriptionsService))
     private readonly subscriptionsService: SubscriptionsService,
-    @Optional()
-    private readonly mealRecoveryService?: MealRecoveryService,
   ) {
     const keyId = this.config.get<string>('RAZORPAY_KEY_ID');
     const keySecret = this.config.get<string>('RAZORPAY_KEY_SECRET');
@@ -658,33 +654,6 @@ export class PaymentsService {
           Subscription,
           subscriptionEntity,
         );
-      }
-
-      // 5b. Apply provider-specific meal recovery days (inside same transaction — atomic).
-      // If consumption succeeds but subscription fails, the whole transaction rolls back.
-      if (this.mealRecoveryService) {
-        try {
-          const recoveryDaysConsumed = await this.mealRecoveryService.consumeRecovery(
-            student.id,
-            provider.id,
-            manager,
-          );
-          if (recoveryDaysConsumed > 0) {
-            const baseEnd = new Date(savedSubscription.endDate + 'T00:00:00Z');
-            baseEnd.setUTCDate(baseEnd.getUTCDate() + recoveryDaysConsumed);
-            savedSubscription.endDate = baseEnd.toISOString().split('T')[0];
-            savedSubscription = await manager.save(Subscription, savedSubscription);
-            this.logger.log(
-              `Recovery applied: studentId=${student.id}, providerId=${provider.id}, days=${recoveryDaysConsumed}, newEndDate=${savedSubscription.endDate}`,
-            );
-          }
-        } catch (recoveryErr: any) {
-          // Recovery failure must NOT block subscription activation.
-          // Log and continue — subscription proceeds without recovery extension.
-          this.logger.warn(
-            `Recovery consumption failed (non-fatal): ${recoveryErr?.message || recoveryErr}`,
-          );
-        }
       }
 
       // 6. Create and save Provider Earning record atomically

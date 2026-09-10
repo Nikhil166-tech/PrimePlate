@@ -1,6 +1,5 @@
 import api, {
   getMyMealHistory,
-  getMyRecoveryBalance,
 } from '../api';
 import { openMealScanner } from '../components/meal-scanner';
 import { navigate } from '../router';
@@ -60,7 +59,6 @@ export async function renderDashboard() {
   let activeTab: 'PASSES' | 'HISTORY' | 'MEAL_HISTORY' = 'PASSES';
   let loadedSubs: any[] = [];
   let loadedMealHistory: any[] = [];
-  let loadedRecoveryBalances: any[] = [];
   let calendarUnmountFns: (() => void)[] = [];
   let selectedSubForDetails: any = null;
   const todayStr = new Date().toISOString().split('T')[0];
@@ -391,59 +389,7 @@ export async function renderDashboard() {
         });
       });
     } else if (activeTab === 'MEAL_HISTORY') {
-      const renderRecoverySection = () => {
-        const activeBalances = loadedRecoveryBalances.filter((b: any) => (b.remainingDays || 0) > 0);
-        return `
-          <div id="studentMealRecoverySection" class="student-meal-recovery-card" style="grid-column: 1/-1; background: #fff; border: 1px solid var(--color-neutral-200); border-radius: 24px; padding: 24px; box-shadow: 0 4px 16px rgba(0,0,0,0.03); margin-top: 8px; box-sizing: border-box;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; border-bottom: 1px solid var(--color-neutral-100); padding-bottom: 14px; flex-wrap: wrap; gap: 8px;">
-              <div style="display: flex; align-items: center; gap: 10px;">
-                <div style="width: 38px; height: 38px; border-radius: 12px; background: linear-gradient(135deg, #ecfdf5, #d1fae5); color: #047857; display: flex; align-items: center; justify-content: center; font-size: 17px;">
-                  <i class="fa-solid fa-shield-halved"></i>
-                </div>
-                <div>
-                  <h3 class="font-display" style="font-size: 18px; font-weight: 800; color: var(--color-neutral-900); margin: 0;">Meal Recovery</h3>
-                  <span style="font-size: 12px; color: var(--color-neutral-500);">Unattended meals automatically recovered for future subscriptions</span>
-                </div>
-              </div>
-            </div>
-
-            ${activeBalances.length > 0 ? `
-              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px;">
-                ${activeBalances.map((b: any) => `
-                  <div style="background: linear-gradient(135deg, #f0fdf4, #ffffff); border: 1px solid #bbf7d0; border-radius: 16px; padding: 18px; display: flex; flex-direction: column; gap: 8px; box-shadow: 0 2px 8px rgba(34, 197, 94, 0.05);">
-                    <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px;">
-                      <strong style="font-size: 15px; color: var(--color-neutral-900); word-break: break-word;">${escapeHtml(b.providerName)}</strong>
-                      <span style="background: #15803d; color: #fff; font-size: 12px; font-weight: 800; padding: 4px 10px; border-radius: 999px; white-space: nowrap;">
-                        ${b.remainingDays} Recovery Day${b.remainingDays === 1 ? '' : 's'} Available
-                      </span>
-                    </div>
-                    <p style="font-size: 13px; color: #166534; margin: 0; line-height: 1.4; display: flex; align-items: center; gap: 6px;">
-                      <i class="fa-solid fa-circle-check" style="color: #22c55e;"></i> Will automatically extend your next subscription at ${escapeHtml(b.providerName)}
-                    </p>
-                    <div style="display: flex; justify-content: space-between; font-size: 11px; color: var(--color-neutral-500); margin-top: 4px; padding-top: 6px; border-top: 1px dashed #dcfce7;">
-                      <span>Total Recovered: ${b.totalRecoveredDays || b.remainingDays} day(s)</span>
-                      <span>Used: ${b.usedDays || 0} day(s)</span>
-                    </div>
-                  </div>
-                `).join('')}
-              </div>
-            ` : `
-              <div style="text-align: center; padding: 28px 16px; background: var(--color-neutral-50); border: 1px dashed var(--color-neutral-300); border-radius: 16px;">
-                <div style="width: 44px; height: 44px; border-radius: 999px; background: var(--color-neutral-100); color: var(--color-neutral-400); display: flex; align-items: center; justify-content: center; font-size: 20px; margin: 0 auto 10px;">
-                  <i class="fa-solid fa-shield-halved"></i>
-                </div>
-                <p style="font-size: 14px; font-weight: 700; color: var(--color-neutral-800); margin: 0 0 4px 0;">
-                  Your recovery days will appear here when eligible.
-                </p>
-                <p style="font-size: 12px; color: var(--color-neutral-500); margin: 0; max-width: 420px; margin-left: auto; margin-right: auto;">
-                  Missed meals are converted into recovery days at the end of each subscription based on your mess policy.
-                </p>
-              </div>
-            `}
-          </div>
-        `;
-      };
-
+      // MEAL CHECKLIST TAB
       if (loadedMealHistory.length === 0) {
         subsGrid.innerHTML = `
           <div style="grid-column: 1/-1; background: #fff; border: 1px solid var(--color-neutral-200); border-radius: 24px; padding: 60px; text-align: center;">
@@ -462,8 +408,7 @@ export async function renderDashboard() {
                 <i class="fa-solid fa-utensils"></i> Browse Mess
               </button>
             </div>
-          </div>
-          ${renderRecoverySection()}`;
+          </div>`;
         document.getElementById('mealHistBrowseBtn')?.addEventListener('click', () => navigate('/providers'));
         document.getElementById('historyScanQrBtn')?.addEventListener('click', () => {
           openMealScanner(async () => {
@@ -512,7 +457,7 @@ export async function renderDashboard() {
             </div>
           `;
         })
-        .join('') + renderRecoverySection();
+        .join('');
 
       // Mount DayPicker MealCalendar for each subscription
       loadedMealHistory.forEach((subHist) => {
@@ -674,15 +619,10 @@ export async function renderDashboard() {
     }
 
     try {
-      const [mealHistData, recoveryData]: any[] = await Promise.all([
-        getMyMealHistory().catch(() => []),
-        getMyRecoveryBalance().catch(() => []),
-      ]);
+      const mealHistData: any = await getMyMealHistory();
       loadedMealHistory = Array.isArray(mealHistData) ? mealHistData : [];
-      loadedRecoveryBalances = Array.isArray(recoveryData) ? recoveryData : [];
     } catch (_) {
       loadedMealHistory = [];
-      loadedRecoveryBalances = [];
     }
 
     loadedSubs = rawSubs.map((s) => {

@@ -74,7 +74,7 @@ export class MealRecoveryService {
    */
   async processSubscriptionRecovery(
     subscriptionId: string,
-    userId: string,
+    userId?: string,
     providerId?: string,
   ): Promise<{
     processed: boolean;
@@ -94,19 +94,21 @@ export class MealRecoveryService {
       throw new NotFoundException('Subscription not found');
     }
 
-    // 2. Verify the authenticated provider owns this subscription's provider
+    // 2. Verify provider relationship
     const provider = sub.mealPlan?.provider;
     if (!provider) {
       throw new NotFoundException('Subscription has no associated provider');
     }
-    if (provider.user?.id !== userId && provider.userId !== userId) {
-      // Double check via resolveProvider for full ownership validation
-      await this.resolveProvider(userId, provider.id);
-    }
-    if (providerId && providerId !== provider.id) {
-      throw new ForbiddenException(
-        'Subscription does not belong to the specified provider',
-      );
+    if (userId) {
+      if (provider.user?.id !== userId && provider.userId !== userId) {
+        // Double check via resolveProvider for full ownership validation
+        await this.resolveProvider(userId, provider.id);
+      }
+      if (providerId && providerId !== provider.id) {
+        throw new ForbiddenException(
+          'Subscription does not belong to the specified provider',
+        );
+      }
     }
 
     // 3. Idempotency: Check if already processed
@@ -266,6 +268,66 @@ export class MealRecoveryService {
   }
 
   /**
+   * Automatic background processor: Finds all ended subscriptions whose recovery
+   * has not yet been processed (endDate < todayIst).
+   *
+   * Idempotency guarantee: Protected by both query filtering and the database
+   * unique constraint on sourceSubscriptionId (UQ_meal_recoveries_source_subscription).
+   * Safe for multiple concurrent runs.
+   */
+  async processEligibleEndedSubscriptions(): Promise<{
+    inspected: number;
+    processed: number;
+    skipped: number;
+    errors: number;
+  }> {
+    const todayIst = this.getIstToday();
+    this.logger.log(
+      `[Automatic Recovery] Processing eligible subscriptions ended before ${todayIst}`,
+    );
+
+    // Find subscriptions where endDate < todayIst and no recovery row exists yet
+    const candidates = await this.subRepo
+      .createQueryBuilder('sub')
+      .leftJoin(MealRecovery, 'mr', 'mr.sourceSubscriptionId = sub.id')
+      .leftJoinAndSelect('sub.mealPlan', 'plan')
+      .leftJoinAndSelect('plan.provider', 'provider')
+      .leftJoinAndSelect('sub.student', 'student')
+      .where('sub.endDate IS NOT NULL')
+      .andWhere('sub.endDate < :todayIst', { todayIst })
+      .andWhere('mr.id IS NULL')
+      .take(100)
+      .getMany();
+
+    const inspected = candidates.length;
+    let processed = 0;
+    let skipped = 0;
+    let errors = 0;
+
+    for (const sub of candidates) {
+      try {
+        const res = await this.processSubscriptionRecovery(sub.id);
+        if (res.processed) {
+          processed++;
+        } else {
+          skipped++;
+        }
+      } catch (err: any) {
+        errors++;
+        this.logger.error(
+          `[Automatic Recovery] Error processing subscription ${sub.id}: ${err?.message || err}`,
+        );
+      }
+    }
+
+    this.logger.log(
+      `[Automatic Recovery] Completed: inspected=${inspected}, processed=${processed}, skipped=${skipped}, errors=${errors}`,
+    );
+
+    return { inspected, processed, skipped, errors };
+  }
+
+  /**
    * Returns provider-specific recovery balances for a student.
    * Each entry contains the providerId, provider name, and total remaining days.
    * Never returns one combined number across providers.
@@ -334,12 +396,30 @@ export class MealRecoveryService {
    * MUST run inside an existing database transaction (manager param).
    * Returns the number of days actually consumed.
    * Never produces a negative remainingDays.
+   * Supports both (studentId, providerId, daysToConsume?, manager)
+   * and (studentId, providerId, manager, daysToConsume?).
    */
   async consumeRecovery(
     studentId: string,
     providerId: string,
-    manager: EntityManager,
+    daysToConsumeOrManager: number | EntityManager,
+    managerOrNull?: EntityManager | number,
   ): Promise<number> {
+    let daysToConsume: number | undefined;
+    let manager: EntityManager;
+
+    if (typeof daysToConsumeOrManager === 'number') {
+      daysToConsume = daysToConsumeOrManager;
+      manager = managerOrNull as EntityManager;
+    } else {
+      manager = daysToConsumeOrManager;
+      daysToConsume = typeof managerOrNull === 'number' ? managerOrNull : undefined;
+    }
+
+    if (!manager) {
+      throw new Error('EntityManager is required for transactional recovery consumption');
+    }
+
     // Fetch all available/partially-used records for this student+provider (FIFO)
     const records = await manager.find(MealRecovery, {
       where: {
@@ -356,8 +436,11 @@ export class MealRecoveryService {
     const totalAvailable = records.reduce((s, r) => s + r.remainingDays, 0);
     if (totalAvailable <= 0) return 0;
 
-    // Consume all available (FIFO across records)
-    let toConsume = totalAvailable;
+    // Consume up to requested daysToConsume, or all available if omitted / non-positive
+    let toConsume = (daysToConsume !== undefined && daysToConsume > 0)
+      ? Math.min(totalAvailable, daysToConsume)
+      : totalAvailable;
+
     let actuallyConsumed = 0;
 
     for (const record of records) {

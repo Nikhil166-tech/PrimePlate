@@ -179,17 +179,17 @@ export async function renderProviderDetail(providerId: string) {
 
     const plansHtml = baseSellingPrice !== null
       ? durationOptions
-          .map((opt) => {
-            const calculatedSelling = Math.max(1, Math.round(baseSellingPrice * (opt.days / 30)));
-            const calculatedOriginal = baseOriginalPrice !== null ? Math.max(1, Math.round(baseOriginalPrice * (opt.days / 30))) : calculatedSelling;
-            const durationSave = calculatedOriginal - calculatedSelling;
-            const durationDiscountPct = (hasBaseDiscount && calculatedOriginal > 0 && durationSave > 0)
-              ? Math.floor((durationSave / calculatedOriginal) * 100)
-              : 0;
-            const isDiscounted = hasBaseDiscount && durationDiscountPct > 0;
+        .map((opt) => {
+          const calculatedSelling = Math.max(1, Math.round(baseSellingPrice * (opt.days / 30)));
+          const calculatedOriginal = baseOriginalPrice !== null ? Math.max(1, Math.round(baseOriginalPrice * (opt.days / 30))) : calculatedSelling;
+          const durationSave = calculatedOriginal - calculatedSelling;
+          const durationDiscountPct = (hasBaseDiscount && calculatedOriginal > 0 && durationSave > 0)
+            ? Math.floor((durationSave / calculatedOriginal) * 100)
+            : 0;
+          const isDiscounted = hasBaseDiscount && durationDiscountPct > 0;
 
-            const priceHtml = isDiscounted
-              ? `
+          const priceHtml = isDiscounted
+            ? `
                 <div style="text-align: right; flex-shrink: 0; min-width: 0;">
                   <div style="display: flex; align-items: baseline; justify-content: flex-end; gap: 6px; flex-wrap: wrap;">
                     <span style="font-size: 12px; color: #9ca3af; text-decoration: line-through; white-space: nowrap;">₹${calculatedOriginal.toLocaleString('en-IN')}</span>
@@ -199,13 +199,13 @@ export async function renderProviderDetail(providerId: string) {
                   <span style="font-size: 11px; font-weight: 600; color: #059669; display: block; margin-top: 2px; white-space: nowrap;">Save ₹${durationSave.toLocaleString('en-IN')}</span>
                 </div>
               `
-              : `
+            : `
                 <div style="text-align: right; flex-shrink: 0;">
                   <span style="font-weight: 800; color: #ea580c; font-size: 16px; white-space: nowrap;">₹${calculatedSelling.toLocaleString('en-IN')}</span>
                 </div>
               `;
 
-            return `
+          return `
               <label class="duration-plan-card" style="display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 10px; border: ${opt.isDefault ? '2px solid #f97316' : '1px solid #e5e7eb'}; background: ${opt.isDefault ? '#fff8f0' : '#ffffff'}; border-radius: 14px; padding: 12px 14px; margin-bottom: 10px; cursor: pointer; min-width: 0; box-sizing: border-box;">
                 <input type="radio" name="durationPlanSelect" value="${opt.days}" ${opt.isDefault ? 'checked' : ''} style="width: 18px; height: 18px; accent-color: #ea580c; cursor: pointer; flex-shrink: 0;" />
                 <div style="min-width: 0; overflow: hidden;">
@@ -215,8 +215,8 @@ export async function renderProviderDetail(providerId: string) {
                 ${priceHtml}
               </label>
             `;
-          })
-          .join('')
+        })
+        .join('')
       : `
         <div style="border: 1px dashed var(--color-neutral-300); border-radius: 12px; padding: 16px; margin-bottom: 16px; text-align: center; color: var(--color-neutral-500);">
           <i class="fa-solid fa-info-circle"></i> No meal plans currently available for this provider.
@@ -247,9 +247,8 @@ export async function renderProviderDetail(providerId: string) {
                   <span style="color: #f59e0b; font-size: 15px; font-weight: 700; letter-spacing: 2px;">
                     ${starStr}
                   </span>
-                  ${
-                    isOwner
-                      ? `<div style="display: flex; gap: 6px;">
+                  ${isOwner
+              ? `<div style="display: flex; gap: 6px;">
                           <button class="editReviewBtn btn-outline-action" data-id="${r.id}" style="padding: 4px 10px; font-size: 12px; font-weight: 700;">
                             <i class="fa-solid fa-pen"></i> Edit
                           </button>
@@ -257,8 +256,8 @@ export async function renderProviderDetail(providerId: string) {
                             <i class="fa-solid fa-trash"></i> Delete
                           </button>
                          </div>`
-                      : ''
-                  }
+              : ''
+            }
                 </div>
               </div>
               <p style="color: var(--color-neutral-700); font-size: 14px; line-height: 1.5; margin: 8px 0 0 0;">${escapeHtml(r.comment)}</p>
@@ -270,17 +269,17 @@ export async function renderProviderDetail(providerId: string) {
 
     const mobilePlansHtml = baseSellingPrice !== null
       ? durationOptions
-          .map((opt) => {
-            const calculatedSelling = Math.max(1, Math.round(baseSellingPrice * (opt.days / 30)));
-            const calculatedOriginal = baseOriginalPrice !== null ? Math.max(1, Math.round(baseOriginalPrice * (opt.days / 30))) : calculatedSelling;
-            const durationSave = calculatedOriginal - calculatedSelling;
-            const durationDiscountPct = (hasBaseDiscount && calculatedOriginal > 0 && durationSave > 0)
-              ? Math.floor((durationSave / calculatedOriginal) * 100)
-              : 0;
-            const isDiscounted = hasBaseDiscount && durationDiscountPct > 0;
+        .map((opt) => {
+          const calculatedSelling = Math.max(1, Math.round(baseSellingPrice * (opt.days / 30)));
+          const calculatedOriginal = baseOriginalPrice !== null ? Math.max(1, Math.round(baseOriginalPrice * (opt.days / 30))) : calculatedSelling;
+          const durationSave = calculatedOriginal - calculatedSelling;
+          const durationDiscountPct = (hasBaseDiscount && calculatedOriginal > 0 && durationSave > 0)
+            ? Math.floor((durationSave / calculatedOriginal) * 100)
+            : 0;
+          const isDiscounted = hasBaseDiscount && durationDiscountPct > 0;
 
-            const priceHtml = isDiscounted
-              ? `
+          const priceHtml = isDiscounted
+            ? `
                 <div style="text-align: right; margin-left: 8px; flex-shrink: 0;">
                   <div style="display: flex; align-items: baseline; justify-content: flex-end; gap: 6px; flex-wrap: wrap;">
                     <span style="font-size: 12px; color: #9ca3af; text-decoration: line-through; white-space: nowrap;">₹${calculatedOriginal.toLocaleString('en-IN')}</span>
@@ -290,11 +289,11 @@ export async function renderProviderDetail(providerId: string) {
                   <span style="font-size: 11px; font-weight: 600; color: #059669; display: block; margin-top: 2px;">Save ₹${durationSave.toLocaleString('en-IN')}</span>
                 </div>
               `
-              : `
+            : `
                 <span style="font-weight: 800; color: #ea580c; font-size: 17px; white-space: nowrap; margin-left: 12px; flex-shrink: 0;">₹${calculatedSelling.toLocaleString('en-IN')}</span>
               `;
 
-            return `
+          return `
               <label class="mobile-duration-plan-card" style="display: flex; align-items: center; justify-content: space-between; border: ${opt.isDefault ? '2px solid #f97316' : '1px solid #e5e7eb'}; background: ${opt.isDefault ? '#fff8f0' : '#ffffff'}; border-radius: 14px; padding: 14px 16px; margin-bottom: 12px; cursor: pointer; transition: all 0.2s ease-in-out; min-width: 0; max-width: 100%; box-sizing: border-box;">
                 <div style="display: flex; align-items: center; gap: 12px; min-width: 0; flex: 1;">
                   <input type="radio" name="mobileDurationPlanSelect" value="${opt.days}" ${opt.isDefault ? 'checked' : ''} style="width: 18px; height: 18px; accent-color: #ea580c; cursor: pointer; flex-shrink: 0;" />
@@ -306,8 +305,8 @@ export async function renderProviderDetail(providerId: string) {
                 ${priceHtml}
               </label>
             `;
-          })
-          .join('')
+        })
+        .join('')
       : `
         <div style="border: 1px dashed var(--color-neutral-300); border-radius: 12px; padding: 16px; margin-bottom: 16px; text-align: center; color: var(--color-neutral-500);">
           <i class="fa-solid fa-info-circle"></i> No meal plans currently available for this provider.
@@ -411,14 +410,14 @@ export async function renderProviderDetail(providerId: string) {
           <!-- Horizontal Thumbnails Strip (Scrollable on mobile & desktop) -->
           <div id="galleryThumbnailsStrip">
             ${hostelImages
-              .map(
-                (img, idx) => `
+        .map(
+          (img, idx) => `
               <button type="button" class="gallery-thumb-btn ${idx === 0 ? 'active' : ''}" data-img-idx="${idx}" aria-label="View photo ${idx + 1}">
                 <img src="${getSafeImageUrl(img.imageUrl)}" alt="Thumbnail ${idx + 1}" style="width: 100%; height: 100%; object-fit: cover;" />
               </button>
             `,
-              )
-              .join('')}
+        )
+        .join('')}
           </div>
         </div>
       `
@@ -453,13 +452,12 @@ export async function renderProviderDetail(providerId: string) {
                 <span style="background: var(--color-primary-500); color: #fff; padding: 4px 12px; border-radius: 8px; font-size: 12px; font-weight: 700;">
                   ${escapeHtml(provider.category || provider.mealType || 'Veg & Non-Veg')}
                 </span>
-                ${
-                  isClosed
-                    ? `<span style="background: #ef4444; color: #fff; padding: 4px 12px; border-radius: 8px; font-size: 12px; font-weight: 700;">● CURRENTLY CLOSED</span>`
-                    : isFullyBooked
-                    ? `<span style="background: #f59e0b; color: #fff; padding: 4px 12px; border-radius: 8px; font-size: 12px; font-weight: 700;">● FULLY BOOKED</span>`
-                    : `<span style="background: #22c55e; color: #fff; padding: 4px 12px; border-radius: 8px; font-size: 12px; font-weight: 700;">● SLOTS AVAILABLE</span>`
-                }
+                ${isClosed
+        ? `<span style="background: #ef4444; color: #fff; padding: 4px 12px; border-radius: 8px; font-size: 12px; font-weight: 700;">● CURRENTLY CLOSED</span>`
+        : isFullyBooked
+          ? `<span style="background: #f59e0b; color: #fff; padding: 4px 12px; border-radius: 8px; font-size: 12px; font-weight: 700;">● FULLY BOOKED</span>`
+          : `<span style="background: #22c55e; color: #fff; padding: 4px 12px; border-radius: 8px; font-size: 12px; font-weight: 700;">● SLOTS AVAILABLE</span>`
+      }
               </div>
 
               <h1 class="font-display" style="font-size: clamp(1.75rem, 4vw, 2.25rem); font-weight: 800; color: #fff; margin-bottom: 4px;">${escapeHtml(provider.name)}</h1>
@@ -503,15 +501,14 @@ export async function renderProviderDetail(providerId: string) {
               </div>
               <div style="margin-bottom: 20px;">${mobilePlansHtml}</div>
 
-              ${
-                canSubscribe && baseSellingPrice !== null
-                  ? `<button id="mobileSubscribeBtn" class="btn-primary-action" style="width: 100%; justify-content: center; padding: 14px; font-size: 16px; border-radius: 14px; box-shadow: 0 4px 16px rgba(234, 88, 12, 0.3);">
+              ${canSubscribe && baseSellingPrice !== null
+        ? `<button id="mobileSubscribeBtn" class="btn-primary-action" style="width: 100%; justify-content: center; padding: 14px; font-size: 16px; border-radius: 14px; box-shadow: 0 4px 16px rgba(234, 88, 12, 0.3);">
                       <i class="fa-solid fa-credit-card"></i> Subscribe Now
                     </button>`
-                  : `<button disabled class="btn-outline-action" style="width: 100%; justify-content: center; padding: 14px; font-size: 16px; border-radius: 14px; background: var(--color-neutral-100); color: var(--color-neutral-400); cursor: not-allowed; border-color: var(--color-neutral-300);">
+        : `<button disabled class="btn-outline-action" style="width: 100%; justify-content: center; padding: 14px; font-size: 16px; border-radius: 14px; background: var(--color-neutral-100); color: var(--color-neutral-400); cursor: not-allowed; border-color: var(--color-neutral-300);">
                       <i class="fa-solid fa-ban"></i> ${isClosed ? 'Currently Closed' : isFullyBooked ? 'Fully Booked' : 'No Plans Available'}
                     </button>`
-              }
+      }
             </div>
 
             <!-- 3. Desktop Weekly Menu Grid -->
@@ -556,15 +553,14 @@ export async function renderProviderDetail(providerId: string) {
               </div>
               <div style="margin-bottom: 20px;">${plansHtml}</div>
 
-              ${
-                canSubscribe && baseSellingPrice !== null
-                  ? `<button id="sidebarSubscribeBtn" class="btn-primary-action" style="width: 100%; justify-content: center; padding: 14px; font-size: 16px; border-radius: 14px; box-shadow: 0 4px 16px rgba(234, 88, 12, 0.3);">
+              ${canSubscribe && baseSellingPrice !== null
+        ? `<button id="sidebarSubscribeBtn" class="btn-primary-action" style="width: 100%; justify-content: center; padding: 14px; font-size: 16px; border-radius: 14px; box-shadow: 0 4px 16px rgba(234, 88, 12, 0.3);">
                       <i class="fa-solid fa-credit-card"></i> Subscribe Now
                     </button>`
-                  : `<button disabled class="btn-outline-action" style="width: 100%; justify-content: center; padding: 14px; font-size: 16px; border-radius: 14px; background: var(--color-neutral-100); color: var(--color-neutral-400); cursor: not-allowed; border-color: var(--color-neutral-300);">
+        : `<button disabled class="btn-outline-action" style="width: 100%; justify-content: center; padding: 14px; font-size: 16px; border-radius: 14px; background: var(--color-neutral-100); color: var(--color-neutral-400); cursor: not-allowed; border-color: var(--color-neutral-300);">
                       <i class="fa-solid fa-ban"></i> ${isClosed ? 'Currently Closed' : isFullyBooked ? 'Fully Booked' : 'No Plans Available'}
                     </button>`
-              }
+      }
             </div>
           </div>
         </div>

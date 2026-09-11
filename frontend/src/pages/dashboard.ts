@@ -42,6 +42,7 @@ interface SubscriptionRecord {
   status?: string;
   startDate?: string;
   endDate?: string;
+  recoveryDaysApplied?: number;
   createdAt?: string;
 }
 
@@ -292,9 +293,43 @@ export async function renderDashboard() {
     const totalSubsEl = document.getElementById('totalSubsCount');
     if (totalSubsEl) totalSubsEl.innerText = `${subs.length}`;
 
+    const activeBalances = loadedRecoveryBalances.filter((b: any) => (b.remainingDays || 0) > 0);
+
+    const renderActiveRecoveryBanners = () => {
+      if (activeBalances.length === 0) return '';
+      return `
+        <div class="active-recoveries-container" style="grid-column: 1/-1; display: flex; flex-direction: column; gap: 14px; margin-bottom: 20px;">
+          ${activeBalances.map((b: any) => `
+            <div class="active-recovery-banner" style="background: linear-gradient(135deg, #f0fdf4, #ecfdf5); border: 1.5px solid #86efac; border-radius: 20px; padding: 20px; box-shadow: 0 4px 16px rgba(34, 197, 94, 0.08); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
+              <div style="display: flex; align-items: center; gap: 14px;">
+                <div style="width: 48px; height: 48px; border-radius: 16px; background: #d1fae5; color: #047857; display: flex; align-items: center; justify-content: center; font-size: 24px; flex-shrink: 0;">
+                  🎁
+                </div>
+                <div>
+                  <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                    <h3 class="font-display" style="font-size: 18px; font-weight: 800; color: #166534; margin: 0;">Meal Recovery</h3>
+                    <span style="background: #15803d; color: #fff; font-size: 12px; font-weight: 800; padding: 2px 10px; border-radius: 999px;">
+                      ${b.remainingDays} days available
+                    </span>
+                  </div>
+                  <p style="font-size: 13px; color: #15803d; margin: 4px 0 0 0;">
+                    You earned <strong>${b.remainingDays} recovery days</strong> from missed meals at <strong>${escapeHtml(b.providerName)}</strong>.
+                  </p>
+                </div>
+              </div>
+              <button class="use-recovery-plan-btn btn-primary-action" data-prov-id="${escapeHtml(b.providerId)}" style="padding: 10px 20px; font-size: 13px; font-weight: 700; background: #15803d; border-color: #15803d; cursor: pointer; white-space: nowrap;">
+                Use on your next plan →
+              </button>
+            </div>
+          `).join('')}
+        </div>
+      `;
+    };
+
     if (activeTab === 'PASSES') {
       if (activeSubs.length === 0) {
         subsGrid.innerHTML = `
+          ${renderActiveRecoveryBanners()}
           <div style="grid-column: 1/-1; background: #fff; border: 1px solid var(--color-neutral-200); border-radius: 24px; padding: 60px; text-align: center;">
             <div style="width: 72px; height: 72px; border-radius: 999px; background: var(--color-neutral-100); display: flex; align-items: center; justify-content: center; font-size: 32px; color: var(--color-neutral-400); margin: 0 auto 16px;">
               <i class="fa-solid fa-qrcode"></i>
@@ -306,11 +341,44 @@ export async function renderDashboard() {
             </button>
           </div>`;
         document.getElementById('emptyBrowseBtn')?.addEventListener('click', () => navigate('/providers'));
+        subsGrid.querySelectorAll('.use-recovery-plan-btn').forEach((btn) => {
+          btn.addEventListener('click', (e) => {
+            const pId = (e.currentTarget as HTMLElement).getAttribute('data-prov-id');
+            if (pId) navigate(`/providers/${pId}`);
+          });
+        });
         return;
       }
 
-      subsGrid.innerHTML = activeSubs
+      subsGrid.innerHTML = renderActiveRecoveryBanners() + activeSubs
         .map((s) => {
+          const recoveryBadgeHtml = s.recoveryDaysApplied > 0
+            ? `
+              <div style="background: linear-gradient(135deg, #f0fdf4, #ecfdf5); border: 1px solid #bbf7d0; border-radius: 12px; padding: 12px 14px; margin-bottom: 12px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                  <span style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: #166534;">
+                    <i class="fa-solid fa-gift"></i> Meal Recovery Applied
+                  </span>
+                  <span style="font-size: 11px; font-weight: 800; color: #15803d; background: #dcfce7; padding: 2px 8px; border-radius: 999px;">
+                    +${s.recoveryDaysApplied} Days
+                  </span>
+                </div>
+                <div style="font-size: 13px; font-weight: 700; color: #15803d;">
+                  ${s.durationDays}-day plan + ${s.recoveryDaysApplied} recovery days = ${s.durationDays + s.recoveryDaysApplied} meal days
+                </div>
+                <div style="display: flex; justify-content: space-between; font-size: 11px; color: #166534; margin-top: 6px; padding-top: 4px; border-top: 1px dashed #bbf7d0;">
+                  <span>Recovery used: <strong>${s.recoveryDaysApplied} days</strong></span>
+                  <span>Remaining: <strong>0 days</strong></span>
+                </div>
+              </div>
+            `
+            : `
+              <div style="font-size: 11px; color: var(--color-neutral-600); background: var(--color-neutral-50); border: 1px dashed var(--color-neutral-200); border-radius: 10px; padding: 8px 12px; margin-bottom: 12px; display: flex; align-items: center; gap: 6px;">
+                <i class="fa-solid fa-clock-rotate-left" style="color: var(--color-primary-600);"></i>
+                <span><strong>Meal Recovery:</strong> Your eligible missed meal days will be calculated after your subscription period ends.</span>
+              </div>
+            `;
+
           return `
           <div style="background: #fff; border: 1px solid var(--color-neutral-200); border-radius: 24px; overflow: hidden; box-shadow: 0 4px 16px rgba(0,0,0,0.04);">
             <div style="background: linear-gradient(135deg, var(--color-primary-600), var(--color-primary-700)); padding: 24px; color: #fff;">
@@ -359,6 +427,8 @@ export async function renderDashboard() {
                 <span style="font-weight: 700; color: var(--color-primary-600);">${s.daysLeft} Days</span>
               </div>
 
+              ${recoveryBadgeHtml}
+
               <div style="display: flex; gap: 8px; margin-top: 16px;">
                 <button class="btn-outline-action view-kitchen-btn" data-prov-id="${escapeHtml(s.providerId)}" style="flex: 1; padding: 10px; font-size: 13px;">
                   <i class="fa-solid fa-store"></i> View Kitchen
@@ -371,6 +441,13 @@ export async function renderDashboard() {
           </div>
         `;
         }).join('');
+
+      subsGrid.querySelectorAll('.use-recovery-plan-btn').forEach((btn) => {
+        btn.addEventListener('click', (e) => {
+          const pId = (e.currentTarget as HTMLElement).getAttribute('data-prov-id');
+          if (pId) navigate(`/providers/${pId}`);
+        });
+      });
 
       subsGrid.querySelectorAll('.view-kitchen-btn').forEach((btn) => {
         btn.addEventListener('click', (e) => {
@@ -418,12 +495,15 @@ export async function renderDashboard() {
                       </span>
                     </div>
                     <p style="font-size: 13px; color: #166534; margin: 0; line-height: 1.4; display: flex; align-items: center; gap: 6px;">
-                      <i class="fa-solid fa-circle-check" style="color: #22c55e;"></i> Will automatically extend your next subscription at ${escapeHtml(b.providerName)}
+                      <i class="fa-solid fa-circle-check" style="color: #22c55e;"></i> Automatically extends your next subscription at ${escapeHtml(b.providerName)}
                     </p>
                     <div style="display: flex; justify-content: space-between; font-size: 11px; color: var(--color-neutral-500); margin-top: 4px; padding-top: 6px; border-top: 1px dashed #dcfce7;">
                       <span>Total Recovered: ${b.totalRecoveredDays || b.remainingDays} day(s)</span>
                       <span>Used: ${b.usedDays || 0} day(s)</span>
                     </div>
+                    <button class="use-recovery-plan-btn btn-primary-action" data-prov-id="${escapeHtml(b.providerId)}" style="margin-top: 6px; padding: 8px 14px; font-size: 12px; font-weight: 700; background: #15803d; border-color: #15803d; width: 100%; justify-content: center; cursor: pointer;">
+                      Use on your next plan →
+                    </button>
                   </div>
                 `).join('')}
               </div>
@@ -433,10 +513,10 @@ export async function renderDashboard() {
                   <i class="fa-solid fa-shield-halved"></i>
                 </div>
                 <p style="font-size: 14px; font-weight: 700; color: var(--color-neutral-800); margin: 0 0 4px 0;">
-                  Your recovery days will appear here when eligible.
+                  Meal Recovery
                 </p>
-                <p style="font-size: 12px; color: var(--color-neutral-500); margin: 0; max-width: 420px; margin-left: auto; margin-right: auto;">
-                  Missed meals are converted into recovery days at the end of each subscription based on your mess policy.
+                <p style="font-size: 12px; color: var(--color-neutral-500); margin: 0; max-width: 440px; margin-left: auto; margin-right: auto;">
+                  Your eligible missed meal days will be calculated after your subscription period ends.
                 </p>
               </div>
             `}
@@ -748,6 +828,8 @@ export async function renderDashboard() {
         safeRef,
         planId: plan.id || '',
         providerId: provider.id || '',
+        recoveryDaysApplied: Number(s.recoveryDaysApplied || 0),
+        durationDays: Number(plan.durationDays || 30),
       };
     });
 

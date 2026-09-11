@@ -327,9 +327,9 @@ export class PaymentsService {
     const bodyBuffer = Buffer.isBuffer(rawBody)
       ? rawBody
       : Buffer.from(
-          typeof rawBody === 'string' ? rawBody : JSON.stringify(rawBody),
-          'utf8',
-        );
+        typeof rawBody === 'string' ? rawBody : JSON.stringify(rawBody),
+        'utf8',
+      );
 
     const expected = crypto
       .createHmac('sha256', webhookSecret)
@@ -657,6 +657,7 @@ export class PaymentsService {
           status: SubscriptionStatus.ACTIVE,
           startDate,
           endDate,
+          recoveryDaysApplied: 0,
         });
 
         savedSubscription = await manager.save(
@@ -668,26 +669,20 @@ export class PaymentsService {
       // 5b. Apply provider-specific meal recovery days (inside same transaction — atomic).
       // If consumption succeeds but subscription fails, the whole transaction rolls back.
       if (this.mealRecoveryService) {
-        try {
-          const recoveryDaysConsumed = await this.mealRecoveryService.consumeRecovery(
-            student.id,
-            provider.id,
-            manager,
-          );
-          if (recoveryDaysConsumed > 0) {
-            const baseEnd = new Date(savedSubscription.endDate + 'T00:00:00Z');
-            baseEnd.setUTCDate(baseEnd.getUTCDate() + recoveryDaysConsumed);
-            savedSubscription.endDate = baseEnd.toISOString().split('T')[0];
-            savedSubscription = await manager.save(Subscription, savedSubscription);
-            this.logger.log(
-              `Recovery applied: studentId=${student.id}, providerId=${provider.id}, days=${recoveryDaysConsumed}, newEndDate=${savedSubscription.endDate}`,
-            );
-          }
-        } catch (recoveryErr: any) {
-          // Recovery failure must NOT block subscription activation.
-          // Log and continue — subscription proceeds without recovery extension.
-          this.logger.warn(
-            `Recovery consumption failed (non-fatal): ${recoveryErr?.message || recoveryErr}`,
+        const recoveryDaysConsumed = await this.mealRecoveryService.consumeRecovery(
+          student.id,
+          provider.id,
+          manager,
+        );
+        if (recoveryDaysConsumed > 0) {
+          const baseEnd = new Date(savedSubscription.endDate + 'T00:00:00Z');
+          baseEnd.setUTCDate(baseEnd.getUTCDate() + recoveryDaysConsumed);
+          savedSubscription.endDate = baseEnd.toISOString().split('T')[0];
+          savedSubscription.recoveryDaysApplied =
+            (savedSubscription.recoveryDaysApplied || 0) + recoveryDaysConsumed;
+          savedSubscription = await manager.save(Subscription, savedSubscription);
+          this.logger.log(
+            `Recovery applied: studentId=${student.id}, providerId=${provider.id}, days=${recoveryDaysConsumed}, totalApplied=${savedSubscription.recoveryDaysApplied}, newEndDate=${savedSubscription.endDate}`,
           );
         }
       }
@@ -787,7 +782,7 @@ export class PaymentsService {
           processedAt: new Date(),
         });
         await this.webhookEventRepo.save(webhookEvent);
-      } catch (_) {}
+      } catch (_) { }
       return { status: 'OK', message: 'payment.authorized acknowledged' };
     }
 
@@ -802,9 +797,9 @@ export class PaymentsService {
       const preOrder =
         orderId && orderId !== 'unknown'
           ? await this.paymentRepo.findOne({
-              where: { razorpayOrderId: orderId },
-              relations: { student: true },
-            })
+            where: { razorpayOrderId: orderId },
+            relations: { student: true },
+          })
           : null;
 
       let userId = notes.userId || preOrder?.student?.id;
@@ -908,7 +903,7 @@ export class PaymentsService {
           processedAt: new Date(),
         });
         await this.webhookEventRepo.save(webhookEvent);
-      } catch (_) {}
+      } catch (_) { }
     }
 
     return { status: 'OK' };
@@ -1287,10 +1282,10 @@ export class PaymentsService {
       const sub =
         statusLower === 'paid'
           ? subscriptions.find(
-              (s: any) =>
-                s.mealPlan?.id === p.mealPlanId ||
-                (p.provider && s.provider?.id === p.provider.id),
-            )
+            (s: any) =>
+              s.mealPlan?.id === p.mealPlanId ||
+              (p.provider && s.provider?.id === p.provider.id),
+          )
           : null;
 
       const ticket = ticketsMap[p.razorpayOrderId] || null;
@@ -1308,46 +1303,46 @@ export class PaymentsService {
         createdAt: p.createdAt,
         provider: p.provider
           ? {
-              id: p.provider.id,
-              name: p.provider.name,
-              city: p.provider.city || '',
-              address: p.provider.address || '',
-            }
+            id: p.provider.id,
+            name: p.provider.name,
+            city: p.provider.city || '',
+            address: p.provider.address || '',
+          }
           : plan?.provider
             ? {
-                id: plan.provider.id,
-                name: plan.provider.name,
-                city: plan.provider.city || '',
-                address: plan.provider.address || '',
-              }
+              id: plan.provider.id,
+              name: plan.provider.name,
+              city: plan.provider.city || '',
+              address: plan.provider.address || '',
+            }
             : null,
         mealPlan: plan
           ? {
-              id: plan.id,
-              title: plan.title,
-              pricePerMonth: Number(plan.sellingPrice ?? plan.pricePerMonth ?? 0),
-              sellingPrice: Number(plan.sellingPrice ?? plan.pricePerMonth ?? 0),
-              originalPrice: Number(
-                plan.originalPrice ?? plan.sellingPrice ?? plan.pricePerMonth ?? 0,
-              ),
-            }
+            id: plan.id,
+            title: plan.title,
+            pricePerMonth: Number(plan.sellingPrice ?? plan.pricePerMonth ?? 0),
+            sellingPrice: Number(plan.sellingPrice ?? plan.pricePerMonth ?? 0),
+            originalPrice: Number(
+              plan.originalPrice ?? plan.sellingPrice ?? plan.pricePerMonth ?? 0,
+            ),
+          }
           : null,
         subscription: sub
           ? {
-              id: sub.id,
-              status: sub.status,
-              startDate: sub.startDate,
-              endDate: sub.endDate,
-            }
+            id: sub.id,
+            status: sub.status,
+            startDate: sub.startDate,
+            endDate: sub.endDate,
+          }
           : null,
         supportTicket: ticket
           ? {
-              id: ticket.id,
-              ticketNumber: ticket.ticketNumber,
-              status: ticket.status,
-              issueType: ticket.issueType,
-              createdAt: ticket.createdAt,
-            }
+            id: ticket.id,
+            ticketNumber: ticket.ticketNumber,
+            status: ticket.status,
+            issueType: ticket.issueType,
+            createdAt: ticket.createdAt,
+          }
           : null,
       };
     });
@@ -1468,7 +1463,7 @@ export class PaymentsService {
         if (earning?.subscription) {
           sub = earning.subscription;
         }
-      } catch (_) {}
+      } catch (_) { }
 
       if (!sub && this.subscriptionsService) {
         try {
@@ -1479,7 +1474,7 @@ export class PaymentsService {
               s.mealPlan?.id === payment.mealPlanId ||
               (provider && s.provider?.id === provider.id),
           );
-        } catch (_) {}
+        } catch (_) { }
       }
     }
 
@@ -1574,24 +1569,24 @@ export class PaymentsService {
       },
       subscription: sub
         ? {
-            id: sub.id,
-            status: sub.status,
-            startDate: sub.startDate,
-            endDate: sub.endDate,
-            messCardAvailable: true,
-          }
+          id: sub.id,
+          status: sub.status,
+          startDate: sub.startDate,
+          endDate: sub.endDate,
+          messCardAvailable: true,
+        }
         : null,
       timeline,
       supportTicket: ticket
         ? {
-            id: ticket.id,
-            ticketNumber: ticket.ticketNumber,
-            status: ticket.status,
-            issueType: ticket.issueType,
-            description: ticket.description,
-            utrReference: ticket.utrReference || null,
-            createdAt: ticket.createdAt,
-          }
+          id: ticket.id,
+          ticketNumber: ticket.ticketNumber,
+          status: ticket.status,
+          issueType: ticket.issueType,
+          description: ticket.description,
+          utrReference: ticket.utrReference || null,
+          createdAt: ticket.createdAt,
+        }
         : null,
     };
   }

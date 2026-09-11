@@ -164,6 +164,9 @@ async function bootstrap() {
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api/v1/docs', app, document);
 
+  // Enable graceful shutdown hooks for clean process exits and scheduler timer cleanups
+  app.enableShutdownHooks();
+
   const port = process.env.PORT ?? 5000;
   await app.listen(port, '0.0.0.0');
   console.log(

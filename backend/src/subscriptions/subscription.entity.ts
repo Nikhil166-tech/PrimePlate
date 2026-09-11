@@ -41,6 +41,9 @@ export class Subscription {
   @Column({ type: 'date', nullable: true })
   endDate?: string;
 
+  @Column({ type: 'int', default: 0 })
+  recoveryDaysApplied: number;
+
   @Column({ nullable: true })
   pausedAt?: Date;
 

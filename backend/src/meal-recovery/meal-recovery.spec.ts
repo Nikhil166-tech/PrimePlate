@@ -14,6 +14,7 @@ const mockRepo = () => ({
   find: jest.fn(),
   create: jest.fn(),
   save: jest.fn(),
+  createQueryBuilder: jest.fn(),
 });
 
 const PROVIDER_ID = 'provider-1';
@@ -430,4 +431,63 @@ describe('MealRecoveryService', () => {
     const result = await service.processSubscriptionRecovery(sub.id, USER_ID);
     expect(result.missedDays).toBe(2);
   });
+
+  // ======= AUTOMATIC / SYSTEM PROCESSING (NO USER_ID) =======
+  it('26. System/internal recovery processing without userId skips provider ownership checks', async () => {
+    const sub = makeSub({ startDate: '2026-08-01', endDate: '2026-08-10' });
+    subRepo.findOne.mockResolvedValue(sub);
+    recoveryRepo.findOne.mockResolvedValue(null);
+    usageRepo.find.mockResolvedValue([]);
+    const created = { id: 'rec-auto-1', missedDays: 10, recoveryRate: 80, recoveredDays: 8, usedDays: 0, remainingDays: 8, status: MealRecoveryStatus.AVAILABLE };
+    recoveryRepo.create.mockReturnValue(created);
+    recoveryRepo.save.mockResolvedValue(created);
+
+    // Call without userId (as called by scheduler or system background task)
+    const result = await service.processSubscriptionRecovery(sub.id);
+    expect(result.processed).toBe(true);
+    expect(result.recoveredDays).toBe(8);
+  });
+
+  it('27. processEligibleEndedSubscriptions processes candidates and returns safe metrics', async () => {
+    const sub1 = makeSub({ id: 'sub-ended-1', startDate: '2026-08-01', endDate: '2026-08-10' });
+    const sub2 = makeSub({ id: 'sub-ended-2', startDate: '2026-08-01', endDate: '2026-08-05' });
+
+    const qbMock: any = {
+      leftJoin: jest.fn().mockReturnThis(),
+      leftJoinAndSelect: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
+      andWhere: jest.fn().mockReturnThis(),
+      take: jest.fn().mockReturnThis(),
+      getMany: jest.fn().mockResolvedValue([sub1, sub2]),
+    };
+    subRepo.createQueryBuilder.mockReturnValue(qbMock);
+
+    // Spy on processSubscriptionRecovery
+    jest.spyOn(service, 'processSubscriptionRecovery')
+      .mockResolvedValueOnce({ processed: true, alreadyProcessed: false, subscriptionId: sub1.id, missedDays: 10, recoveryRate: 80, recoveredDays: 8, recovery: {} as any })
+      .mockResolvedValueOnce({ processed: false, alreadyProcessed: true, subscriptionId: sub2.id, missedDays: 5, recoveryRate: 80, recoveredDays: 4, recovery: {} as any });
+
+    const metrics = await service.processEligibleEndedSubscriptions();
+    expect(metrics.inspected).toBe(2);
+    expect(metrics.processed).toBe(1);
+    expect(metrics.skipped).toBe(1);
+    expect(metrics.errors).toBe(0);
+  });
+
+  it('28. consumeRecovery with specific daysToConsume consumes requested portion FIFO', async () => {
+    const rec1 = { id: 'r1', studentId: STUDENT_ID, providerId: PROVIDER_ID, remainingDays: 8, usedDays: 0, status: MealRecoveryStatus.AVAILABLE, createdAt: new Date('2026-08-01') };
+    const savedRecs: any[] = [];
+    const mockManager = {
+      find: jest.fn().mockResolvedValue([rec1]),
+      save: jest.fn().mockImplementation((_e: any, r: any) => { savedRecs.push(r); return r; }),
+    } as unknown as EntityManager;
+
+    // Request to consume only 3 days out of 8
+    const consumed = await service.consumeRecovery(STUDENT_ID, PROVIDER_ID, 3, mockManager);
+    expect(consumed).toBe(3);
+    expect(savedRecs[0].usedDays).toBe(3);
+    expect(savedRecs[0].remainingDays).toBe(5);
+    expect(savedRecs[0].status).toBe(MealRecoveryStatus.PARTIALLY_USED);
+  });
 });
+

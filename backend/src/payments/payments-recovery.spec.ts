@@ -24,6 +24,7 @@ import {
 } from '../payouts/provider-earning.entity';
 import { SupportTicket } from '../support/support-ticket.entity';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
+import { MealRecoveryService } from '../meal-recovery/meal-recovery.service';
 
 describe('PrimePlate Payment Security & Recovery Specification', () => {
   jest.setTimeout(20000);
@@ -34,6 +35,7 @@ describe('PrimePlate Payment Security & Recovery Specification', () => {
   let userRepo: any;
   let planRepo: any;
   let subscriptionsService: any;
+  let mealRecoveryService: any;
 
   const keySecret = 'test_key_secret_12345';
   const webhookSecret = 'test_webhook_secret_67890';
@@ -78,6 +80,10 @@ describe('PrimePlate Payment Security & Recovery Specification', () => {
     mockWebhookEventsStore = [];
     mockSubscriptionsStore = [];
     mockEarningsStore = [];
+    mealRecoveryService = {
+      getStudentRecoveryBalance: jest.fn().mockResolvedValue([]),
+      consumeRecovery: jest.fn().mockResolvedValue(0),
+    };
 
     const mockManager: any = {
       connection: { options: { type: 'better-sqlite3' } },
@@ -104,6 +110,13 @@ describe('PrimePlate Payment Security & Recovery Specification', () => {
             }) || null
           );
         }
+        if (entity === ProviderEarning) {
+          return (
+            mockEarningsStore.find(
+              (e) => e.paymentId === opts?.where?.paymentId,
+            ) || null
+          );
+        }
         return null;
       }),
       count: jest.fn().mockImplementation((entity, opts) => {
@@ -118,27 +131,33 @@ describe('PrimePlate Payment Security & Recovery Specification', () => {
         ...data,
         id: `gen_${Date.now()}_${Math.random()}`,
       })),
-      save: jest.fn().mockImplementation((entity, data) => {
-        if (entity === Payment || data.razorpayOrderId) {
+      save: jest.fn().mockImplementation((arg1, arg2) => {
+        const item = arg2 !== undefined ? arg2 : arg1;
+        if (arg1 === Payment || item?.razorpayOrderId) {
           const idx = mockPaymentsStore.findIndex(
-            (p) => p.razorpayOrderId === data.razorpayOrderId,
+            (p) => p.razorpayOrderId === item.razorpayOrderId,
           );
           if (idx >= 0) {
-            mockPaymentsStore[idx] = { ...mockPaymentsStore[idx], ...data };
+            mockPaymentsStore[idx] = { ...mockPaymentsStore[idx], ...item };
             return mockPaymentsStore[idx];
           }
-          mockPaymentsStore.push(data);
-          return data;
+          mockPaymentsStore.push(item);
+          return item;
         }
-        if (entity === Subscription || data.student) {
-          mockSubscriptionsStore.push(data);
-          return data;
+        if (arg1 === Subscription || item?.student || (item?.startDate && item?.endDate)) {
+          const idx = item?.id ? mockSubscriptionsStore.findIndex((s) => s.id === item.id) : -1;
+          if (idx >= 0) {
+            mockSubscriptionsStore[idx] = { ...mockSubscriptionsStore[idx], ...item };
+            return mockSubscriptionsStore[idx];
+          }
+          mockSubscriptionsStore.push(item);
+          return item;
         }
-        if (entity === ProviderEarning || data.providerId) {
-          mockEarningsStore.push(data);
-          return data;
+        if (arg1 === ProviderEarning || item?.paymentId || item?.grossAmount !== undefined) {
+          mockEarningsStore.push(item);
+          return item;
         }
-        return data;
+        return item;
       }),
     };
 
@@ -264,6 +283,10 @@ describe('PrimePlate Payment Security & Recovery Specification', () => {
                 .map((s) => ({ ...s, mealPlan: mockMealPlan }));
             }),
           },
+        },
+        {
+          provide: MealRecoveryService,
+          useValue: mealRecoveryService,
         },
       ],
     }).compile();
@@ -664,4 +687,86 @@ describe('PrimePlate Payment Security & Recovery Specification', () => {
       expect(mockEarningsStore.length).toBe(1);
     });
   });
+
+  describe('9. Meal Recovery Automatic Consumption during Payment', () => {
+    it('applies available recovery days to subscription, extends endDate, and maintains normal payment amount', async () => {
+      mealRecoveryService.getStudentRecoveryBalance.mockResolvedValue([
+        { providerId: mockProvider.id, remainingDays: 8 },
+      ]);
+      mealRecoveryService.consumeRecovery.mockResolvedValue(8);
+
+      const orderId = 'order_recovery_success';
+      mockPaymentsStore.push({
+        id: 'p_recovery_1',
+        student: mockStudent1,
+        provider: mockProvider,
+        amount: 3000,
+        razorpayOrderId: orderId,
+        status: 'created',
+        durationDays: 30,
+        mealPlanId: mockMealPlan.id,
+      });
+
+      const res = await paymentsService.reconcileCapturedPayment({
+        userId: mockStudent1.id,
+        razorpayOrderId: orderId,
+        razorpayPaymentId: 'pay_recovery_captured',
+        mealPlanId: mockMealPlan.id,
+        durationInput: 30,
+        skipSignatureCheck: true,
+        paymentAmountInPaise: 300000,
+      });
+
+      expect(res.success).toBe(true);
+      expect(mealRecoveryService.consumeRecovery).toHaveBeenCalled();
+      const sub = mockSubscriptionsStore[0];
+      expect(sub).toBeDefined();
+      expect(sub.recoveryDaysApplied).toBe(8);
+      // Payment amount must remain authoritative ₹3000 (not reduced)
+      expect(res.payment.amount).toBe(3000);
+
+      // Payment reconciliation retry must be idempotent and not consume recovery again
+      const retryRes = await paymentsService.reconcileCapturedPayment({
+        userId: mockStudent1.id,
+        razorpayOrderId: orderId,
+        razorpayPaymentId: 'pay_recovery_captured',
+        mealPlanId: mockMealPlan.id,
+        durationInput: 30,
+        skipSignatureCheck: true,
+        paymentAmountInPaise: 300000,
+      });
+      expect(retryRes.idempotent).toBe(true);
+      expect(mealRecoveryService.consumeRecovery).toHaveBeenCalledTimes(1); // not called again
+      expect(mockSubscriptionsStore.length).toBe(1); // not created again
+    });
+
+    it('rolls back transaction if recovery consumption throws an error', async () => {
+      mealRecoveryService.consumeRecovery.mockRejectedValue(new Error('Transaction failure'));
+
+      const orderId = 'order_recovery_fail';
+      mockPaymentsStore.push({
+        id: 'p_recovery_fail',
+        student: mockStudent1,
+        provider: mockProvider,
+        amount: 3000,
+        razorpayOrderId: orderId,
+        status: 'created',
+        durationDays: 30,
+        mealPlanId: mockMealPlan.id,
+      });
+
+      await expect(
+        paymentsService.reconcileCapturedPayment({
+          userId: mockStudent1.id,
+          razorpayOrderId: orderId,
+          razorpayPaymentId: 'pay_recovery_fail',
+          mealPlanId: mockMealPlan.id,
+          durationInput: 30,
+          skipSignatureCheck: true,
+          paymentAmountInPaise: 300000,
+        }),
+      ).rejects.toThrow();
+    });
+  });
 });
+

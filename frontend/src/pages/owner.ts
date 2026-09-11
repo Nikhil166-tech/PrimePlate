@@ -10,7 +10,6 @@ import api, {
   getProviderSubscriberAttendanceHistory,
   correctProviderCheckIn,
   getProviderRecoveryStats,
-  processSubscriptionRecovery,
   updateProviderRecoveryPercentage,
 } from '../api';
 import { navigate } from '../router';
@@ -21,6 +20,31 @@ import { escapeHtml, getSafeImageUrl } from '../utils/sanitize';
 import { mountMealCalendar } from '../components/MealCalendar';
 
 const DAYS_OF_WEEK = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+
+// Official PrimePlate Logo SVG generator (Exact Brand Logo)
+const getPrimePlateLogoSvg = () => {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+    <defs>
+      <linearGradient id="ppOrangeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stop-color="#f97316"/>
+        <stop offset="100%" stop-color="#ea580c"/>
+      </linearGradient>
+    </defs>
+    <!-- Orange Squircle Badge -->
+    <rect x="4" y="4" width="92" height="92" rx="28" fill="url(#ppOrangeGrad)"/>
+    
+    <!-- Fork (Left) -->
+    <g fill="#ffffff">
+      <path d="M26 25 v14 c0 4.5 3 7.5 7.5 7.5 v25 a3 3 0 0 0 6 0 v-25 c4.5 0 7.5-3 7.5-7.5 v-14 h-3.2 v12 c0 2.2-1.5 3.8-3.5 3.8 s-3.5-1.6-3.5-3.8 v-12 h-2.8 v12 c0 2.2-1.5 3.8-3.5 3.8 s-3.5-1.6-3.5-3.8 v-12 z"/>
+    </g>
+    
+    <!-- Knife (Right) -->
+    <g fill="#ffffff">
+      <path d="M53 25 v21.5 c0 4 3 6.5 6 7 v18.5 a3 3 0 0 0 6 0 v-27 c4-2.5 7-7.5 7-14 c0-4-1-6-3.5-6 c-3.5 0-9 0-15.5 0 z"/>
+    </g>
+  </svg>`;
+  return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+};
 
 interface ImageQueueItem {
   id: string;
@@ -86,8 +110,6 @@ export async function renderOwnerPortal() {
   } | null = null;
   let recoveryLoading = false;
   let isUpdatingRecoveryPercentage = false;
-  let processingRecoverySubId: string | null = null;
-  let recoveryProcessResult: { message: string; type: 'success' | 'info' | 'error' } | null = null;
   let mealQrData: { providerId: string; providerName: string; qrToken: string; qrCodeDataUrl: string } | null = null;
   let mealQrLoading = false;
   let todayCheckInsData: {
@@ -1003,53 +1025,119 @@ export async function renderOwnerPortal() {
             <p style="font-size: 13px; color: var(--color-neutral-500); margin-top: 12px;">Loading permanent QR code...</p>
           </div>
         ` : mealQrData && mealQrData.qrCodeDataUrl ? `
-          <!-- Printable Standee Container -->
+          <!-- Official Branded QR Standee (Matches Downloaded & Printed Standee) -->
           <div id="printableStandeeCard" style="
             background: #ffffff;
-            border: 2px solid var(--color-neutral-200);
+            border: 2px solid #e2e8f0;
             border-radius: 24px;
-            padding: 28px 24px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.06);
-            max-width: 360px;
+            box-shadow: 0 12px 36px rgba(0,0,0,0.08);
+            max-width: 380px;
             width: 100%;
             display: flex;
             flex-direction: column;
             align-items: center;
             margin-bottom: 24px;
+            overflow: hidden;
+            position: relative;
           ">
-            <div style="display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; color: var(--color-primary-600); margin-bottom: 8px;">
-              <i class="fa-solid fa-utensils"></i> PrimePlate Official Mess QR
-            </div>
-            <h3 class="font-display" style="font-size: 20px; font-weight: 800; color: var(--color-neutral-900); margin: 0 0 4px 0; text-align: center;">
-              ${escapeHtml(selectedHostel?.name || mealQrData.providerName)}
-            </h3>
-            <p style="font-size: 12px; color: var(--color-neutral-500); margin: 0 0 16px 0;">
-              ${escapeHtml(selectedHostel?.address || selectedHostel?.city || 'Verified Mess Kitchen')}
-            </p>
+            <!-- Top Orange Brand Stripe -->
+            <div style="width: 100%; height: 6px; background: linear-gradient(90deg, #ea580c, #f97316);"></div>
 
-            <!-- Large Scannable QR Code -->
+            <!-- Standee Header Banner -->
             <div style="
-              background: #ffffff;
-              padding: 12px;
-              border-radius: 20px;
-              border: 2px solid var(--color-neutral-900);
-              box-shadow: 0 4px 16px rgba(0,0,0,0.08);
-              margin-bottom: 16px;
-              width: 240px;
-              height: 240px;
+              width: 100%;
+              background: linear-gradient(180deg, #fff7ed 0%, #ffedd5 100%);
+              padding: 16px 20px 14px 20px;
               display: flex;
               align-items: center;
-              justify-content: center;
+              gap: 12px;
+              border-bottom: 1px solid #fed7aa;
             ">
-              <img src="${mealQrData.qrCodeDataUrl}" alt="Mess Check-in QR Code" style="width: 100%; height: 100%; object-fit: contain; display: block;" />
+              <img src="${getPrimePlateLogoSvg()}" alt="PrimePlate Logo" style="width: 44px; height: 44px; border-radius: 12px; flex-shrink: 0; box-shadow: 0 2px 8px rgba(234, 88, 12, 0.25);" />
+              <div style="text-align: left;">
+                <div style="font-size: 20px; font-weight: 800; color: #111827; line-height: 1.1; font-family: 'Inter', sans-serif;">
+                  PrimePlate
+                </div>
+                <div style="font-size: 9px; font-weight: 800; color: #c2410c; letter-spacing: 0.8px; text-transform: uppercase; margin-top: 2px;">
+                  Digital Mess Card Platform
+                </div>
+              </div>
             </div>
 
-            <p style="font-size: 13px; font-weight: 700; color: var(--color-neutral-800); margin: 0 0 4px 0;">
-              Scan with PrimePlate App
-            </p>
-            <span style="font-size: 11px; color: var(--color-neutral-500);">
-              1 meal check-in per student per calendar day
-            </span>
+            <!-- Standee Body Content -->
+            <div style="padding: 20px 20px 16px 20px; width: 100%; display: flex; flex-direction: column; align-items: center;">
+              <!-- Mess Name & Subtitle -->
+              <h3 class="font-display" style="font-size: 20px; font-weight: 800; color: #0f172a; margin: 0 0 2px 0; text-align: center; line-height: 1.3;">
+                ${escapeHtml(selectedHostel?.name || mealQrData.providerName || 'Mess Kitchen')}
+              </h3>
+              <p style="font-size: 12px; font-weight: 600; color: #ea580c; margin: 0 0 4px 0;">
+                Official Daily Check-in Standee
+              </p>
+              <p style="font-size: 11px; color: #64748b; margin: 0 0 16px 0;">
+                ${escapeHtml(selectedHostel?.address || selectedHostel?.city || 'Verified Mess Kitchen')}
+              </p>
+
+              <!-- QR Container Box with Center Emblem -->
+              <div style="
+                background: #ffffff;
+                padding: 12px;
+                border-radius: 20px;
+                border: 2.5px solid #ea580c;
+                box-shadow: 0 8px 24px rgba(234, 88, 12, 0.12);
+                margin-bottom: 14px;
+                width: 260px;
+                height: 260px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                position: relative;
+              ">
+                <img src="${mealQrData.qrCodeDataUrl}" alt="Mess Check-in QR Code" style="width: 100%; height: 100%; object-fit: contain; display: block;" />
+                
+                <!-- Center Emblem matching downloaded standee -->
+                <div style="
+                  position: absolute;
+                  top: 50%;
+                  left: 50%;
+                  transform: translate(-50%, -50%);
+                  width: 42px;
+                  height: 42px;
+                  background: #ffffff;
+                  border-radius: 12px;
+                  box-shadow: 0 2px 10px rgba(0,0,0,0.15);
+                  padding: 3px;
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
+                ">
+                  <img src="${getPrimePlateLogoSvg()}" alt="PP" style="width: 100%; height: 100%; border-radius: 8px;" />
+                </div>
+              </div>
+
+              <!-- Instructions -->
+              <p style="font-size: 14px; font-weight: 800; color: #ea580c; margin: 0 0 2px 0;">
+                Scan with PrimePlate to Check In
+              </p>
+              <p style="font-size: 12px; font-weight: 600; color: #334155; margin: 0 0 2px 0;">
+                Open PrimePlate and tap "Scan Meal QR" to record today's meal
+              </p>
+              <span style="font-size: 11px; color: #94a3b8; margin-bottom: 16px;">
+                One check-in per student per calendar day
+              </span>
+
+              <!-- Standee Footer Divider & Website Link -->
+              <div style="width: 100%; border-top: 1px solid #e2e8f0; padding-top: 12px; margin-top: 4px; display: flex; flex-direction: column; align-items: center; gap: 4px;">
+                <a href="https://prime-plate-chi.vercel.app" target="_blank" rel="noopener noreferrer" style="display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 800; color: #ea580c; text-decoration: none; padding: 4px 10px; background: #fff7ed; border-radius: 8px; border: 1px solid #ffedd5;">
+                  <span>🌐 https://prime-plate-chi.vercel.app</span>
+                </a>
+                <span style="font-size: 11px; color: #64748b; font-weight: 500;">
+                  Your Food. Your Time. Your PrimePlate.
+                </span>
+                <span style="font-size: 10px; color: #94a3b8;">
+                  Verified Kitchen Partner • Smart Student Subscriptions
+                </span>
+              </div>
+            </div>
           </div>
 
           <!-- Action Buttons -->
@@ -2063,38 +2151,20 @@ export async function renderOwnerPortal() {
                 </div>
               </div>
 
-              <!-- Meal Recovery — Process Button -->
-              <div style="background: linear-gradient(135deg, #f0fdf4, #ecfdf5); border: 1px solid #bbf7d0; border-radius: 14px; padding: 14px; display: flex; flex-direction: column; gap: 10px;">
-                <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 8px;">
-                  <div style="display: flex; align-items: center; gap: 8px;">
-                    <div style="width: 28px; height: 28px; border-radius: 8px; background: #d1fae5; color: #047857; display: flex; align-items: center; justify-content: center; font-size: 13px;">
-                      <i class="fa-solid fa-shield-halved"></i>
-                    </div>
-                    <div>
-                      <h4 style="font-size: 14px; font-weight: 800; color: var(--color-neutral-900); margin: 0;">Meal Recovery</h4>
-                      <span style="font-size: 11px; color: var(--color-neutral-500);">Calculate &amp; grant recovery days for missed meals</span>
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    class="process-recovery-btn btn-outline-action"
-                    data-sub-id="${escapeHtml(selectedSubscriberForDetails.id)}"
-                    style="padding: 7px 14px; font-size: 12px; font-weight: 800; border-radius: 10px; background: #fff; color: #047857; border-color: #86efac; cursor: pointer; white-space: nowrap;"
-                    ${processingRecoverySubId === selectedSubscriberForDetails.id ? 'disabled' : ''}
-                  >
+              <!-- Meal Recovery — Automatic Processing Status -->
+              <div style="background: linear-gradient(135deg, #f0fdf4, #ecfdf5); border: 1px solid #bbf7d0; border-radius: 14px; padding: 14px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <div style="width: 28px; height: 28px; border-radius: 8px; background: #d1fae5; color: #047857; display: flex; align-items: center; justify-content: center; font-size: 13px;">
                     <i class="fa-solid fa-shield-halved"></i>
-                    ${processingRecoverySubId === selectedSubscriberForDetails.id ? '<i class="fa-solid fa-spinner fa-spin"></i> Processing...' : 'Process Recovery'}
-                  </button>
-                </div>
-                ${recoveryProcessResult ? `
-                  <div style="font-size: 12px; font-weight: 700; padding: 8px 12px; border-radius: 10px; background: ${
-                    recoveryProcessResult.type === 'success' ? '#d1fae5' : recoveryProcessResult.type === 'info' ? '#dbeafe' : '#fee2e2'
-                  }; color: ${
-                    recoveryProcessResult.type === 'success' ? '#047857' : recoveryProcessResult.type === 'info' ? '#1d4ed8' : '#dc2626'
-                  };">
-                    ${escapeHtml(recoveryProcessResult.message)}
                   </div>
-                ` : ''}
+                  <div>
+                    <h4 style="font-size: 14px; font-weight: 800; color: var(--color-neutral-900); margin: 0;">Meal Recovery</h4>
+                    <span style="font-size: 11px; color: #166534; font-weight: 600;">Automatically processed by PrimePlate upon plan completion</span>
+                  </div>
+                </div>
+                <span style="font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 999px; background: #dcfce7; color: #15803d; border: 1px solid #bbf7d0;">
+                  <i class="fa-solid fa-bolt"></i> Fully Automatic
+                </span>
               </div>
 
               <!-- Whole Month Attendance Section -->
@@ -2361,31 +2431,6 @@ export async function renderOwnerPortal() {
         render();
       });
     });
-
-    // Official PrimePlate Logo SVG generator (Exact Brand Logo)
-    const getPrimePlateLogoSvg = () => {
-      const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
-        <defs>
-          <linearGradient id="ppOrangeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stop-color="#f97316"/>
-            <stop offset="100%" stop-color="#ea580c"/>
-          </linearGradient>
-        </defs>
-        <!-- Orange Squircle Badge -->
-        <rect x="4" y="4" width="92" height="92" rx="28" fill="url(#ppOrangeGrad)"/>
-        
-        <!-- Fork (Left) -->
-        <g fill="#ffffff">
-          <path d="M26 25 v14 c0 4.5 3 7.5 7.5 7.5 v25 a3 3 0 0 0 6 0 v-25 c4.5 0 7.5-3 7.5-7.5 v-14 h-3.2 v12 c0 2.2-1.5 3.8-3.5 3.8 s-3.5-1.6-3.5-3.8 v-12 h-2.8 v12 c0 2.2-1.5 3.8-3.5 3.8 s-3.5-1.6-3.5-3.8 v-12 z"/>
-        </g>
-        
-        <!-- Knife (Right) -->
-        <g fill="#ffffff">
-          <path d="M53 25 v21.5 c0 4 3 6.5 6 7 v18.5 a3 3 0 0 0 6 0 v-27 c4-2.5 7-7.5 7-14 c0-4-1-6-3.5-6 c-3.5 0-9 0-15.5 0 z"/>
-        </g>
-      </svg>`;
-      return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
-    };
 
     // Print QR
     document.querySelectorAll('.print-meal-qr-btn').forEach((btn) => {
@@ -2691,12 +2736,13 @@ export async function renderOwnerPortal() {
           }
         };
 
-        qrImg.crossOrigin = 'anonymous';
+        if (!qrDataUrl.startsWith('data:')) {
+          qrImg.crossOrigin = 'anonymous';
+        }
         qrImg.onload = checkLoaded;
         qrImg.onerror = () => resolve(qrDataUrl);
         qrImg.src = qrDataUrl;
 
-        logoImg.crossOrigin = 'anonymous';
         logoImg.onload = checkLoaded;
         logoImg.onerror = checkLoaded;
         logoImg.src = getPrimePlateLogoSvg();
@@ -3784,7 +3830,6 @@ export async function renderOwnerPortal() {
       subscriberAttendanceData = null;
       subscriberAttendanceError = null;
       subscriberAttendanceLoading = false;
-      recoveryProcessResult = null;
       render();
     };
 
@@ -3827,46 +3872,6 @@ export async function renderOwnerPortal() {
           showToast(err.message || 'Failed to update recovery rate', 'error');
         } finally {
           isUpdatingRecoveryPercentage = false;
-        }
-      });
-    });
-
-    // Process Recovery Button — calculate & grant recovery days for a subscriber
-    document.querySelectorAll('.process-recovery-btn').forEach((btn) => {
-      btn.addEventListener('click', async (e) => {
-        const subId = (e.currentTarget as HTMLElement).getAttribute('data-sub-id');
-        if (!subId || processingRecoverySubId === subId) return;
-        processingRecoverySubId = subId;
-        recoveryProcessResult = null;
-        render();
-        try {
-          const result: any = await processSubscriptionRecovery(subId, selectedHostel?.id);
-          const r = result?.data !== undefined ? result.data : result;
-          if (r?.alreadyProcessed) {
-            recoveryProcessResult = {
-              message: `Already processed: ${r.recoveredDays ?? 0} recovery day(s) granted (${r.missedDays ?? 0} missed @ ${r.recoveryRate ?? 80}%)`,
-              type: 'info',
-            };
-          } else if (r?.processed && (r?.recoveredDays ?? 0) > 0) {
-            recoveryProcessResult = {
-              message: `✓ Recovery granted: ${r.recoveredDays} day(s) from ${r.missedDays} missed meals at ${r.recoveryRate}%`,
-              type: 'success',
-            };
-            await fetchRecoveryStats();
-          } else {
-            recoveryProcessResult = {
-              message: `No recovery days generated (${r?.missedDays ?? 0} missed days @ ${r?.recoveryRate ?? 80}% = 0 days)`,
-              type: 'info',
-            };
-          }
-        } catch (err: any) {
-          recoveryProcessResult = {
-            message: err.message || 'Failed to process recovery',
-            type: 'error',
-          };
-        } finally {
-          processingRecoverySubId = null;
-          render();
         }
       });
     });

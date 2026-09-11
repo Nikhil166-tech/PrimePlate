@@ -1,4 +1,4 @@
-import api from '../api';
+import api, { getMyRecoveryBalance } from '../api';
 import { navigate } from '../router';
 import { showToast } from '../components/toast';
 import { renderNavbar, attachNavbarEvents } from '../components/navbar';
@@ -51,11 +51,13 @@ export async function renderCheckout(planId: string) {
     basePrice: number;
     baseOriginalPrice: number;
     hasDiscount: boolean;
+    providerId?: string;
     providerName?: string;
     description?: string;
   } | null = null;
   let actualPlanId = planId;
   let planFetchError: string | null = null;
+  let providerRecoveryDays = 0;
 
   try {
     const fetched: any = await api.get(`/meal-plans/${planId}`);
@@ -63,6 +65,7 @@ export async function renderCheckout(planId: string) {
       actualPlanId = fetched.id;
       const sellingNum = Number(fetched.sellingPrice ?? fetched.pricePerMonth);
       const originalNum = Number(fetched.originalPrice ?? fetched.pricePerMonth ?? sellingNum);
+      const pId = fetched.provider?.id;
       if (!isNaN(sellingNum) && sellingNum > 0) {
         selectedPlan = {
           id: fetched.id,
@@ -70,9 +73,24 @@ export async function renderCheckout(planId: string) {
           basePrice: sellingNum,
           baseOriginalPrice: originalNum > 0 ? originalNum : sellingNum,
           hasDiscount: Boolean(fetched.hasDiscount ?? (originalNum > sellingNum)),
+          providerId: pId,
           providerName: fetched.provider?.name || 'PrimePlate Partner Kitchen',
           description: fetched.description || 'Daily fresh meals',
         };
+
+        if (pId) {
+          try {
+            const balances: any = await getMyRecoveryBalance(pId);
+            if (Array.isArray(balances)) {
+              const matched = balances.find((b: any) => b.providerId === pId);
+              if (matched && Number(matched.remainingDays) > 0) {
+                providerRecoveryDays = Number(matched.remainingDays);
+              }
+            }
+          } catch (_) {
+            providerRecoveryDays = 0;
+          }
+        }
       } else {
         planFetchError = 'Unable to load plan price.';
       }
@@ -154,6 +172,39 @@ export async function renderCheckout(planId: string) {
     `;
   }).join('');
 
+  const renderRecoveryPreviewHtml = (days: number) => {
+    if (providerRecoveryDays <= 0) return '';
+    const totalDays = days + providerRecoveryDays;
+    return `
+      <div id="checkoutRecoveryBox" class="checkout-recovery-box" style="background: linear-gradient(135deg, #f0fdf4, #ecfdf5); border: 1.5px solid #86efac; border-radius: 14px; padding: 16px; margin-bottom: 16px; box-sizing: border-box;">
+        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+          <span style="font-size: 18px;">🎁</span>
+          <strong style="font-size: 14px; font-weight: 800; color: #166534;">Meal Recovery Available</strong>
+        </div>
+        <p style="font-size: 13px; color: #15803d; margin: 0 0 10px 0;">
+          You have <strong>${providerRecoveryDays} recovery days</strong> from this mess.
+        </p>
+        <div style="background: #ffffff; border: 1px solid #bbf7d0; border-radius: 10px; padding: 10px 12px; font-size: 13px; display: flex; flex-direction: column; gap: 5px;">
+          <div style="display: flex; justify-content: space-between; color: var(--color-neutral-600);">
+            <span>New plan:</span>
+            <span style="font-weight: 600; color: var(--color-neutral-900);">${days} days</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; color: #166534;">
+            <span style="font-weight: 700;">+ Meal Recovery:</span>
+            <span style="font-weight: 800; color: #15803d;">+${providerRecoveryDays} days</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; font-size: 14px; font-weight: 800; color: var(--color-neutral-900); border-top: 1px dashed #dcfce7; padding-top: 6px; margin-top: 2px;">
+            <span>Total meal entitlement:</span>
+            <span style="color: #15803d;">${totalDays} meal days</span>
+          </div>
+        </div>
+        <p style="font-size: 11px; color: #166534; margin: 8px 0 0 0; opacity: 0.9;">
+          <i class="fa-solid fa-circle-check"></i> Applied automatically upon activation at no additional charge.
+        </p>
+      </div>
+    `;
+  };
+
   const renderBreakdownHtml = (days: number) => {
     const pVal = calcPrice(days);
     const origVal = calcOriginalPrice(days);
@@ -222,6 +273,10 @@ export async function renderCheckout(planId: string) {
               ${durationCardsHtml}
             </div>
 
+            <div id="checkoutRecoveryMount">
+              ${renderRecoveryPreviewHtml(selectedDays)}
+            </div>
+
             <div id="checkoutPricingBreakdown" style="border-top: 1px dashed var(--color-neutral-300); padding-top: 16px;">
               ${renderBreakdownHtml(selectedDays)}
             </div>
@@ -258,6 +313,10 @@ export async function renderCheckout(planId: string) {
       }
 
       selectedDays = Number(targetRadio.value) || 30;
+      const recoveryMount = document.getElementById('checkoutRecoveryMount');
+      if (recoveryMount) {
+        recoveryMount.innerHTML = renderRecoveryPreviewHtml(selectedDays);
+      }
       const breakdownEl = document.getElementById('checkoutPricingBreakdown');
       if (breakdownEl) {
         breakdownEl.innerHTML = renderBreakdownHtml(selectedDays);

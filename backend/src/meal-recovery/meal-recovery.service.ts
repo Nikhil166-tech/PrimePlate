@@ -289,7 +289,11 @@ export class MealRecoveryService {
     // Find subscriptions where endDate < todayIst and no recovery row exists yet
     const candidates = await this.subRepo
       .createQueryBuilder('sub')
-      .leftJoin(MealRecovery, 'mr', 'mr.sourceSubscriptionId = sub.id')
+      .leftJoin(
+        MealRecovery,
+        'mr',
+        'CAST(mr.sourceSubscriptionId AS text) = CAST(sub.id AS text)',
+      )
       .leftJoinAndSelect('sub.mealPlan', 'plan')
       .leftJoinAndSelect('plan.provider', 'provider')
       .leftJoinAndSelect('sub.student', 'student')

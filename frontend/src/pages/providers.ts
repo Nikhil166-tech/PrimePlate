@@ -96,22 +96,46 @@ export async function renderProviders() {
           : (totalCap !== null ? Math.max(0, totalCap - currentSubs) : null);
         const isFullyBooked = remainingCap !== null && remainingCap <= 0;
 
-        let statusBadge = `<span style="background: #d1fae5; color: #059669; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px;">
-                            <i class="fa-solid fa-circle-check"></i> ACCEPTING SUBSCRIPTIONS ${remainingCap !== null ? `(${remainingCap} seats left)` : ''}
-                           </span>`;
+        let statusClass = 'status-open';
+        let statusIcon = 'fa-circle-check';
+        let statusText = `ACCEPTING SUBSCRIPTIONS ${remainingCap !== null ? `• ${remainingCap} seats left` : ''}`;
+
         if (isClosed) {
-          statusBadge = `<span style="background: #fee2e2; color: #dc2626; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px;">
-                          <i class="fa-solid fa-door-closed"></i> CURRENTLY CLOSED
-                         </span>`;
+          statusClass = 'status-closed';
+          statusIcon = 'fa-door-closed';
+          statusText = 'CURRENTLY CLOSED';
         } else if (isFullyBooked) {
-          statusBadge = `<span style="background: #fef3c7; color: #d97706; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px;">
-                          <i class="fa-solid fa-users-slash"></i> FULLY BOOKED
-                         </span>`;
+          statusClass = 'status-booked';
+          statusIcon = 'fa-users-slash';
+          statusText = 'FULLY BOOKED';
         }
 
-        const priceDisplay = h.monthlyPrice !== undefined && h.monthlyPrice !== null
-          ? `₹${Number(h.monthlyPrice).toLocaleString('en-IN')}`
-          : 'Price Unavailable';
+        const statusBadge = `
+          <span class="hostel-status-badge ${statusClass}">
+            <i class="fa-solid ${statusIcon}"></i>
+            <span>${statusText}</span>
+          </span>
+        `;
+
+        const sellNum = Number(h.sellingPrice ?? h.monthlyPrice);
+        const origNum = Number(h.originalPrice ?? h.monthlyPrice ?? sellNum);
+        const hasValidPrices = !isNaN(sellNum) && sellNum > 0;
+        const hasDiscount = Boolean(
+          hasValidPrices &&
+          !isNaN(origNum) &&
+          origNum > sellNum &&
+          (h.hasDiscount ?? true)
+        );
+        const discountPct = hasDiscount
+          ? (Number(h.discountPercentage) || Math.floor(((origNum - sellNum) / origNum) * 100))
+          : 0;
+        const isDiscounted = hasDiscount && discountPct > 0;
+        const saveAmt = isDiscounted ? Math.round(origNum - sellNum) : 0;
+
+        let unitText = '/mo';
+        if (h.durationDays === 1) unitText = '/day';
+        else if (h.durationDays === 7) unitText = '/7 days';
+        else if (h.durationDays === 15) unitText = '/15 days';
 
         const ratingDisplay = (h.rating ?? 0) > 0 ? Number(h.rating).toFixed(1) : 'New';
 
@@ -137,13 +161,37 @@ export async function renderProviders() {
             <div style="margin-bottom: 8px;">
               ${statusBadge}
             </div>
-            <p style="font-size: 14px; color: var(--color-neutral-600); margin-bottom: 16px; line-height: 1.5;">${escapeHtml(h.description || 'No description available.')}</p>
-            <div style="display: flex; justify-content: space-between; align-items: flex-end; border-top: 1px solid var(--color-neutral-100); padding-top: 16px;">
-              <div>
-                <span class="price-text">${priceDisplay}</span>
-                ${h.monthlyPrice !== undefined && h.monthlyPrice !== null ? '<span style="font-size: 13px; color: var(--color-neutral-500);">/month</span>' : ''}
+            <p style="font-size: 14px; color: var(--color-neutral-600); margin-bottom: 12px; line-height: 1.4;">${escapeHtml(h.description || 'No description available.')}</p>
+            <div class="card-pricing-footer">
+              <div class="card-pricing-info">
+                ${
+                  hasValidPrices
+                    ? isDiscounted
+                      ? `
+                        <div class="card-original-row">
+                          <span class="card-original-price">₹${origNum.toLocaleString('en-IN')}</span>
+                          <span class="card-discount-badge">${discountPct}% OFF</span>
+                        </div>
+                        <div class="card-selling-row">
+                          <span class="card-selling-price">₹${sellNum.toLocaleString('en-IN')}</span>
+                          <span class="card-price-unit">${unitText}</span>
+                        </div>
+                        <div class="card-savings-text">Save ₹${saveAmt.toLocaleString('en-IN')}</div>
+                      `
+                      : `
+                        <div class="card-selling-row">
+                          <span class="card-selling-price">₹${sellNum.toLocaleString('en-IN')}</span>
+                          <span class="card-price-unit">${unitText}</span>
+                        </div>
+                      `
+                    : `
+                      <div class="card-selling-row">
+                        <span class="card-price-unit" style="font-size: 14px; color: var(--color-neutral-500);">Price Unavailable</span>
+                      </div>
+                    `
+                }
               </div>
-              <button class="btn-primary-action" style="padding: 8px 16px; font-size: 13px;">
+              <button class="btn-primary-action card-action-btn">
                 View Details <i class="fa-solid fa-arrow-right"></i>
               </button>
             </div>

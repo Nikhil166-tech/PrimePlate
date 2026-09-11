@@ -15,16 +15,24 @@ export async function renderHome() {
       <section style="position: relative; padding: 48px 16px 64px; background: linear-gradient(135deg, #fff7ed 0%, #ffffff 50%, #f0f9ff 100%); overflow: hidden;">
         <div style="max-width: 1280px; margin: 0 auto; display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 36px; align-items: center;">
           <div class="animate-fade-in-up">
-            <div style="display: inline-flex; align-items: center; gap: 8px; background: var(--color-primary-100); color: var(--color-primary-700); padding: 6px 16px; border-radius: 999px; font-size: 14px; font-weight: 600; margin-bottom: 20px;">
-              <i class="fa-solid fa-utensils"></i> Digital Mess Card Platform
+            <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px;">
+              <div style="display: inline-flex; align-items: center; gap: 8px; background: var(--color-primary-100); color: var(--color-primary-700); padding: 6px 16px; border-radius: 999px; font-size: 13px; font-weight: 600;">
+                <i class="fa-solid fa-utensils"></i> Digital Mess Card Platform
+              </div>
+              <a href="#meal-recovery" id="heroRecoveryTeaserPill" style="display: inline-flex; align-items: center; gap: 6px; background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0; padding: 6px 14px; border-radius: 999px; font-size: 13px; font-weight: 600; text-decoration: none; transition: all 0.2s ease;">
+                <i class="fa-solid fa-rotate-left"></i> Meal Recovery Included
+              </a>
             </div>
             <h1 class="font-display" style="font-size: clamp(2rem, 5vw, 3rem); font-weight: 800; color: var(--color-neutral-900); line-height: 1.15; margin-bottom: 20px;">
               Your Food.<br />
               Your Time.<br />
               <span style="color: var(--color-primary-600);">Your PrimePlate.</span>
             </h1>
-            <p style="font-size: clamp(0.95rem, 2.5vw, 1.125rem); color: var(--color-neutral-600); line-height: 1.6; margin-bottom: 28px; max-width: 540px;">
+            <p style="font-size: clamp(0.95rem, 2.5vw, 1.125rem); color: var(--color-neutral-600); line-height: 1.6; margin-bottom: 12px; max-width: 540px;">
               Find nearby messes, compare meal plans, view menus, and manage your subscription — all in one place.
+            </p>
+            <p style="font-size: 12.5px; color: var(--color-neutral-600); margin-bottom: 28px; display: flex; align-items: center; gap: 6px; font-weight: 500;">
+              <i class="fa-solid fa-shield-halved" style="color: #10b981;"></i> Missed eligible meal days? Recover them on your next plan.
             </p>
             <div class="hero-btn-group" style="display: flex; gap: 12px; flex-wrap: wrap;">
               <button id="heroBrowseBtn" class="btn-primary-action" style="padding: 12px 24px; font-size: 15px; border-radius: 12px; background: var(--color-primary-600);">
@@ -111,6 +119,279 @@ export async function renderHome() {
               <p style="font-size: 13px; color: var(--color-neutral-600); line-height: 1.5;">Walk in for breakfast, lunch, or dinner. No cooking, no cleaning, no worries.</p>
             </div>
           </div>
+        </div>
+      </section>
+
+      <!-- Meal Recovery Feature Section -->
+      <section id="meal-recovery" class="meal-recovery-section">
+        <div class="meal-recovery-container">
+          
+          <!-- Section Header -->
+          <div class="meal-recovery-header">
+            <div class="meal-recovery-badge">
+              <i class="fa-solid fa-rotate-left"></i> Introducing Meal Recovery
+            </div>
+            <h2 class="font-display meal-recovery-title">
+              Going away?<br />
+              <span style="color: var(--color-primary-600);">Don't lose eligible meal days.</span>
+            </h2>
+            <p class="meal-recovery-subtitle">
+              Eligible missed meal days can be recovered based on your provider's policy and carried forward to your next subscription with the same provider.
+            </p>
+          </div>
+
+          <!-- Two-Column Grid -->
+          <div class="meal-recovery-grid">
+            
+            <!-- LEFT COLUMN: Value understanding, flow, and policy examples -->
+            <div class="meal-recovery-left">
+              
+              <!-- Value understanding card -->
+              <div class="recovery-explainer-card">
+                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 14px;">
+                  <div style="width: 36px; height: 36px; border-radius: 10px; background: var(--color-primary-50); color: var(--color-primary-600); display: flex; align-items: center; justify-content: center; font-size: 16px;">
+                    <i class="fa-solid fa-calendar-check"></i>
+                  </div>
+                  <div>
+                    <h3 class="font-display" style="font-size: 16px; font-weight: 700; color: var(--color-neutral-900); margin: 0;">How Recovery Works</h3>
+                    <p style="font-size: 12px; color: var(--color-neutral-500); margin: 0;">Simple, fair, and automatically carried forward</p>
+                  </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin-bottom: 16px;">
+                  <div style="background: var(--color-neutral-50); padding: 10px 12px; border-radius: 10px; border: 1px solid var(--color-neutral-200);">
+                    <div style="font-size: 11px; color: var(--color-neutral-500); font-weight: 600;">1. You paid for meals</div>
+                    <div style="font-size: 13px; font-weight: 700; color: var(--color-neutral-800); margin-top: 2px;">Active meal plan days</div>
+                  </div>
+                  <div style="background: var(--color-neutral-50); padding: 10px 12px; border-radius: 10px; border: 1px solid var(--color-neutral-200);">
+                    <div style="font-size: 11px; color: var(--color-neutral-500); font-weight: 600;">2. Couldn't use some?</div>
+                    <div style="font-size: 13px; font-weight: 700; color: var(--color-neutral-800); margin-top: 2px;">Missed eligible meal days</div>
+                  </div>
+                  <div style="background: var(--color-neutral-50); padding: 10px 12px; border-radius: 10px; border: 1px solid var(--color-neutral-200);">
+                    <div style="font-size: 11px; color: var(--color-neutral-500); font-weight: 600;">3. Policy applies</div>
+                    <div style="font-size: 13px; font-weight: 700; color: var(--color-neutral-800); margin-top: 2px;">Provider recovery rate</div>
+                  </div>
+                  <div style="background: #f0fdf4; padding: 10px 12px; border-radius: 10px; border: 1px solid #bbf7d0;">
+                    <div style="font-size: 11px; color: #15803d; font-weight: 600;">4. Days carried forward</div>
+                    <div style="font-size: 13px; font-weight: 700; color: #166534; margin-top: 2px;">Added to next plan</div>
+                  </div>
+                </div>
+
+                <!-- 5-Step Visual Flow -->
+                <div class="recovery-flow-wrapper">
+                  <div class="recovery-flow-step">
+                    <div class="recovery-flow-icon" style="background: #e0f2fe; color: #0369a1;"><i class="fa-solid fa-receipt"></i></div>
+                    <span>Use your plan</span>
+                  </div>
+                  <div class="recovery-flow-arrow">→</div>
+                  <div class="recovery-flow-step">
+                    <div class="recovery-flow-icon" style="background: #fef3c7; color: #b45309;"><i class="fa-regular fa-calendar-xmark"></i></div>
+                    <span>Miss eligible days</span>
+                  </div>
+                  <div class="recovery-flow-arrow">→</div>
+                  <div class="recovery-flow-step">
+                    <div class="recovery-flow-icon" style="background: #ffedd5; color: #c2410c;"><i class="fa-solid fa-calculator"></i></div>
+                    <span>Recovery calculated</span>
+                  </div>
+                  <div class="recovery-flow-arrow">→</div>
+                  <div class="recovery-flow-step">
+                    <div class="recovery-flow-icon" style="background: #dcfce7; color: #15803d;"><i class="fa-solid fa-forward-step"></i></div>
+                    <span>Days carry forward</span>
+                  </div>
+                  <div class="recovery-flow-arrow">→</div>
+                  <div class="recovery-flow-step">
+                    <div class="recovery-flow-icon" style="background: #f3e8ff; color: #7e22ce;"><i class="fa-solid fa-calendar-plus"></i></div>
+                    <span>Next plan extended</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Provider Policy Explainer Box -->
+              <div class="recovery-policy-box">
+                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+                  <div>
+                    <h3 class="font-display" style="font-size: 15px; font-weight: 700; color: var(--color-neutral-900); margin: 0;">
+                      Recovery depends on your provider's policy
+                    </h3>
+                    <p style="font-size: 12px; color: var(--color-neutral-500); margin: 2px 0 0;">
+                      Each provider selects their own policy: <strong>50%, 60%, 70%, 80%, 90%, or 100%</strong>.
+                    </p>
+                  </div>
+                  <span style="font-size: 11px; font-weight: 700; color: var(--color-primary-700); background: var(--color-primary-50); border: 1px solid var(--color-primary-200); padding: 3px 8px; border-radius: 6px;">
+                    Illustrative Examples
+                  </span>
+                </div>
+
+                <div class="recovery-examples-grid">
+                  <!-- Provider A: 80% -->
+                  <div class="recovery-example-item">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                      <span style="font-size: 12px; font-weight: 700; color: var(--color-neutral-800);">Provider A</span>
+                      <span style="font-size: 11px; font-weight: 800; color: var(--color-primary-600); background: #ffedd5; padding: 2px 6px; border-radius: 4px;">80% Recovery</span>
+                    </div>
+                    <div style="font-size: 13px; color: var(--color-neutral-700); font-weight: 600;">
+                      10 eligible missed days
+                    </div>
+                    <div style="font-size: 14px; color: var(--color-primary-700); font-weight: 800; margin-top: 4px;">
+                      → 8 recovery days
+                    </div>
+                  </div>
+
+                  <!-- Provider B: 50% -->
+                  <div class="recovery-example-item">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                      <span style="font-size: 12px; font-weight: 700; color: var(--color-neutral-800);">Provider B</span>
+                      <span style="font-size: 11px; font-weight: 800; color: #475569; background: #e2e8f0; padding: 2px 6px; border-radius: 4px;">50% Recovery</span>
+                    </div>
+                    <div style="font-size: 13px; color: var(--color-neutral-700); font-weight: 600;">
+                      10 eligible missed days
+                    </div>
+                    <div style="font-size: 14px; color: #334155; font-weight: 800; margin-top: 4px;">
+                      → 5 recovery days
+                    </div>
+                  </div>
+
+                  <!-- 100% Policy Example -->
+                  <div class="recovery-example-item highlight-100">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                      <span style="font-size: 12px; font-weight: 700; color: #166534;">Full Recovery</span>
+                      <span style="font-size: 11px; font-weight: 800; color: #15803d; background: #dcfce7; padding: 2px 6px; border-radius: 4px;">100% Recovery</span>
+                    </div>
+                    <div style="font-size: 13px; color: #14532d; font-weight: 600;">
+                      Some providers may offer 100%
+                    </div>
+                    <div style="font-size: 14px; color: #15803d; font-weight: 800; margin-top: 4px;">
+                      → 10 recovery days
+                    </div>
+                  </div>
+                </div>
+
+                <p style="font-size: 11px; color: var(--color-neutral-500); margin-top: 10px; line-height: 1.4;">
+                  *Provider A and B are illustrative examples only. PrimePlate does not guarantee 100% or 80% recovery for all providers. Always check your mess provider's listing for their specific recovery rate.
+                </p>
+              </div>
+
+            </div>
+
+            <!-- RIGHT COLUMN: Visual Simulation Card & Rules Highlights -->
+            <div class="meal-recovery-right">
+              
+              <!-- Simulation Card -->
+              <div class="recovery-sim-card">
+                <div class="recovery-sim-header">
+                  <div>
+                    <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: #94a3b8; letter-spacing: 0.5px;">Example Calculation</div>
+                    <h3 class="font-display" style="font-size: 18px; font-weight: 800; color: #ffffff; margin-top: 2px;">Meal Recovery Summary</h3>
+                  </div>
+                  <span class="recovery-sim-badge">80% Policy Example</span>
+                </div>
+
+                <div class="recovery-sim-row">
+                  <span>Missed eligible days</span>
+                  <span class="val font-display">10 days</span>
+                </div>
+
+                <div class="recovery-sim-row">
+                  <span>Provider recovery policy</span>
+                  <span class="val font-display" style="color: #fdba74;">80%</span>
+                </div>
+
+                <div class="recovery-sim-row">
+                  <span>Recovery days earned</span>
+                  <span class="val font-display" style="color: #4ade80;">+8 meal days</span>
+                </div>
+
+                <div class="recovery-sim-total">
+                  <div>
+                    <div class="total-label">Next subscription gets</div>
+                    <div style="font-size: 12px; color: #cbd5e1; margin-top: 2px;">30-day plan + 8 recovery days</div>
+                  </div>
+                  <div class="total-val font-display">38 Days <span style="font-size: 12px; color: #94a3b8; font-weight: 600;">(+8 extra)</span></div>
+                </div>
+
+                <div style="margin-top: 14px; text-align: center; font-size: 12px; color: #94a3b8;">
+                  <i class="fa-solid fa-circle-info" style="color: #fdba74;"></i> Recovery depends on your provider's policy.
+                </div>
+              </div>
+
+              <!-- Rule Highlights Pillbox -->
+              <div class="recovery-rules-pillbox">
+                <!-- Same Provider Rule -->
+                <div class="recovery-rule-pill">
+                  <i class="fa-solid fa-store" style="color: var(--color-primary-600);"></i>
+                  <div>
+                    <div style="font-weight: 700; color: var(--color-neutral-900);">Recovery stays with the same provider</div>
+                    <div style="font-size: 11.5px; color: var(--color-neutral-500); font-weight: 400; margin-top: 1px;">
+                      Provider A days carry forward only to your next Provider A plan. Recovery cannot be transferred to another provider.
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Next Subscription Benefit -->
+                <div class="recovery-rule-pill">
+                  <i class="fa-solid fa-calendar-plus" style="color: #0284c7;"></i>
+                  <div>
+                    <div style="font-weight: 700; color: var(--color-neutral-900);">Carried forward to your next plan</div>
+                    <div style="font-size: 11.5px; color: var(--color-neutral-500); font-weight: 400; margin-top: 1px;">
+                      Recovery days are automatically added to your next eligible subscription with that same mess.
+                    </div>
+                  </div>
+                </div>
+
+                <!-- No Cash / No Refund -->
+                <div class="recovery-rule-pill">
+                  <i class="fa-solid fa-shield-halved" style="color: #16a34a;"></i>
+                  <div>
+                    <div style="font-weight: 700; color: var(--color-neutral-900);">Active meal-day benefit — Not cash</div>
+                    <div style="font-size: 11.5px; color: var(--color-neutral-500); font-weight: 400; margin-top: 1px;">
+                      Recovery represents meal days only. It is not cash, cashback, a wallet balance, or a monetary refund.
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+
+          </div>
+
+          <!-- Collapsible Terms & Conditions (All 15 Rules) -->
+          <details class="recovery-terms-accordion" id="recoveryTermsDetails">
+            <summary class="recovery-terms-summary" id="recoveryTermsSummary">
+              <span style="display: flex; align-items: center; gap: 8px;">
+                <i class="fa-solid fa-scale-balanced" style="color: var(--color-primary-600);"></i>
+                <span>Important recovery rules & eligibility criteria</span>
+              </span>
+              <span style="display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--color-neutral-500); font-weight: 500;">
+                <span class="hidden-xs">Provider-specific (50%–100%) · Same provider only · Not cash</span>
+                <i class="fa-solid fa-chevron-down faq-chevron"></i>
+              </span>
+            </summary>
+            
+            <div class="recovery-terms-content">
+              <p style="font-size: 12px; color: var(--color-neutral-500); margin: 0 0 8px;">
+                PrimePlate's Meal Recovery operates strictly according to the following 15 eligibility and operational terms:
+              </p>
+              
+              <ul class="recovery-terms-list">
+                <li><i class="fa-solid fa-check"></i><span>1. Only eligible meal days inside the student's active subscription count.</span></li>
+                <li><i class="fa-solid fa-check"></i><span>2. Future dates do not count.</span></li>
+                <li><i class="fa-solid fa-check"></i><span>3. Days before the subscription starts do not count.</span></li>
+                <li><i class="fa-solid fa-check"></i><span>4. A successfully checked-in meal day is not counted as missed.</span></li>
+                <li><i class="fa-solid fa-check"></i><span>5. A missed day becomes eligible only after the relevant day has ended.</span></li>
+                <li><i class="fa-solid fa-check"></i><span>6. The recovery percentage is determined by the provider (50%, 60%, 70%, 80%, 90%, or 100%).</span></li>
+                <li><i class="fa-solid fa-check"></i><span>7. The recovery percentage used for a recovery record is fixed when that recovery is calculated.</span></li>
+                <li><i class="fa-solid fa-check"></i><span>8. If a provider later changes their percentage, previously earned recovery does not change.</span></li>
+                <li><i class="fa-solid fa-check"></i><span>9. Recovery days belong to the same provider that generated them.</span></li>
+                <li><i class="fa-solid fa-check"></i><span>10. Recovery cannot be transferred to another provider.</span></li>
+                <li><i class="fa-solid fa-check"></i><span>11. Recovery days are carried forward to the student's next eligible subscription with that same provider.</span></li>
+                <li><i class="fa-solid fa-check"></i><span>12. Recovery is a meal-day benefit, not cash or a wallet balance.</span></li>
+                <li><i class="fa-solid fa-check"></i><span>13. Recovery does not create a cash refund.</span></li>
+                <li><i class="fa-solid fa-check"></i><span>14. Recovery cannot be exchanged for money.</span></li>
+                <li><i class="fa-solid fa-check"></i><span>15. Recovery is not guaranteed for every missed day because the actual number depends on the provider's configured recovery policy.</span></li>
+              </ul>
+            </div>
+          </details>
+
         </div>
       </section>
 
@@ -359,8 +640,8 @@ export async function renderHome() {
 
               <div class="why-value-card">
                 <div class="why-value-icon">🔄</div>
-                <h3 class="why-value-title">Skip Meal Credits <span style="font-size: 10px; font-weight: 700; color: #ea580c; display: block;">(Users get only 4 credits)</span></h3>
-                <p class="why-value-desc">On eligible plans, users get only up to 4 Skip Meal Credits to pause meals when away without losing their value.</p>
+                <h3 class="why-value-title">Meal Recovery <span style="font-size: 10px; font-weight: 700; color: #059669; display: block;">(Provider-configured 50%–100%)</span></h3>
+                <p class="why-value-desc">Going away? Eligible unused meal days are recovered according to provider policy and carried forward to your next plan.</p>
               </div>
 
             </div>
@@ -391,7 +672,7 @@ export async function renderHome() {
             </div>
 
             <p style="font-size: 11px; color: rgba(255,255,255,0.65); max-width: 540px; margin: 0 auto; line-height: 1.5;">
-              *Illustrative comparison. Actual costs vary by location, food habits, provider, and plan. Meal-credit and pricing details depend on participating local providers.
+              *Illustrative comparison. Actual costs vary by location, food habits, provider, and plan. Meal recovery policy and pricing details depend on participating local providers.
             </p>
           </div>
 
@@ -499,7 +780,16 @@ export async function renderHome() {
               </div>
             </div>
 
-
+            <!-- FAQ Item 7 -->
+            <div class="faq-item">
+              <button class="faq-trigger font-display" aria-expanded="false" aria-controls="faq-ans-7" id="faq-q-7">
+                <span>What is Meal Recovery and how does it work?</span>
+                <i class="fa-solid fa-chevron-down faq-chevron"></i>
+              </button>
+              <div id="faq-ans-7" class="faq-answer" role="region" aria-labelledby="faq-q-7">
+                <p>If you miss eligible meal days during your active subscription, PrimePlate's Meal Recovery feature allows those unused days to be recovered based on your mess provider's configured recovery policy (between 50% and 100%). Recovered days carry forward directly to your next subscription with that same provider as extra meal days. Recovery is an active meal-day benefit (not cash or a refund) and cannot be transferred to another provider.</p>
+              </div>
+            </div>
 
             <!-- FAQ Item 8 -->
             <div class="faq-item">
@@ -577,8 +867,28 @@ export async function renderHome() {
 
       grid.innerHTML = items
         .slice(0, 6)
-        .map(
-          (h) => `
+        .map((h) => {
+          const sellNum = Number(h.sellingPrice ?? h.monthlyPrice);
+          const origNum = Number(h.originalPrice ?? h.monthlyPrice ?? sellNum);
+          const hasValidPrices = !isNaN(sellNum) && sellNum > 0;
+          const hasDiscount = Boolean(
+            hasValidPrices &&
+            !isNaN(origNum) &&
+            origNum > sellNum &&
+            (h.hasDiscount ?? true)
+          );
+          const discountPct = hasDiscount
+            ? (Number(h.discountPercentage) || Math.floor(((origNum - sellNum) / origNum) * 100))
+            : 0;
+          const isDiscounted = hasDiscount && discountPct > 0;
+          const saveAmt = isDiscounted ? Math.round(origNum - sellNum) : 0;
+
+          let unitText = '/mo';
+          if (h.durationDays === 1) unitText = '/day';
+          else if (h.durationDays === 7) unitText = '/7 days';
+          else if (h.durationDays === 15) unitText = '/15 days';
+
+          return `
           <div class="hostel-card" data-id="${h.id}">
             <div class="hostel-card-image">
               <img src="${getSafeImageUrl(h.imageUrl)}" alt="${escapeHtml(h.name)}" />
@@ -596,20 +906,44 @@ export async function renderHome() {
               </div>
             </div>
             <div class="hostel-card-body">
-              <p style="font-size: 14px; color: var(--color-neutral-600); margin-bottom: 16px; line-height: 1.5;">${escapeHtml(h.description || 'No description available.')}</p>
-              <div style="display: flex; justify-content: space-between; align-items: flex-end; border-top: 1px solid var(--color-neutral-100); padding-top: 16px;">
-                <div>
-                  <span class="price-text">${h.monthlyPrice ? '₹' + Number(h.monthlyPrice).toLocaleString('en-IN') : 'Price Unavailable'}</span>
-                  ${h.monthlyPrice ? '<span style="font-size: 13px; color: var(--color-neutral-500);">/month</span>' : ''}
+              <p style="font-size: 14px; color: var(--color-neutral-600); margin-bottom: 12px; line-height: 1.4;">${escapeHtml(h.description || 'No description available.')}</p>
+              <div class="card-pricing-footer">
+                <div class="card-pricing-info">
+                  ${
+                    hasValidPrices
+                      ? isDiscounted
+                        ? `
+                          <div class="card-original-row">
+                            <span class="card-original-price">₹${origNum.toLocaleString('en-IN')}</span>
+                            <span class="card-discount-badge">${discountPct}% OFF</span>
+                          </div>
+                          <div class="card-selling-row">
+                            <span class="card-selling-price">₹${sellNum.toLocaleString('en-IN')}</span>
+                            <span class="card-price-unit">${unitText}</span>
+                          </div>
+                          <div class="card-savings-text">Save ₹${saveAmt.toLocaleString('en-IN')}</div>
+                        `
+                        : `
+                          <div class="card-selling-row">
+                            <span class="card-selling-price">₹${sellNum.toLocaleString('en-IN')}</span>
+                            <span class="card-price-unit">${unitText}</span>
+                          </div>
+                        `
+                      : `
+                        <div class="card-selling-row">
+                          <span class="card-price-unit" style="font-size: 14px; color: var(--color-neutral-500);">Price Unavailable</span>
+                        </div>
+                      `
+                  }
                 </div>
-                <button class="btn-primary-action" style="padding: 8px 16px; font-size: 13px;">
+                <button class="btn-primary-action card-action-btn">
                   View Plan <i class="fa-solid fa-arrow-right"></i>
                 </button>
               </div>
             </div>
           </div>
-        `,
-        )
+        `;
+        })
         .join('');
 
       grid.querySelectorAll('.hostel-card').forEach((card) => {
@@ -666,9 +1000,44 @@ export async function renderHome() {
     });
   });
 
+  // Analytics helper (safe: never sends any sensitive or PII data)
+  const trackHomepageEvent = (eventName: string) => {
+    try {
+      if (typeof (window as any).va === 'function') {
+        (window as any).va('event', { name: eventName });
+      }
+      window.dispatchEvent(new CustomEvent('primeplate_analytics', { detail: { event: eventName } }));
+    } catch {}
+  };
+
+  // Safe tracking for Meal Recovery impressions & info interactions
+  const recoverySection = document.getElementById('meal-recovery');
+  if (recoverySection && 'IntersectionObserver' in window) {
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          trackHomepageEvent('meal_recovery_view');
+          observer.disconnect();
+        }
+      });
+    }, { threshold: 0.15 });
+    observer.observe(recoverySection);
+  }
+
+  const recoveryDetails = document.getElementById('recoveryTermsDetails');
+  recoveryDetails?.addEventListener('toggle', () => {
+    if ((recoveryDetails as HTMLDetailsElement).open) {
+      trackHomepageEvent('meal_recovery_info');
+    }
+  });
+
   if (window.location.hash.includes('why-primeplate')) {
     setTimeout(() => {
       document.getElementById('why-primeplate')?.scrollIntoView({ behavior: 'smooth' });
+    }, 100);
+  } else if (window.location.hash.includes('meal-recovery')) {
+    setTimeout(() => {
+      document.getElementById('meal-recovery')?.scrollIntoView({ behavior: 'smooth' });
     }, 100);
   } else if (window.location.hash.includes('faq')) {
     setTimeout(() => {

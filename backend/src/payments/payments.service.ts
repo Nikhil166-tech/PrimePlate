@@ -153,7 +153,7 @@ export class PaymentsService {
     }
 
     const baseMonthlyPrice = Number(
-      plan.pricePerMonth || provider?.monthlyPrice || 0,
+      plan.sellingPrice ?? plan.pricePerMonth ?? provider?.monthlyPrice ?? 0,
     );
     const authoritativeAmount = calculateAuthoritativeAmount(
       baseMonthlyPrice,
@@ -534,7 +534,7 @@ export class PaymentsService {
       }
 
       const baseMonthlyPrice = Number(
-        mealPlan.pricePerMonth || provider.monthlyPrice || 0,
+        mealPlan.sellingPrice ?? mealPlan.pricePerMonth ?? provider.monthlyPrice ?? 0,
       );
       const authoritativeAmount = calculateAuthoritativeAmount(
         baseMonthlyPrice,
@@ -1325,7 +1325,11 @@ export class PaymentsService {
           ? {
               id: plan.id,
               title: plan.title,
-              pricePerMonth: Number(plan.pricePerMonth),
+              pricePerMonth: Number(plan.sellingPrice ?? plan.pricePerMonth ?? 0),
+              sellingPrice: Number(plan.sellingPrice ?? plan.pricePerMonth ?? 0),
+              originalPrice: Number(
+                plan.originalPrice ?? plan.sellingPrice ?? plan.pricePerMonth ?? 0,
+              ),
             }
           : null,
         subscription: sub

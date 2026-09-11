@@ -30,6 +30,12 @@ export class MealPlan {
   @Column({ type: 'decimal', precision: 10, scale: 2 })
   pricePerMonth: number;
 
+  @Column({ type: 'decimal', precision: 10, scale: 2, default: 0 })
+  originalPrice: number;
+
+  @Column({ type: 'decimal', precision: 10, scale: 2, default: 0 })
+  sellingPrice: number;
+
   @Column({ default: true })
   isActive: boolean;
 

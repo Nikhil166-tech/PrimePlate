@@ -67,9 +67,7 @@ export function renderNavbar(): string {
     <nav class="navbar">
       <div class="navbar-container">
         <a href="/home" class="nav-brand">
-          <div class="nav-brand-logo">
-            <i class="fa-solid fa-utensils"></i>
-          </div>
+          <img src="/primeplate-icon.svg" alt="PrimePlate" style="width: 36px; height: 36px; border-radius: 12px; display: block;" />
           <span class="nav-brand-text">PrimePlate</span>
         </a>
 

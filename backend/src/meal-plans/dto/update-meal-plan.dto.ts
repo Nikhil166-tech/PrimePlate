@@ -7,14 +7,11 @@ import {
   IsPositive,
 } from 'class-validator';
 
-export class CreateMealPlanDto {
+export class UpdateMealPlanDto {
+  @IsOptional()
   @IsString()
   @IsNotEmpty()
-  title: string;
-
-  @IsString()
-  @IsNotEmpty()
-  providerId: string;
+  title?: string;
 
   @IsOptional()
   @IsString()

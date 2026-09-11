@@ -174,6 +174,20 @@ export async function renderOwnerPortal() {
   let earningsHistory: any[] = [];
   let earningsLoading = false;
 
+  let providerMealPlans: any[] = [];
+  const fetchProviderMealPlans = async () => {
+    if (!selectedHostel) {
+      providerMealPlans = [];
+      return;
+    }
+    try {
+      const data: any = await api.get(`/meal-plans/provider/${selectedHostel.id}`);
+      providerMealPlans = Array.isArray(data) ? data : [];
+    } catch {
+      providerMealPlans = [];
+    }
+  };
+
   const fetchHostels = async () => {
     try {
       const data: any = await api.get('/providers/my');
@@ -184,12 +198,15 @@ export async function renderOwnerPortal() {
         } else {
           selectedHostel = hostels.find((h: any) => h.id === selectedHostel.id) || hostels[0];
         }
+        await fetchProviderMealPlans();
       } else {
         selectedHostel = null;
+        providerMealPlans = [];
       }
     } catch (err: any) {
       hostels = [];
       selectedHostel = null;
+      providerMealPlans = [];
     }
   };
 
@@ -408,7 +425,26 @@ export async function renderOwnerPortal() {
       return 'Amount unavailable';
     };
 
-    const monthlyPriceNum = Number(selectedHostel?.monthlyPrice || 2999);
+    const primaryPlan = providerMealPlans[0];
+    const currentSellingPrice = Number(primaryPlan?.sellingPrice ?? primaryPlan?.pricePerMonth ?? selectedHostel?.monthlyPrice ?? 2999);
+    const currentOriginalPrice = Number(primaryPlan?.originalPrice ?? primaryPlan?.pricePerMonth ?? selectedHostel?.monthlyPrice ?? 2999);
+    const hasDiscount = primaryPlan ? Boolean(primaryPlan.hasDiscount) : (currentOriginalPrice > currentSellingPrice);
+    const discountPercentage = primaryPlan ? Number(primaryPlan.discountPercentage || 0) : (hasDiscount ? Math.floor(((currentOriginalPrice - currentSellingPrice) / currentOriginalPrice) * 100) : 0);
+    const discountAmount = hasDiscount ? currentOriginalPrice - currentSellingPrice : 0;
+
+    const pricingDisplayHtml = hasDiscount && discountPercentage > 0
+      ? `
+        <div style="display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap;">
+          <span style="font-size: 13px; color: var(--color-neutral-400); text-decoration: line-through;">₹${currentOriginalPrice.toLocaleString('en-IN')}</span>
+          <span style="font-size: 16px; font-weight: 800; color: var(--color-neutral-900);">₹${currentSellingPrice.toLocaleString('en-IN')} / month</span>
+          <span style="background: #dcfce7; color: #16a34a; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px;">${discountPercentage}% OFF</span>
+          <span style="font-size: 11px; font-weight: 600; color: #059669;">Save ₹${discountAmount.toLocaleString('en-IN')}</span>
+        </div>
+      `
+      : `
+        <span style="font-size: 15px; font-weight: 800; color: var(--color-neutral-900);">₹${currentSellingPrice.toLocaleString('en-IN')} / month</span>
+      `;
+
 
     const isNewProvider = hostels.length === 0;
     const isPending = selectedHostel && selectedHostel.approvalStatus === 'PENDING';
@@ -445,7 +481,7 @@ export async function renderOwnerPortal() {
         <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 12px 14px; background: var(--color-neutral-50); border: 1px solid var(--color-neutral-200); border-radius: 14px; flex-wrap: wrap;">
           <div>
             <span style="font-size: 11px; font-weight: 700; color: var(--color-neutral-500); text-transform: uppercase; display: block; margin-bottom: 2px;">Subscription Price</span>
-            <span style="font-size: 15px; font-weight: 800; color: var(--color-neutral-900);">₹${monthlyPriceNum.toLocaleString('en-IN')} / month</span>
+            ${pricingDisplayHtml}
           </div>
           <button type="button" class="open-edit-price-btn btn-outline-action" style="padding: 8px 14px; font-size: 12px; font-weight: 700; background: #fff; border-radius: 8px; min-height: 40px; cursor: pointer;">
             <i class="fa-solid fa-pen-to-square"></i> Change Price
@@ -1351,8 +1387,7 @@ export async function renderOwnerPortal() {
 
                   <div style="background: var(--color-neutral-50); border: 1px solid var(--color-neutral-200); border-radius: 14px; padding: 10px 14px; margin-bottom: 14px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
                     <div>
-                      <span style="font-size: 16px; font-weight: 800; color: var(--color-neutral-900);">₹${monthlyPriceNum.toLocaleString('en-IN')}</span>
-                      <span style="font-size: 12px; color: var(--color-neutral-500);">/ mo</span>
+                      ${pricingDisplayHtml}
                     </div>
                     <span style="font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 999px; background: ${selectedHostel.acceptingSubscriptions !== false ? '#d1fae5' : '#fee2e2'}; color: ${selectedHostel.acceptingSubscriptions !== false ? '#047857' : '#b91c1c'};">
                       ${selectedHostel.acceptingSubscriptions !== false ? '🟢 Kitchen OPEN' : '🔴 Kitchen CLOSED'}
@@ -1494,8 +1529,7 @@ export async function renderOwnerPortal() {
                   <div style="background: var(--color-neutral-50); border: 1px solid var(--color-neutral-200); border-radius: 16px; padding: 14px; margin-bottom: 16px;">
                     <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 10px; flex-wrap: wrap;">
                       <div>
-                        <span style="font-size: 18px; font-weight: 800; color: var(--color-neutral-900);">₹${monthlyPriceNum.toLocaleString('en-IN')}</span>
-                        <span style="font-size: 13px; color: var(--color-neutral-500);">/ month</span>
+                        ${pricingDisplayHtml}
                       </div>
                       <div style="display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: 999px; font-size: 12px; font-weight: 700; background: ${selectedHostel.acceptingSubscriptions !== false ? '#d1fae5' : '#fee2e2'}; color: ${selectedHostel.acceptingSubscriptions !== false ? '#047857' : '#b91c1c'}; border: 1px solid ${selectedHostel.acceptingSubscriptions !== false ? '#a7f3d0' : '#fca5a5'};">
                         <span>${selectedHostel.acceptingSubscriptions !== false ? 'Kitchen OPEN' : 'Kitchen CLOSED'}</span>
@@ -1881,21 +1915,51 @@ export async function renderOwnerPortal() {
 
       <!-- Modal: Edit Subscription Price -->
       <div id="editPriceModal" style="display: ${showEditPriceModal ? 'flex' : 'none'}; position: fixed; inset: 0; background: rgba(0,0,0,0.55); align-items: center; justify-content: center; z-index: 2000; padding: 20px;">
-        <div style="background: #fff; border-radius: 24px; max-width: 440px; width: 100%; padding: 32px; box-shadow: 0 20px 40px rgba(0,0,0,0.2);">
+        <div style="background: #fff; border-radius: 24px; max-width: 480px; width: 100%; padding: 32px; box-shadow: 0 20px 40px rgba(0,0,0,0.2);">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-            <h3 class="font-display" style="font-size: 20px; font-weight: 800; color: var(--color-neutral-900);">Update Monthly Subscription</h3>
-            <button id="closeEditPriceModalBtn" style="background: none; border: none; font-size: 20px; cursor: pointer; color: var(--color-neutral-500);">&times;</button>
+            <div>
+              <h3 class="font-display" style="font-size: 20px; font-weight: 800; color: var(--color-neutral-900); margin: 0 0 4px 0;">Meal Plan Pricing</h3>
+              <p style="font-size: 13px; color: var(--color-neutral-500); margin: 0;">Set reference original price and selling price for subscribers.</p>
+            </div>
+            <button id="closeEditPriceModalBtn" style="background: none; border: none; font-size: 24px; cursor: pointer; color: var(--color-neutral-500);">&times;</button>
           </div>
 
           <form id="editPriceForm" style="display: flex; flex-direction: column; gap: 16px;">
-            <div>
-              <label style="font-size: 13px; font-weight: 700; color: var(--color-neutral-800); display: block; margin-bottom: 6px;">Monthly Price (₹) *</label>
-              <input type="number" id="mPriceInput" class="btn-outline-action" style="width: 100%; background: #fff; padding: 12px 16px; font-size: 15px;" value="${monthlyPriceNum}" placeholder="e.g. 2999" min="1" required />
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+              <div>
+                <label style="font-size: 13px; font-weight: 700; color: var(--color-neutral-800); display: block; margin-bottom: 6px;">Original Price (₹) *</label>
+                <input type="number" id="mOriginalPriceInput" class="btn-outline-action" style="width: 100%; background: #fff; padding: 12px 14px; font-size: 15px;" value="${currentOriginalPrice}" placeholder="e.g. 2700" min="1" required />
+                <span style="font-size: 11px; color: var(--color-neutral-500);">Reference / strikethrough</span>
+              </div>
+              <div>
+                <label style="font-size: 13px; font-weight: 700; color: var(--color-neutral-800); display: block; margin-bottom: 6px;">Selling Price (₹) *</label>
+                <input type="number" id="mSellingPriceInput" class="btn-outline-action" style="width: 100%; background: #fff; padding: 12px 14px; font-size: 15px;" value="${currentSellingPrice}" placeholder="e.g. 2500" min="1" required />
+                <span style="font-size: 11px; color: var(--color-neutral-500);">Actual purchase price</span>
+              </div>
             </div>
 
-            <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 12px;">
+            <!-- Live Discount Preview -->
+            <div id="pricingPreviewContainer" style="background: var(--color-neutral-50); border: 1px solid var(--color-neutral-200); border-radius: 14px; padding: 12px 16px;">
+              <span style="font-size: 11px; font-weight: 700; color: var(--color-neutral-500); text-transform: uppercase; display: block; margin-bottom: 6px;">Live Customer Display Preview</span>
+              <div id="pricingPreviewContent" style="display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; min-height: 24px;">
+                ${hasDiscount && discountPercentage > 0
+                  ? `
+                    <span style="font-size: 13px; color: var(--color-neutral-400); text-decoration: line-through;">₹${currentOriginalPrice.toLocaleString('en-IN')}</span>
+                    <span style="font-size: 16px; font-weight: 800; color: var(--color-neutral-900);">₹${currentSellingPrice.toLocaleString('en-IN')}</span>
+                    <span style="background: #dcfce7; color: #16a34a; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px;">${discountPercentage}% OFF</span>
+                    <span style="font-size: 11px; font-weight: 600; color: #059669;">Save ₹${discountAmount.toLocaleString('en-IN')}</span>
+                  `
+                  : `
+                    <span style="font-size: 15px; font-weight: 800; color: var(--color-neutral-900);">₹${currentSellingPrice.toLocaleString('en-IN')}</span>
+                    <span style="font-size: 12px; color: var(--color-neutral-500);">(Regular price · No discount)</span>
+                  `
+                }
+              </div>
+            </div>
+
+            <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 8px;">
               <button type="button" id="cancelEditPriceBtn" class="btn-outline-action" style="padding: 10px 18px; font-size: 14px;">Cancel</button>
-              <button type="submit" class="btn-primary-action" style="padding: 10px 20px; font-size: 14px;">Save Changes</button>
+              <button type="submit" id="savePriceBtn" class="btn-primary-action" style="padding: 10px 20px; font-size: 14px;">Save Changes</button>
             </div>
           </form>
         </div>
@@ -2298,44 +2362,89 @@ export async function renderOwnerPortal() {
       });
     });
 
-    // Meal QR Actions: Print and Refresh
+    // Official PrimePlate Logo SVG generator (Exact Brand Logo)
+    const getPrimePlateLogoSvg = () => {
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+        <defs>
+          <linearGradient id="ppOrangeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#f97316"/>
+            <stop offset="100%" stop-color="#ea580c"/>
+          </linearGradient>
+        </defs>
+        <!-- Orange Squircle Badge -->
+        <rect x="4" y="4" width="92" height="92" rx="28" fill="url(#ppOrangeGrad)"/>
+        
+        <!-- Fork (Left) -->
+        <g fill="#ffffff">
+          <path d="M26 25 v14 c0 4.5 3 7.5 7.5 7.5 v25 a3 3 0 0 0 6 0 v-25 c4.5 0 7.5-3 7.5-7.5 v-14 h-3.2 v12 c0 2.2-1.5 3.8-3.5 3.8 s-3.5-1.6-3.5-3.8 v-12 h-2.8 v12 c0 2.2-1.5 3.8-3.5 3.8 s-3.5-1.6-3.5-3.8 v-12 z"/>
+        </g>
+        
+        <!-- Knife (Right) -->
+        <g fill="#ffffff">
+          <path d="M53 25 v21.5 c0 4 3 6.5 6 7 v18.5 a3 3 0 0 0 6 0 v-27 c4-2.5 7-7.5 7-14 c0-4-1-6-3.5-6 c-3.5 0-9 0-15.5 0 z"/>
+        </g>
+      </svg>`;
+      return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+    };
+
+    // Print QR
     document.querySelectorAll('.print-meal-qr-btn').forEach((btn) => {
-      btn.addEventListener('click', () => {
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
         if (!mealQrData?.qrCodeDataUrl) {
           showToast('No QR code available to print.', 'error');
           return;
         }
-        const printWin = window.open('', '_blank', 'width=700,height=800');
+        const messName = escapeHtml(selectedHostel?.name || mealQrData.providerName || 'PrimePlate Mess');
+        const printWin = window.open('', '_blank');
         if (!printWin) {
-          showToast('Pop-up blocked. Please allow pop-ups to print the QR code.', 'error');
+          showToast('Please allow popups to print the QR Code.', 'info');
           return;
         }
-        const messName = escapeHtml(mealQrData.providerName || selectedHostel?.name || 'PrimePlate Mess');
         printWin.document.write(`
           <!DOCTYPE html>
           <html>
             <head>
-              <title>PrimePlate Mess Counter QR - ${messName}</title>
+              <title>Print Meal QR - ${messName}</title>
               <style>
-                @page { size: A4 portrait; margin: 20mm; }
                 body {
                   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-                  text-align: center;
-                  padding: 40px 20px;
+                  display: flex;
+                  justify-content: center;
+                  align-items: center;
+                  min-height: 100vh;
+                  margin: 0;
+                  background: #f9fafb;
                   color: #111827;
                 }
                 .container {
-                  max-width: 500px;
-                  margin: 0 auto;
-                  border: 3px solid #ea580c;
+                  background: #fff;
+                  padding: 40px;
                   border-radius: 24px;
-                  padding: 36px 24px;
+                  box-shadow: 0 4px 24px rgba(0,0,0,0.06);
+                  text-align: center;
+                  max-width: 440px;
+                  width: 100%;
+                  border: 2px solid #ea580c;
                 }
                 .brand {
-                  font-size: 26px;
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
+                  gap: 12px;
+                  margin-bottom: 10px;
+                }
+                .brand-logo {
+                  width: 44px;
+                  height: 44px;
+                  border-radius: 12px;
+                  display: block;
+                }
+                .brand-title {
+                  font-size: 28px;
                   font-weight: 800;
-                  color: #ea580c;
-                  margin-bottom: 8px;
+                  color: #111827;
                   letter-spacing: -0.5px;
                 }
                 .mess-name {
@@ -2365,11 +2474,25 @@ export async function renderOwnerPortal() {
                   color: #6b7280;
                   margin-top: 14px;
                 }
+                .website-link {
+                  margin-top: 18px;
+                  font-size: 14px;
+                  font-weight: 700;
+                  color: #ea580c;
+                }
+                .tagline {
+                  font-size: 11px;
+                  color: #9ca3af;
+                  margin-top: 4px;
+                }
               </style>
             </head>
             <body>
               <div class="container">
-                <div class="brand">🍽️ PrimePlate</div>
+                <div class="brand">
+                  <img src="${getPrimePlateLogoSvg()}" alt="PrimePlate Logo" class="brand-logo" />
+                  <span class="brand-title">PrimePlate</span>
+                </div>
                 <div class="mess-name">${messName}</div>
                 <img class="qr-img" src="${mealQrData.qrCodeDataUrl}" alt="PrimePlate Mess QR Code" />
                 <div class="instructions">
@@ -2378,6 +2501,12 @@ export async function renderOwnerPortal() {
                 </div>
                 <div class="notice">
                   Official Mess Counter Standee • One check-in per student per calendar day
+                </div>
+                <div class="website-link">
+                  🌐 https://prime-plate-chi.vercel.app
+                </div>
+                <div class="tagline">
+                  Your Food. Your Time. Your PrimePlate.
                 </div>
               </div>
               <script>
@@ -2393,23 +2522,209 @@ export async function renderOwnerPortal() {
       });
     });
 
-    // Download QR
+    // Helper functions for branded Canvas QR generation
+    const roundRect = (ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) => {
+      if (w < 2 * r) r = w / 2;
+      if (h < 2 * r) r = h / 2;
+      ctx.beginPath();
+      ctx.moveTo(x + r, y);
+      ctx.arcTo(x + w, y, x + w, y + h, r);
+      ctx.arcTo(x + w, y + h, x, y + h, r);
+      ctx.arcTo(x, y + h, x, y, r);
+      ctx.arcTo(x, y, x + w, y, r);
+      ctx.closePath();
+    };
+
+    const roundRectTop = (ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) => {
+      ctx.beginPath();
+      ctx.moveTo(x + r, y);
+      ctx.lineTo(x + w - r, y);
+      ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+      ctx.lineTo(x + w, y + h);
+      ctx.lineTo(x, y + h);
+      ctx.lineTo(x, y + r);
+      ctx.quadraticCurveTo(x, y, x + r, y);
+      ctx.closePath();
+    };
+
+    const generateBrandedQrStandee = async (qrDataUrl: string, mName: string): Promise<string> => {
+      return new Promise((resolve) => {
+        const qrImg = new Image();
+        const logoImg = new Image();
+        let loadedCount = 0;
+
+        const onBothLoaded = () => {
+          try {
+            const canvas = document.createElement('canvas');
+            const width = 800;
+            const height = 1060;
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            if (!ctx) {
+              resolve(qrDataUrl);
+              return;
+            }
+
+            // 1. Clean Canvas Base & Card Outline
+            ctx.fillStyle = '#f8fafc';
+            ctx.fillRect(0, 0, width, height);
+
+            ctx.fillStyle = '#ffffff';
+            roundRect(ctx, 24, 24, width - 48, height - 48, 28);
+            ctx.fill();
+            ctx.strokeStyle = '#e2e8f0';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            // 2. Top Header Brand Banner
+            const headerGrad = ctx.createLinearGradient(24, 24, width - 24, 150);
+            headerGrad.addColorStop(0, '#fff7ed');
+            headerGrad.addColorStop(1, '#ffedd5');
+            ctx.fillStyle = headerGrad;
+            roundRectTop(ctx, 24, 24, width - 48, 130, 28);
+            ctx.fill();
+
+            // Top orange brand stripe
+            ctx.fillStyle = '#ea580c';
+            roundRectTop(ctx, 24, 24, width - 48, 8, 28);
+            ctx.fill();
+
+            // Draw Official PrimePlate Logo Image
+            ctx.drawImage(logoImg, 48, 48, 58, 58);
+
+            // Brand Name "PrimePlate"
+            ctx.textAlign = 'left';
+            ctx.fillStyle = '#111827';
+            ctx.font = 'bold 34px "Inter", "Sora", sans-serif';
+            ctx.fillText('PrimePlate', 120, 72);
+
+            // Brand Subtitle Pill
+            ctx.fillStyle = '#c2410c';
+            ctx.font = 'bold 12px "Inter", sans-serif';
+            ctx.fillText('DIGITAL MESS CARD PLATFORM', 122, 94);
+
+            // 3. Kitchen / Mess Name
+            ctx.textAlign = 'center';
+            ctx.fillStyle = '#0f172a';
+            ctx.font = 'bold 28px "Inter", "Sora", sans-serif';
+            const displayMessName = mName.length > 36 ? mName.substring(0, 34) + '...' : mName;
+            ctx.fillText(displayMessName, width / 2, 210);
+
+            ctx.fillStyle = '#64748b';
+            ctx.font = '500 15px "Inter", sans-serif';
+            ctx.fillText('Official Daily Check-in Standee', width / 2, 240);
+
+            // 4. Scannable QR Container Box
+            const qrBoxSize = 440;
+            const qrBoxX = (width - qrBoxSize) / 2;
+            const qrBoxY = 270;
+
+            ctx.fillStyle = '#ffffff';
+            roundRect(ctx, qrBoxX, qrBoxY, qrBoxSize, qrBoxSize, 24);
+            ctx.fill();
+            ctx.strokeStyle = '#ea580c';
+            ctx.lineWidth = 3;
+            ctx.stroke();
+
+            // Draw QR Code inside box
+            const qrImgSize = 380;
+            const qrImgX = (width - qrImgSize) / 2;
+            const qrImgY = qrBoxY + (qrBoxSize - qrImgSize) / 2;
+            ctx.drawImage(qrImg, qrImgX, qrImgY, qrImgSize, qrImgSize);
+
+            // Optional center emblem on the QR
+            const centerBadgeSize = 52;
+            const centerBadgeX = width / 2 - centerBadgeSize / 2;
+            const centerBadgeY = qrImgY + qrImgSize / 2 - centerBadgeSize / 2;
+            ctx.fillStyle = '#ffffff';
+            roundRect(ctx, centerBadgeX - 4, centerBadgeY - 4, centerBadgeSize + 8, centerBadgeSize + 8, 14);
+            ctx.fill();
+            ctx.drawImage(logoImg, centerBadgeX, centerBadgeY, centerBadgeSize, centerBadgeSize);
+
+            // 5. Instruction text
+            ctx.textAlign = 'center';
+            ctx.fillStyle = '#ea580c';
+            ctx.font = 'bold 22px "Inter", sans-serif';
+            ctx.fillText('Scan with PrimePlate to Check In', width / 2, 760);
+
+            ctx.fillStyle = '#334155';
+            ctx.font = '600 15px "Inter", sans-serif';
+            ctx.fillText('Open PrimePlate and tap "Scan Meal QR" to record today\'s meal', width / 2, 792);
+
+            ctx.fillStyle = '#94a3b8';
+            ctx.font = '500 13px "Inter", sans-serif';
+            ctx.fillText('One check-in per student per calendar day', width / 2, 820);
+
+            // 6. Footer Divider & Website Link
+            ctx.strokeStyle = '#e2e8f0';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.moveTo(60, 870);
+            ctx.lineTo(width - 60, 870);
+            ctx.stroke();
+
+            // Website Link with Icon
+            ctx.fillStyle = '#ea580c';
+            ctx.font = 'bold 20px "Inter", "Sora", sans-serif';
+            ctx.fillText('🌐 https://prime-plate-chi.vercel.app', width / 2, 920);
+
+            // Tagline
+            ctx.fillStyle = '#64748b';
+            ctx.font = '500 14px "Inter", sans-serif';
+            ctx.fillText('Your Food. Your Time. Your PrimePlate.', width / 2, 955);
+
+            ctx.fillStyle = '#94a3b8';
+            ctx.font = '400 12px "Inter", sans-serif';
+            ctx.fillText('Verified Kitchen Partner • Smart Student Subscriptions', width / 2, 985);
+
+            resolve(canvas.toDataURL('image/png'));
+          } catch {
+            resolve(qrDataUrl);
+          }
+        };
+
+        const checkLoaded = () => {
+          loadedCount++;
+          if (loadedCount === 2) {
+            onBothLoaded();
+          }
+        };
+
+        qrImg.crossOrigin = 'anonymous';
+        qrImg.onload = checkLoaded;
+        qrImg.onerror = () => resolve(qrDataUrl);
+        qrImg.src = qrDataUrl;
+
+        logoImg.crossOrigin = 'anonymous';
+        logoImg.onload = checkLoaded;
+        logoImg.onerror = checkLoaded;
+        logoImg.src = getPrimePlateLogoSvg();
+      });
+    };
+
+    // Download QR with full branding, logo, name, and website link
     document.querySelectorAll('.download-meal-qr-btn').forEach((btn) => {
-      btn.addEventListener('click', (e) => {
+      btn.addEventListener('click', async (e) => {
         e.preventDefault();
         e.stopPropagation();
         if (!mealQrData?.qrCodeDataUrl) {
           showToast('No QR code available to download.', 'error');
           return;
         }
-        const fileName = `${(selectedHostel?.name || 'Mess').replace(/\s+/g, '_')}_Meal_QR.png`;
+        
+        const mName = selectedHostel?.name || mealQrData.providerName || 'Mess';
+        showToast('Generating branded QR Standee...', 'info');
+        
+        const brandedDataUrl = await generateBrandedQrStandee(mealQrData.qrCodeDataUrl, mName);
+        const fileName = `${mName.replace(/\s+/g, '_')}_PrimePlate_QR.png`;
         const a = document.createElement('a');
-        a.href = mealQrData.qrCodeDataUrl;
+        a.href = brandedDataUrl;
         a.download = fileName;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
-        showToast('Meal QR downloaded successfully!', 'success');
+        showToast('Branded Meal QR downloaded successfully!', 'success');
       });
     });
 
@@ -3269,22 +3584,90 @@ export async function renderOwnerPortal() {
 
     const editPriceForm = document.getElementById('editPriceForm') as HTMLFormElement;
     if (editPriceForm) {
+      const origInput = editPriceForm.querySelector('#mOriginalPriceInput') as HTMLInputElement;
+      const sellInput = editPriceForm.querySelector('#mSellingPriceInput') as HTMLInputElement;
+      const previewEl = document.getElementById('pricingPreviewContent');
+      const saveBtn = document.getElementById('savePriceBtn') as HTMLButtonElement;
+
+      const updateLivePreview = () => {
+        if (!origInput || !sellInput || !previewEl) return;
+        const oVal = parseFloat(origInput.value);
+        const sVal = parseFloat(sellInput.value);
+
+        if (isNaN(oVal) || isNaN(sVal) || oVal <= 0 || sVal <= 0) {
+          previewEl.innerHTML = `<span style="font-size: 13px; color: var(--color-neutral-400);">Enter valid prices greater than 0</span>`;
+          if (saveBtn) saveBtn.disabled = true;
+          return;
+        }
+
+        if (sVal > oVal) {
+          previewEl.innerHTML = `<span style="font-size: 13px; font-weight: 700; color: #dc2626;"><i class="fa-solid fa-circle-exclamation"></i> Selling price (₹${sVal}) cannot exceed original price (₹${oVal})</span>`;
+          if (saveBtn) saveBtn.disabled = true;
+          return;
+        }
+
+        if (saveBtn) saveBtn.disabled = false;
+
+        if (sVal === oVal) {
+          previewEl.innerHTML = `
+            <span style="font-size: 16px; font-weight: 800; color: var(--color-neutral-900);">₹${sVal.toLocaleString('en-IN')}</span>
+            <span style="font-size: 12px; color: var(--color-neutral-500);">(Regular price · No discount)</span>
+          `;
+        } else {
+          const diff = oVal - sVal;
+          const pct = Math.floor((diff / oVal) * 100);
+          previewEl.innerHTML = `
+            <span style="font-size: 13px; color: var(--color-neutral-400); text-decoration: line-through;">₹${oVal.toLocaleString('en-IN')}</span>
+            <span style="font-size: 16px; font-weight: 800; color: var(--color-neutral-900);">₹${sVal.toLocaleString('en-IN')}</span>
+            <span style="background: #dcfce7; color: #16a34a; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px;">${pct}% OFF</span>
+            <span style="font-size: 11px; font-weight: 600; color: #059669;">Save ₹${diff.toLocaleString('en-IN')}</span>
+          `;
+        }
+      };
+
+      origInput?.addEventListener('input', updateLivePreview);
+      sellInput?.addEventListener('input', updateLivePreview);
+
       editPriceForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         if (!selectedHostel) return;
-        const priceVal = parseFloat((editPriceForm.querySelector('#mPriceInput') as HTMLInputElement).value);
-        if (isNaN(priceVal) || priceVal <= 0) {
-          showToast('Invalid price amount', 'error');
+        const origVal = parseFloat(origInput?.value);
+        const sellVal = parseFloat(sellInput?.value);
+
+        if (isNaN(origVal) || origVal <= 0 || isNaN(sellVal) || sellVal <= 0) {
+          showToast('Please enter valid positive price amounts', 'error');
           return;
         }
+        if (sellVal > origVal) {
+          showToast('Selling price cannot exceed original price', 'error');
+          return;
+        }
+
         try {
-          await api.put(`/providers/${selectedHostel.id}`, { monthlyPrice: priceVal });
-          selectedHostel.monthlyPrice = priceVal;
-          showToast('Subscription price updated successfully!', 'success');
+          const primaryPlan = providerMealPlans[0];
+          if (primaryPlan) {
+            await api.put(`/meal-plans/${primaryPlan.id}`, {
+              originalPrice: origVal,
+              sellingPrice: sellVal,
+            });
+          } else {
+            await api.post('/meal-plans', {
+              title: `${selectedHostel.name} Monthly Plan`,
+              originalPrice: origVal,
+              sellingPrice: sellVal,
+              providerId: selectedHostel.id,
+            });
+          }
+
+          await api.put(`/providers/${selectedHostel.id}`, { monthlyPrice: sellVal });
+          selectedHostel.monthlyPrice = sellVal;
+
+          showToast('Meal plan pricing updated successfully!', 'success');
           showEditPriceModal = false;
+          await fetchProviderMealPlans();
           render();
         } catch (err: any) {
-          showToast(err.message || 'Failed to update price', 'error');
+          showToast(err.message || 'Failed to update pricing', 'error');
         }
       });
     }
@@ -3743,6 +4126,7 @@ export async function renderOwnerPortal() {
       await fetchHostels();
       if (selectedHostel) {
         await Promise.allSettled([
+          fetchProviderMealPlans(),
           fetchLiveSubs(),
           fetchWeeklyMenus(),
           fetchProviderReviews(),

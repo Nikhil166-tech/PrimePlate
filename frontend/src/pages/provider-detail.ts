@@ -140,9 +140,15 @@ export async function renderProviderDetail(providerId: string) {
       : `<span style="font-size: 13px; color: var(--color-neutral-400); font-style: italic;">No amenities added yet.</span>`;
 
     const primaryPlan = mealPlans[0];
-    const baseMonthlyPrice = (primaryPlan && primaryPlan.pricePerMonth && !isNaN(Number(primaryPlan.pricePerMonth)))
-      ? Number(primaryPlan.pricePerMonth)
+    const baseSellingPrice = (primaryPlan && (primaryPlan.sellingPrice || primaryPlan.pricePerMonth) && !isNaN(Number(primaryPlan.sellingPrice || primaryPlan.pricePerMonth)))
+      ? Number(primaryPlan.sellingPrice || primaryPlan.pricePerMonth)
       : (provider.monthlyPrice && !isNaN(Number(provider.monthlyPrice)) ? Number(provider.monthlyPrice) : null);
+
+    const baseOriginalPrice = (primaryPlan && (primaryPlan.originalPrice || primaryPlan.pricePerMonth) && !isNaN(Number(primaryPlan.originalPrice || primaryPlan.pricePerMonth)))
+      ? Number(primaryPlan.originalPrice || primaryPlan.pricePerMonth)
+      : (baseSellingPrice ?? null);
+
+    const hasBaseDiscount = baseSellingPrice !== null && baseOriginalPrice !== null && baseOriginalPrice > baseSellingPrice;
 
     const durationOptions = [
       {
@@ -171,11 +177,34 @@ export async function renderProviderDetail(providerId: string) {
       },
     ];
 
-    const plansHtml = baseMonthlyPrice !== null
+    const plansHtml = baseSellingPrice !== null
       ? durationOptions
           .map((opt) => {
-            const calculatedPrice = Math.max(1, Math.round(baseMonthlyPrice * (opt.days / 30)));
-            const priceText = `₹${calculatedPrice.toLocaleString('en-IN')}`;
+            const calculatedSelling = Math.max(1, Math.round(baseSellingPrice * (opt.days / 30)));
+            const calculatedOriginal = baseOriginalPrice !== null ? Math.max(1, Math.round(baseOriginalPrice * (opt.days / 30))) : calculatedSelling;
+            const durationSave = calculatedOriginal - calculatedSelling;
+            const durationDiscountPct = (hasBaseDiscount && calculatedOriginal > 0 && durationSave > 0)
+              ? Math.floor((durationSave / calculatedOriginal) * 100)
+              : 0;
+            const isDiscounted = hasBaseDiscount && durationDiscountPct > 0;
+
+            const priceHtml = isDiscounted
+              ? `
+                <div style="text-align: right; flex-shrink: 0; min-width: 0;">
+                  <div style="display: flex; align-items: baseline; justify-content: flex-end; gap: 6px; flex-wrap: wrap;">
+                    <span style="font-size: 12px; color: #9ca3af; text-decoration: line-through; white-space: nowrap;">₹${calculatedOriginal.toLocaleString('en-IN')}</span>
+                    <span style="font-weight: 800; color: #ea580c; font-size: 16px; white-space: nowrap;">₹${calculatedSelling.toLocaleString('en-IN')}</span>
+                    <span style="background: #dcfce7; color: #16a34a; font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 999px; white-space: nowrap;">${durationDiscountPct}% OFF</span>
+                  </div>
+                  <span style="font-size: 11px; font-weight: 600; color: #059669; display: block; margin-top: 2px; white-space: nowrap;">Save ₹${durationSave.toLocaleString('en-IN')}</span>
+                </div>
+              `
+              : `
+                <div style="text-align: right; flex-shrink: 0;">
+                  <span style="font-weight: 800; color: #ea580c; font-size: 16px; white-space: nowrap;">₹${calculatedSelling.toLocaleString('en-IN')}</span>
+                </div>
+              `;
+
             return `
               <label class="duration-plan-card" style="display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 10px; border: ${opt.isDefault ? '2px solid #f97316' : '1px solid #e5e7eb'}; background: ${opt.isDefault ? '#fff8f0' : '#ffffff'}; border-radius: 14px; padding: 12px 14px; margin-bottom: 10px; cursor: pointer; min-width: 0; box-sizing: border-box;">
                 <input type="radio" name="durationPlanSelect" value="${opt.days}" ${opt.isDefault ? 'checked' : ''} style="width: 18px; height: 18px; accent-color: #ea580c; cursor: pointer; flex-shrink: 0;" />
@@ -183,7 +212,7 @@ export async function renderProviderDetail(providerId: string) {
                   <strong style="font-size: 14px; font-weight: 700; color: #111827; display: block; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(opt.title)}</strong>
                   <p style="font-size: 12px; color: #6b7280; margin: 0; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(opt.description)}</p>
                 </div>
-                <span style="font-weight: 800; color: #ea580c; font-size: 16px; white-space: nowrap; flex-shrink: 0; text-align: right;">${priceText}</span>
+                ${priceHtml}
               </label>
             `;
           })
@@ -239,11 +268,32 @@ export async function renderProviderDetail(providerId: string) {
         .join('')
       : `<p style="color: var(--color-neutral-500); font-size: 14px;">No customer reviews written yet for this provider.</p>`;
 
-    const mobilePlansHtml = baseMonthlyPrice !== null
+    const mobilePlansHtml = baseSellingPrice !== null
       ? durationOptions
           .map((opt) => {
-            const calculatedPrice = Math.max(1, Math.round(baseMonthlyPrice * (opt.days / 30)));
-            const priceText = `₹${calculatedPrice.toLocaleString('en-IN')}`;
+            const calculatedSelling = Math.max(1, Math.round(baseSellingPrice * (opt.days / 30)));
+            const calculatedOriginal = baseOriginalPrice !== null ? Math.max(1, Math.round(baseOriginalPrice * (opt.days / 30))) : calculatedSelling;
+            const durationSave = calculatedOriginal - calculatedSelling;
+            const durationDiscountPct = (hasBaseDiscount && calculatedOriginal > 0 && durationSave > 0)
+              ? Math.floor((durationSave / calculatedOriginal) * 100)
+              : 0;
+            const isDiscounted = hasBaseDiscount && durationDiscountPct > 0;
+
+            const priceHtml = isDiscounted
+              ? `
+                <div style="text-align: right; margin-left: 8px; flex-shrink: 0;">
+                  <div style="display: flex; align-items: baseline; justify-content: flex-end; gap: 6px; flex-wrap: wrap;">
+                    <span style="font-size: 12px; color: #9ca3af; text-decoration: line-through; white-space: nowrap;">₹${calculatedOriginal.toLocaleString('en-IN')}</span>
+                    <span style="font-weight: 800; color: #ea580c; font-size: 17px; white-space: nowrap;">₹${calculatedSelling.toLocaleString('en-IN')}</span>
+                    <span style="background: #dcfce7; color: #16a34a; font-size: 11px; font-weight: 700; padding: 1px 6px; border-radius: 999px; white-space: nowrap;">${durationDiscountPct}% OFF</span>
+                  </div>
+                  <span style="font-size: 11px; font-weight: 600; color: #059669; display: block; margin-top: 2px;">Save ₹${durationSave.toLocaleString('en-IN')}</span>
+                </div>
+              `
+              : `
+                <span style="font-weight: 800; color: #ea580c; font-size: 17px; white-space: nowrap; margin-left: 12px; flex-shrink: 0;">₹${calculatedSelling.toLocaleString('en-IN')}</span>
+              `;
+
             return `
               <label class="mobile-duration-plan-card" style="display: flex; align-items: center; justify-content: space-between; border: ${opt.isDefault ? '2px solid #f97316' : '1px solid #e5e7eb'}; background: ${opt.isDefault ? '#fff8f0' : '#ffffff'}; border-radius: 14px; padding: 14px 16px; margin-bottom: 12px; cursor: pointer; transition: all 0.2s ease-in-out; min-width: 0; max-width: 100%; box-sizing: border-box;">
                 <div style="display: flex; align-items: center; gap: 12px; min-width: 0; flex: 1;">
@@ -253,7 +303,7 @@ export async function renderProviderDetail(providerId: string) {
                     <p style="font-size: 13px; color: #6b7280; margin: 0; line-height: 1.4; word-break: break-word;">${escapeHtml(opt.description)}</p>
                   </div>
                 </div>
-                <span style="font-weight: 800; color: #ea580c; font-size: 17px; white-space: nowrap; margin-left: 12px; flex-shrink: 0;">${priceText}</span>
+                ${priceHtml}
               </label>
             `;
           })
@@ -454,7 +504,7 @@ export async function renderProviderDetail(providerId: string) {
               <div style="margin-bottom: 20px;">${mobilePlansHtml}</div>
 
               ${
-                canSubscribe && baseMonthlyPrice !== null
+                canSubscribe && baseSellingPrice !== null
                   ? `<button id="mobileSubscribeBtn" class="btn-primary-action" style="width: 100%; justify-content: center; padding: 14px; font-size: 16px; border-radius: 14px; box-shadow: 0 4px 16px rgba(234, 88, 12, 0.3);">
                       <i class="fa-solid fa-credit-card"></i> Subscribe Now
                     </button>`
@@ -507,7 +557,7 @@ export async function renderProviderDetail(providerId: string) {
               <div style="margin-bottom: 20px;">${plansHtml}</div>
 
               ${
-                canSubscribe && baseMonthlyPrice !== null
+                canSubscribe && baseSellingPrice !== null
                   ? `<button id="sidebarSubscribeBtn" class="btn-primary-action" style="width: 100%; justify-content: center; padding: 14px; font-size: 16px; border-radius: 14px; box-shadow: 0 4px 16px rgba(234, 88, 12, 0.3);">
                       <i class="fa-solid fa-credit-card"></i> Subscribe Now
                     </button>`

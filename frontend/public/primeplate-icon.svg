@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+  <defs>
+    <linearGradient id="ppOrangeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#f97316"/>
+      <stop offset="100%" stop-color="#ea580c"/>
+    </linearGradient>
+    <filter id="ppShadow" x="-10%" y="-10%" width="120%" height="125%">
+      <feDropShadow dx="0" dy="6" stdDeviation="6" flood-color="#ea580c" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+  <!-- Orange Squircle Badge -->
+  <rect x="5" y="5" width="90" height="90" rx="28" fill="url(#ppOrangeGrad)" filter="url(#ppShadow)"/>
+  
+  <!-- Fork (Left) -->
+  <g fill="#ffffff">
+    <!-- Prongs -->
+    <path d="M28 26 v14 c0 4.5 3 7.5 7.5 7.5 v24 a3 3 0 0 0 6 0 v-24 c4.5 0 7.5-3 7.5-7.5 v-14 h-3.2 v12 c0 2.2-1.5 3.8-3.5 3.8 s-3.5-1.6-3.5-3.8 v-12 h-2.8 v12 c0 2.2-1.5 3.8-3.5 3.8 s-3.5-1.6-3.5-3.8 v-12 z"/>
+  </g>
+  
+  <!-- Knife (Right) -->
+  <g fill="#ffffff">
+    <path d="M54 26 v21.5 c0 4 3 6.5 6 7 v17.5 a3 3 0 0 0 6 0 v-26 c4-2.5 7-7.5 7-14 c0-4-1-6-3.5-6 c-3.5 0-9 0-15.5 0 z"/>
+  </g>
+</svg>

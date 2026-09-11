@@ -46,6 +46,14 @@ export class SeedService implements OnApplicationBootstrap {
     }
 
     try {
+      await this.planRepo.query(
+        `UPDATE "meal_plans" SET "originalPrice" = "pricePerMonth", "sellingPrice" = "pricePerMonth" WHERE "originalPrice" <= 0 OR "originalPrice" IS NULL`,
+      );
+    } catch (_) {
+      // Ignore if table or columns not yet ready
+    }
+
+    try {
       await this.seedAdmin();
     } catch (err: any) {
       this.logger.error(
@@ -438,9 +446,18 @@ export class SeedService implements OnApplicationBootstrap {
     for (let i = 0; i < plansData.length; i++) {
       const provider = providers[i % providers.length];
       const pData = plansData[i];
+      // Seed some plans with discounts and some with no discount (original == selling)
+      const isDiscounted = i % 2 === 0;
+      const originalPrice = isDiscounted
+        ? Math.round(pData.pricePerMonth * 1.15)
+        : pData.pricePerMonth;
+      const sellingPrice = pData.pricePerMonth;
+
       const plan = this.planRepo.create({
         title: pData.title,
-        pricePerMonth: pData.pricePerMonth,
+        originalPrice,
+        sellingPrice,
+        pricePerMonth: sellingPrice,
         description: pData.description,
         provider,
         isActive: true,

@@ -14,9 +14,7 @@ export function renderLogin() {
         <div style="max-width: 440px; margin: 20px auto; padding: 0 16px;">
           <div style="background: #fff; border: 1px solid var(--color-neutral-200); border-radius: 24px; padding: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.06); text-align: center;">
             
-            <div class="nav-brand-logo" style="width: 48px; height: 48px; margin: 0 auto 16px; font-size: 20px;">
-              <i class="fa-solid fa-utensils"></i>
-            </div>
+            <img src="/primeplate-icon.svg" alt="PrimePlate" style="width: 48px; height: 48px; margin: 0 auto 16px; border-radius: 14px; display: block;" />
             
             <h2 class="font-display" style="font-size: 26px; font-weight: 800; color: var(--color-neutral-900); margin-bottom: 6px;">
               ${isRegisterMode ? 'Join PrimePlate' : 'Welcome Back'}

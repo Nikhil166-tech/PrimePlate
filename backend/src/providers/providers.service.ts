@@ -126,6 +126,44 @@ export class ProvidersService {
         })
       : [];
 
+    let mealPlans: MealPlan[] = [];
+    try {
+      if (
+        this.providerRepo.manager &&
+        typeof this.providerRepo.manager.find === 'function'
+      ) {
+        mealPlans = await this.providerRepo.manager.find(MealPlan, {
+          where: { provider: { id: provider.id }, isActive: true },
+          order: { sellingPrice: 'ASC' },
+        });
+      }
+    } catch (_) {
+      mealPlans = [];
+    }
+
+    let sellingPrice = Number(provider.monthlyPrice ?? 2999);
+    let originalPrice = sellingPrice;
+
+    if (mealPlans && mealPlans.length > 0) {
+      const bestPlan = mealPlans[0];
+      const sPrice = Number(
+        bestPlan.sellingPrice ?? bestPlan.pricePerMonth ?? provider.monthlyPrice,
+      );
+      const oPrice = Number(
+        bestPlan.originalPrice ?? bestPlan.pricePerMonth ?? sPrice,
+      );
+      if (!isNaN(sPrice) && sPrice > 0) {
+        sellingPrice = sPrice;
+        originalPrice = !isNaN(oPrice) && oPrice >= sPrice ? oPrice : sPrice;
+      }
+    }
+
+    const hasDiscount = originalPrice > sellingPrice;
+    const discountAmount = hasDiscount ? originalPrice - sellingPrice : 0;
+    const discountPercentage = hasDiscount
+      ? Math.floor(((originalPrice - sellingPrice) / originalPrice) * 100)
+      : 0;
+
     return {
       ...provider,
       user: safeUser,
@@ -133,6 +171,12 @@ export class ProvidersService {
       currentSubscribers,
       remainingCapacity,
       images,
+      sellingPrice,
+      originalPrice,
+      hasDiscount,
+      discountAmount,
+      discountPercentage,
+      mealPlans,
     };
   }
 
@@ -292,13 +336,6 @@ export class ProvidersService {
         );
       }
       provider.monthlyPrice = parsedPrice;
-      const plans = await this.providerRepo.manager.find(MealPlan, {
-        where: { provider: { id: provider.id } },
-      });
-      for (const p of plans) {
-        p.pricePerMonth = parsedPrice;
-        await this.providerRepo.manager.save(MealPlan, p);
-      }
     }
 
     const saved = await this.providerRepo.save(provider);

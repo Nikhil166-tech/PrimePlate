@@ -30,9 +30,7 @@ export function renderFooter(): string {
           <!-- Brand Column -->
           <div class="footer-brand-col">
             <a href="/home" class="footer-brand" aria-label="PrimePlate Home">
-              <div class="footer-brand-logo">
-                <i class="fa-solid fa-utensils"></i>
-              </div>
+              <img src="/primeplate-icon.svg" alt="PrimePlate" style="width: 36px; height: 36px; border-radius: 12px; display: block;" />
               <span class="footer-brand-text">PrimePlate</span>
             </a>
             <p class="footer-tagline">Good Food. More Time. PrimePlate.</p>

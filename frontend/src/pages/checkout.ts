@@ -45,7 +45,15 @@ export async function renderCheckout(planId: string) {
     }
   }
 
-  let selectedPlan: { id: string; title: string; basePrice: number; providerName?: string; description?: string } | null = null;
+  let selectedPlan: {
+    id: string;
+    title: string;
+    basePrice: number;
+    baseOriginalPrice: number;
+    hasDiscount: boolean;
+    providerName?: string;
+    description?: string;
+  } | null = null;
   let actualPlanId = planId;
   let planFetchError: string | null = null;
 
@@ -53,12 +61,15 @@ export async function renderCheckout(planId: string) {
     const fetched: any = await api.get(`/meal-plans/${planId}`);
     if (fetched && fetched.title) {
       actualPlanId = fetched.id;
-      const priceNum = Number(fetched.pricePerMonth);
-      if (!isNaN(priceNum) && priceNum > 0) {
+      const sellingNum = Number(fetched.sellingPrice ?? fetched.pricePerMonth);
+      const originalNum = Number(fetched.originalPrice ?? fetched.pricePerMonth ?? sellingNum);
+      if (!isNaN(sellingNum) && sellingNum > 0) {
         selectedPlan = {
           id: fetched.id,
           title: fetched.title,
-          basePrice: priceNum,
+          basePrice: sellingNum,
+          baseOriginalPrice: originalNum > 0 ? originalNum : sellingNum,
+          hasDiscount: Boolean(fetched.hasDiscount ?? (originalNum > sellingNum)),
           providerName: fetched.provider?.name || 'PrimePlate Partner Kitchen',
           description: fetched.description || 'Daily fresh meals',
         };
@@ -97,6 +108,7 @@ export async function renderCheckout(planId: string) {
 
   let selectedDays = initialDays;
   const calcPrice = (days: number) => Math.max(1, Math.round(selectedPlan!.basePrice * (days / 30)));
+  const calcOriginalPrice = (days: number) => Math.max(1, Math.round(selectedPlan!.baseOriginalPrice * (days / 30)));
 
   const durationOptions = [
     { days: 1, title: '1 Day Pass', description: 'Daily fresh meal' },
@@ -108,6 +120,28 @@ export async function renderCheckout(planId: string) {
   const durationCardsHtml = durationOptions.map((opt) => {
     const isSelected = opt.days === selectedDays;
     const pVal = calcPrice(opt.days);
+    const origVal = calcOriginalPrice(opt.days);
+    const saveVal = origVal - pVal;
+    const discountPct = (selectedPlan!.hasDiscount && origVal > 0 && saveVal > 0)
+      ? Math.floor((saveVal / origVal) * 100)
+      : 0;
+    const isDiscounted = selectedPlan!.hasDiscount && discountPct > 0;
+
+    const cardPriceHtml = isDiscounted
+      ? `
+        <div style="text-align: right; flex-shrink: 0; min-width: 0;">
+          <div style="display: flex; align-items: baseline; justify-content: flex-end; gap: 6px; flex-wrap: wrap;">
+            <span style="font-size: 11px; color: #9ca3af; text-decoration: line-through; white-space: nowrap;">₹${origVal.toLocaleString('en-IN')}</span>
+            <span style="font-weight: 800; color: #ea580c; font-size: 16px; white-space: nowrap;">₹${pVal.toLocaleString('en-IN')}</span>
+            <span style="background: #dcfce7; color: #16a34a; font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 999px; white-space: nowrap;">${discountPct}% OFF</span>
+          </div>
+          <span style="font-size: 11px; font-weight: 600; color: #059669; display: block; margin-top: 2px; white-space: nowrap;">Save ₹${saveVal.toLocaleString('en-IN')}</span>
+        </div>
+      `
+      : `
+        <span style="font-weight: 800; color: #ea580c; font-size: 16px; white-space: nowrap; flex-shrink: 0; text-align: right;">₹${pVal.toLocaleString('en-IN')}</span>
+      `;
+
     return `
       <label class="co-duration-card" style="display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 10px; border: ${isSelected ? '2px solid #f97316' : '1px solid #e5e7eb'}; background: ${isSelected ? '#fff8f0' : '#ffffff'}; border-radius: 14px; padding: 12px 14px; margin-bottom: 10px; cursor: pointer; min-width: 0; box-sizing: border-box;">
         <input type="radio" name="coDurationPlan" value="${opt.days}" ${isSelected ? 'checked' : ''} style="width: 18px; height: 18px; accent-color: #ea580c; cursor: pointer; flex-shrink: 0;" />
@@ -115,10 +149,52 @@ export async function renderCheckout(planId: string) {
           <strong style="font-size: 14px; font-weight: 700; color: #111827; display: block; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(opt.title)}</strong>
           <p style="font-size: 12px; color: #6b7280; margin: 0; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(opt.description)}</p>
         </div>
-        <span style="font-weight: 800; color: #ea580c; font-size: 16px; white-space: nowrap; flex-shrink: 0; text-align: right;">₹${pVal.toLocaleString('en-IN')}</span>
+        ${cardPriceHtml}
       </label>
     `;
   }).join('');
+
+  const renderBreakdownHtml = (days: number) => {
+    const pVal = calcPrice(days);
+    const origVal = calcOriginalPrice(days);
+    const saveVal = origVal - pVal;
+    const discountPct = (selectedPlan!.hasDiscount && origVal > 0 && saveVal > 0)
+      ? Math.floor((saveVal / origVal) * 100)
+      : 0;
+    const isDiscounted = selectedPlan!.hasDiscount && discountPct > 0;
+
+    if (isDiscounted) {
+      return `
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+          <span style="font-size: 14px; color: var(--color-neutral-600);">Original Price:</span>
+          <span id="coOriginalPriceDisplay" style="font-size: 15px; color: var(--color-neutral-400); text-decoration: line-through;">₹${origVal.toLocaleString('en-IN')}</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+          <span style="font-size: 14px; font-weight: 600; color: #16a34a;">You Save:</span>
+          <span id="coSaveAmountDisplay" style="font-size: 13px; font-weight: 700; color: #16a34a; background: #dcfce7; padding: 2px 8px; border-radius: 999px;">
+            Save ₹${saveVal.toLocaleString('en-IN')} (${discountPct}% OFF)
+          </span>
+        </div>
+        <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--color-neutral-200); padding-top: 12px; margin-top: 8px;">
+          <div>
+            <span style="font-weight: 800; font-size: 16px; color: var(--color-neutral-900); display: block;">You Pay:</span>
+            <span style="font-size: 12px; color: var(--color-neutral-500);">Authoritative price from kitchen</span>
+          </div>
+          <span id="planPriceDisplay" class="price-text" style="font-size: 26px; font-weight: 800; color: var(--color-primary-600);">₹${pVal.toLocaleString('en-IN')}</span>
+        </div>
+      `;
+    } else {
+      return `
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <div>
+            <span style="font-weight: 800; font-size: 16px; color: var(--color-neutral-900); display: block;">You Pay:</span>
+            <span style="font-size: 12px; color: var(--color-neutral-500);">Authoritative price from kitchen</span>
+          </div>
+          <span id="planPriceDisplay" class="price-text" style="font-size: 26px; font-weight: 800; color: var(--color-primary-600);">₹${pVal.toLocaleString('en-IN')}</span>
+        </div>
+      `;
+    }
+  };
 
   container.innerHTML = `
     ${renderNavbar()}
@@ -146,9 +222,8 @@ export async function renderCheckout(planId: string) {
               ${durationCardsHtml}
             </div>
 
-            <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px dashed var(--color-neutral-300); padding-top: 16px;">
-              <span style="font-weight: 700; font-size: 16px; color: var(--color-neutral-900);">Total Amount Payable:</span>
-              <span id="planPriceDisplay" class="price-text" style="font-size: 26px; color: var(--color-primary-600);">₹${calcPrice(selectedDays).toLocaleString('en-IN')}</span>
+            <div id="checkoutPricingBreakdown" style="border-top: 1px dashed var(--color-neutral-300); padding-top: 16px;">
+              ${renderBreakdownHtml(selectedDays)}
             </div>
           </div>
 
@@ -183,11 +258,14 @@ export async function renderCheckout(planId: string) {
       }
 
       selectedDays = Number(targetRadio.value) || 30;
-      const currentPrice = calcPrice(selectedDays);
-      const priceDisplay = document.getElementById('planPriceDisplay');
+      const breakdownEl = document.getElementById('checkoutPricingBreakdown');
+      if (breakdownEl) {
+        breakdownEl.innerHTML = renderBreakdownHtml(selectedDays);
+      }
       const payBtnText = document.getElementById('payBtnText');
-      if (priceDisplay) priceDisplay.textContent = `₹${currentPrice.toLocaleString('en-IN')}`;
-      if (payBtnText) payBtnText.textContent = `Pay with Razorpay (₹${currentPrice.toLocaleString('en-IN')})`;
+      if (payBtnText) {
+        payBtnText.textContent = `Pay with Razorpay (₹${calcPrice(selectedDays).toLocaleString('en-IN')})`;
+      }
     });
   });
 

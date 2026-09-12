@@ -1024,6 +1024,58 @@ body {
 }
 
 /* ==========================================================================
+   Duration Plan Selection Cards Responsive Layout
+   ========================================================================== */
+.duration-plan-card,
+.mobile-duration-plan-card,
+.co-duration-card {
+  transition: border-color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
+  user-select: none;
+  -webkit-user-select: none;
+  word-break: normal !important;
+  overflow-wrap: normal !important;
+}
+
+.duration-plan-card:hover,
+.mobile-duration-plan-card:hover,
+.co-duration-card:hover {
+  border-color: #f97316 !important;
+  box-shadow: 0 4px 12px rgba(249, 115, 22, 0.08);
+}
+
+@media (max-width: 640px) {
+  .mobile-subscription-section {
+    padding: 16px 14px !important;
+    border-radius: 16px !important;
+  }
+
+  .mobile-duration-plan-card,
+  .co-duration-card {
+    padding: 12px 14px !important;
+    margin-bottom: 10px !important;
+  }
+
+  #checkoutPlanDetails {
+    padding: 16px 14px !important;
+  }
+}
+
+@media (max-width: 380px) {
+  .mobile-subscription-section {
+    padding: 14px 10px !important;
+  }
+
+  .mobile-duration-plan-card,
+  .co-duration-card {
+    padding: 10px 10px !important;
+  }
+
+  #checkoutPlanDetails {
+    padding: 12px 10px !important;
+  }
+}
+
+/* ==========================================================================
    Hostel Images Interactive Carousel & Gallery Styles
    ========================================================================== */
 #hostelImagesSection {

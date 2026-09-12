@@ -145,29 +145,25 @@ export async function renderCheckout(planId: string) {
       : 0;
     const isDiscounted = selectedPlan!.hasDiscount && discountPct > 0;
 
-    const cardPriceHtml = isDiscounted
-      ? `
-        <div style="text-align: right; flex-shrink: 0; min-width: 0;">
-          <div style="display: flex; align-items: baseline; justify-content: flex-end; gap: 6px; flex-wrap: wrap;">
-            <span style="font-size: 11px; color: #9ca3af; text-decoration: line-through; white-space: nowrap;">₹${origVal.toLocaleString('en-IN')}</span>
-            <span style="font-weight: 800; color: #ea580c; font-size: 16px; white-space: nowrap;">₹${pVal.toLocaleString('en-IN')}</span>
-            <span style="background: #dcfce7; color: #16a34a; font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 999px; white-space: nowrap;">${discountPct}% OFF</span>
-          </div>
-          <span style="font-size: 11px; font-weight: 600; color: #059669; display: block; margin-top: 2px; white-space: nowrap;">Save ₹${saveVal.toLocaleString('en-IN')}</span>
-        </div>
-      `
-      : `
-        <span style="font-weight: 800; color: #ea580c; font-size: 16px; white-space: nowrap; flex-shrink: 0; text-align: right;">₹${pVal.toLocaleString('en-IN')}</span>
-      `;
-
     return `
-      <label class="co-duration-card" style="display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 10px; border: ${isSelected ? '2px solid #f97316' : '1px solid #e5e7eb'}; background: ${isSelected ? '#fff8f0' : '#ffffff'}; border-radius: 14px; padding: 12px 14px; margin-bottom: 10px; cursor: pointer; min-width: 0; box-sizing: border-box;">
-        <input type="radio" name="coDurationPlan" value="${opt.days}" ${isSelected ? 'checked' : ''} style="width: 18px; height: 18px; accent-color: #ea580c; cursor: pointer; flex-shrink: 0;" />
-        <div style="min-width: 0; overflow: hidden;">
-          <strong style="font-size: 14px; font-weight: 700; color: #111827; display: block; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(opt.title)}</strong>
-          <p style="font-size: 12px; color: #6b7280; margin: 0; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(opt.description)}</p>
+      <label class="co-duration-card" style="display: block; border: 2px solid ${isSelected ? '#f97316' : '#e5e7eb'}; background: ${isSelected ? '#fff8f0' : '#ffffff'}; border-radius: 14px; padding: 12px 14px; margin-bottom: 10px; cursor: pointer; min-width: 0; box-sizing: border-box; transition: all 0.2s ease-in-out;">
+        <div style="display: flex; align-items: center; gap: 12px; width: 100%; min-width: 0;">
+          <input type="radio" name="coDurationPlan" value="${opt.days}" ${isSelected ? 'checked' : ''} style="width: 18px; height: 18px; accent-color: #ea580c; cursor: pointer; flex-shrink: 0;" />
+          <div style="flex: 1; min-width: 0; display: grid; grid-template-columns: 1fr auto; row-gap: 4px; column-gap: 10px; align-items: center;">
+            <strong style="font-size: 14px; font-weight: 700; color: #111827; line-height: 1.3; min-width: 0;">${escapeHtml(opt.title)}</strong>
+            <div style="display: flex; align-items: baseline; justify-content: flex-end; gap: 6px; white-space: nowrap; flex-shrink: 0;">
+              ${isDiscounted ? `<span style="font-size: 12px; color: #9ca3af; text-decoration: line-through;">₹${origVal.toLocaleString('en-IN')}</span>` : ''}
+              <span style="font-weight: 800; color: #ea580c; font-size: 16px;">₹${pVal.toLocaleString('en-IN')}</span>
+            </div>
+            <p style="font-size: 12px; color: #6b7280; margin: 0; line-height: 1.3; min-width: 0;">${escapeHtml(opt.description)}</p>
+            ${isDiscounted ? `
+              <div style="display: flex; align-items: center; justify-content: flex-end; gap: 5px; white-space: nowrap; flex-shrink: 0;">
+                <span style="background: #dcfce7; color: #16a34a; font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 999px;">${discountPct}% OFF</span>
+                <span style="font-size: 11px; font-weight: 700; color: #059669;">Save ₹${saveVal.toLocaleString('en-IN')}</span>
+              </div>
+            ` : '<div></div>'}
+          </div>
         </div>
-        ${cardPriceHtml}
       </label>
     `;
   }).join('');

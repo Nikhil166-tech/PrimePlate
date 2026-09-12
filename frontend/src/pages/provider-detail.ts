@@ -188,33 +188,27 @@ export async function renderProviderDetail(providerId: string) {
             : 0;
           const isDiscounted = hasBaseDiscount && durationDiscountPct > 0;
 
-          const priceHtml = isDiscounted
-            ? `
-                <div style="text-align: right; flex-shrink: 0; min-width: 0;">
-                  <div style="display: flex; align-items: baseline; justify-content: flex-end; gap: 6px; flex-wrap: wrap;">
-                    <span style="font-size: 12px; color: #9ca3af; text-decoration: line-through; white-space: nowrap;">₹${calculatedOriginal.toLocaleString('en-IN')}</span>
-                    <span style="font-weight: 800; color: #ea580c; font-size: 16px; white-space: nowrap;">₹${calculatedSelling.toLocaleString('en-IN')}</span>
-                    <span style="background: #dcfce7; color: #16a34a; font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 999px; white-space: nowrap;">${durationDiscountPct}% OFF</span>
-                  </div>
-                  <span style="font-size: 11px; font-weight: 600; color: #059669; display: block; margin-top: 2px; white-space: nowrap;">Save ₹${durationSave.toLocaleString('en-IN')}</span>
-                </div>
-              `
-            : `
-                <div style="text-align: right; flex-shrink: 0;">
-                  <span style="font-weight: 800; color: #ea580c; font-size: 16px; white-space: nowrap;">₹${calculatedSelling.toLocaleString('en-IN')}</span>
-                </div>
-              `;
-
           return `
-              <label class="duration-plan-card" style="display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 10px; border: ${opt.isDefault ? '2px solid #f97316' : '1px solid #e5e7eb'}; background: ${opt.isDefault ? '#fff8f0' : '#ffffff'}; border-radius: 14px; padding: 12px 14px; margin-bottom: 10px; cursor: pointer; min-width: 0; box-sizing: border-box;">
+            <label class="duration-plan-card" style="display: block; border: 2px solid ${opt.isDefault ? '#f97316' : '#e5e7eb'}; background: ${opt.isDefault ? '#fff8f0' : '#ffffff'}; border-radius: 14px; padding: 12px 14px; margin-bottom: 10px; cursor: pointer; min-width: 0; box-sizing: border-box; transition: all 0.2s ease-in-out;">
+              <div style="display: flex; align-items: center; gap: 12px; width: 100%; min-width: 0;">
                 <input type="radio" name="durationPlanSelect" value="${opt.days}" ${opt.isDefault ? 'checked' : ''} style="width: 18px; height: 18px; accent-color: #ea580c; cursor: pointer; flex-shrink: 0;" />
-                <div style="min-width: 0; overflow: hidden;">
-                  <strong style="font-size: 14px; font-weight: 700; color: #111827; display: block; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(opt.title)}</strong>
-                  <p style="font-size: 12px; color: #6b7280; margin: 0; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(opt.description)}</p>
+                <div style="flex: 1; min-width: 0; display: grid; grid-template-columns: 1fr auto; row-gap: 4px; column-gap: 10px; align-items: center;">
+                  <strong style="font-size: 14px; font-weight: 700; color: #111827; line-height: 1.3; min-width: 0;">${escapeHtml(opt.title)}</strong>
+                  <div style="display: flex; align-items: baseline; justify-content: flex-end; gap: 6px; white-space: nowrap; flex-shrink: 0;">
+                    ${isDiscounted ? `<span style="font-size: 12px; color: #9ca3af; text-decoration: line-through;">₹${calculatedOriginal.toLocaleString('en-IN')}</span>` : ''}
+                    <span style="font-weight: 800; color: #ea580c; font-size: 16px;">₹${calculatedSelling.toLocaleString('en-IN')}</span>
+                  </div>
+                  <p style="font-size: 12px; color: #6b7280; margin: 0; line-height: 1.3; min-width: 0;">${escapeHtml(opt.description)}</p>
+                  ${isDiscounted ? `
+                    <div style="display: flex; align-items: center; justify-content: flex-end; gap: 5px; white-space: nowrap; flex-shrink: 0;">
+                      <span style="background: #dcfce7; color: #16a34a; font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 999px;">${durationDiscountPct}% OFF</span>
+                      <span style="font-size: 11px; font-weight: 700; color: #059669;">Save ₹${durationSave.toLocaleString('en-IN')}</span>
+                    </div>
+                  ` : '<div></div>'}
                 </div>
-                ${priceHtml}
-              </label>
-            `;
+              </div>
+            </label>
+          `;
         })
         .join('')
       : `
@@ -278,33 +272,27 @@ export async function renderProviderDetail(providerId: string) {
             : 0;
           const isDiscounted = hasBaseDiscount && durationDiscountPct > 0;
 
-          const priceHtml = isDiscounted
-            ? `
-                <div style="text-align: right; margin-left: 8px; flex-shrink: 0;">
-                  <div style="display: flex; align-items: baseline; justify-content: flex-end; gap: 6px; flex-wrap: wrap;">
-                    <span style="font-size: 12px; color: #9ca3af; text-decoration: line-through; white-space: nowrap;">₹${calculatedOriginal.toLocaleString('en-IN')}</span>
-                    <span style="font-weight: 800; color: #ea580c; font-size: 17px; white-space: nowrap;">₹${calculatedSelling.toLocaleString('en-IN')}</span>
-                    <span style="background: #dcfce7; color: #16a34a; font-size: 11px; font-weight: 700; padding: 1px 6px; border-radius: 999px; white-space: nowrap;">${durationDiscountPct}% OFF</span>
-                  </div>
-                  <span style="font-size: 11px; font-weight: 600; color: #059669; display: block; margin-top: 2px;">Save ₹${durationSave.toLocaleString('en-IN')}</span>
-                </div>
-              `
-            : `
-                <span style="font-weight: 800; color: #ea580c; font-size: 17px; white-space: nowrap; margin-left: 12px; flex-shrink: 0;">₹${calculatedSelling.toLocaleString('en-IN')}</span>
-              `;
-
           return `
-              <label class="mobile-duration-plan-card" style="display: flex; align-items: center; justify-content: space-between; border: ${opt.isDefault ? '2px solid #f97316' : '1px solid #e5e7eb'}; background: ${opt.isDefault ? '#fff8f0' : '#ffffff'}; border-radius: 14px; padding: 14px 16px; margin-bottom: 12px; cursor: pointer; transition: all 0.2s ease-in-out; min-width: 0; max-width: 100%; box-sizing: border-box;">
-                <div style="display: flex; align-items: center; gap: 12px; min-width: 0; flex: 1;">
-                  <input type="radio" name="mobileDurationPlanSelect" value="${opt.days}" ${opt.isDefault ? 'checked' : ''} style="width: 18px; height: 18px; accent-color: #ea580c; cursor: pointer; flex-shrink: 0;" />
-                  <div style="min-width: 0; flex: 1;">
-                    <strong style="font-size: 15px; font-weight: 700; color: #111827; display: block; margin-bottom: 2px;">${escapeHtml(opt.title)}</strong>
-                    <p style="font-size: 13px; color: #6b7280; margin: 0; line-height: 1.4; word-break: break-word;">${escapeHtml(opt.description)}</p>
+            <label class="mobile-duration-plan-card" style="display: block; border: 2px solid ${opt.isDefault ? '#f97316' : '#e5e7eb'}; background: ${opt.isDefault ? '#fff8f0' : '#ffffff'}; border-radius: 14px; padding: 12px 14px; margin-bottom: 10px; cursor: pointer; transition: all 0.2s ease-in-out; min-width: 0; max-width: 100%; box-sizing: border-box;">
+              <div style="display: flex; align-items: center; gap: 12px; width: 100%; min-width: 0;">
+                <input type="radio" name="mobileDurationPlanSelect" value="${opt.days}" ${opt.isDefault ? 'checked' : ''} style="width: 18px; height: 18px; accent-color: #ea580c; cursor: pointer; flex-shrink: 0;" />
+                <div style="flex: 1; min-width: 0; display: grid; grid-template-columns: 1fr auto; row-gap: 4px; column-gap: 10px; align-items: center;">
+                  <strong style="font-size: 14px; font-weight: 700; color: #111827; line-height: 1.3; min-width: 0;">${escapeHtml(opt.title)}</strong>
+                  <div style="display: flex; align-items: baseline; justify-content: flex-end; gap: 6px; white-space: nowrap; flex-shrink: 0;">
+                    ${isDiscounted ? `<span style="font-size: 12px; color: #9ca3af; text-decoration: line-through;">₹${calculatedOriginal.toLocaleString('en-IN')}</span>` : ''}
+                    <span style="font-weight: 800; color: #ea580c; font-size: 16px;">₹${calculatedSelling.toLocaleString('en-IN')}</span>
                   </div>
+                  <p style="font-size: 12px; color: #6b7280; margin: 0; line-height: 1.3; min-width: 0;">${escapeHtml(opt.description)}</p>
+                  ${isDiscounted ? `
+                    <div style="display: flex; align-items: center; justify-content: flex-end; gap: 5px; white-space: nowrap; flex-shrink: 0;">
+                      <span style="background: #dcfce7; color: #16a34a; font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 999px;">${durationDiscountPct}% OFF</span>
+                      <span style="font-size: 11px; font-weight: 700; color: #059669;">Save ₹${durationSave.toLocaleString('en-IN')}</span>
+                    </div>
+                  ` : '<div></div>'}
                 </div>
-                ${priceHtml}
-              </label>
-            `;
+              </div>
+            </label>
+          `;
         })
         .join('')
       : `
@@ -929,6 +917,35 @@ export async function renderProviderDetail(providerId: string) {
       const selectedDays = selectedRadio ? Number(selectedRadio.value) : 30;
       const targetPlanId = mealPlans[0] ? mealPlans[0].id : providerId;
       navigate(`/checkout/${targetPlanId}?days=${selectedDays}`);
+    });
+
+    // Duration Plan Selection Active Visual Sync
+    document.querySelectorAll('input[name="durationPlanSelect"]').forEach((radio) => {
+      radio.addEventListener('change', (e) => {
+        document.querySelectorAll('.duration-plan-card').forEach((c) => {
+          (c as HTMLElement).style.borderColor = '#e5e7eb';
+          (c as HTMLElement).style.background = '#ffffff';
+        });
+        const target = (e.currentTarget as HTMLInputElement).closest('.duration-plan-card') as HTMLElement;
+        if (target) {
+          target.style.borderColor = '#f97316';
+          target.style.background = '#fff8f0';
+        }
+      });
+    });
+
+    document.querySelectorAll('input[name="mobileDurationPlanSelect"]').forEach((radio) => {
+      radio.addEventListener('change', (e) => {
+        document.querySelectorAll('.mobile-duration-plan-card').forEach((c) => {
+          (c as HTMLElement).style.borderColor = '#e5e7eb';
+          (c as HTMLElement).style.background = '#ffffff';
+        });
+        const target = (e.currentTarget as HTMLInputElement).closest('.mobile-duration-plan-card') as HTMLElement;
+        if (target) {
+          target.style.borderColor = '#f97316';
+          target.style.background = '#fff8f0';
+        }
+      });
     });
 
     // Create Review Form Listener

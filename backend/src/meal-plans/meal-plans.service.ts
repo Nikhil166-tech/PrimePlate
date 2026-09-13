@@ -34,12 +34,8 @@ export function calculateDiscount(originalPrice: number, sellingPrice: number) {
 }
 
 export function formatMealPlan(plan: MealPlan) {
-  const originalPrice = Number(
-    plan.originalPrice ?? plan.pricePerMonth ?? 0,
-  );
-  const sellingPrice = Number(
-    plan.sellingPrice ?? plan.pricePerMonth ?? 0,
-  );
+  const originalPrice = Number(plan.originalPrice ?? plan.pricePerMonth ?? 0);
+  const sellingPrice = Number(plan.sellingPrice ?? plan.pricePerMonth ?? 0);
   const { discountAmount, discountPercentage, hasDiscount } = calculateDiscount(
     originalPrice,
     sellingPrice,
@@ -89,14 +85,10 @@ export class MealPlansService {
       throw new BadRequestException('Prices must be valid numbers');
     }
     if (orig <= 0) {
-      throw new BadRequestException(
-        'Original price must be greater than 0',
-      );
+      throw new BadRequestException('Original price must be greater than 0');
     }
     if (sell <= 0) {
-      throw new BadRequestException(
-        'Selling price must be greater than 0',
-      );
+      throw new BadRequestException('Selling price must be greater than 0');
     }
     if (sell > orig) {
       throw new BadRequestException(
@@ -126,7 +118,7 @@ export class MealPlansService {
     });
 
     const saved = await this.planRepo.save(plan);
-    return formatMealPlan(saved) as any;
+    return formatMealPlan(saved);
   }
 
   async update(
@@ -145,14 +137,15 @@ export class MealPlansService {
 
     if (plan.provider?.user && plan.provider.user.id !== userId) {
       throw new ForbiddenException(
-        'Cannot modify another provider\'s meal plan pricing',
+        "Cannot modify another provider's meal plan pricing",
       );
     }
 
     const currentOrig = Number(plan.originalPrice ?? plan.pricePerMonth);
     const currentSell = Number(plan.sellingPrice ?? plan.pricePerMonth);
 
-    const newOrigInput = dto.originalPrice !== undefined ? dto.originalPrice : currentOrig;
+    const newOrigInput =
+      dto.originalPrice !== undefined ? dto.originalPrice : currentOrig;
     const newSellInput =
       dto.sellingPrice !== undefined
         ? dto.sellingPrice
@@ -163,18 +156,19 @@ export class MealPlansService {
     const newOrig = Number(newOrigInput);
     const newSell = Number(newSellInput);
 
-    if (isNaN(newOrig) || isNaN(newSell) || !isFinite(newOrig) || !isFinite(newSell)) {
+    if (
+      isNaN(newOrig) ||
+      isNaN(newSell) ||
+      !isFinite(newOrig) ||
+      !isFinite(newSell)
+    ) {
       throw new BadRequestException('Prices must be valid numbers');
     }
     if (newOrig <= 0) {
-      throw new BadRequestException(
-        'Original price must be greater than 0',
-      );
+      throw new BadRequestException('Original price must be greater than 0');
     }
     if (newSell <= 0) {
-      throw new BadRequestException(
-        'Selling price must be greater than 0',
-      );
+      throw new BadRequestException('Selling price must be greater than 0');
     }
     if (newSell > newOrig) {
       throw new BadRequestException(
@@ -183,7 +177,8 @@ export class MealPlansService {
     }
 
     if (dto.title !== undefined) plan.title = dto.title.trim();
-    if (dto.description !== undefined) plan.description = dto.description?.trim();
+    if (dto.description !== undefined)
+      plan.description = dto.description?.trim();
     if (dto.isActive !== undefined) plan.isActive = dto.isActive;
 
     plan.originalPrice = newOrig;
@@ -191,7 +186,7 @@ export class MealPlansService {
     plan.pricePerMonth = newSell; // keep synced for backward compatibility
 
     const saved = await this.planRepo.save(plan);
-    return formatMealPlan(saved) as any;
+    return formatMealPlan(saved);
   }
 
   async findByProvider(providerId: string): Promise<MealPlan[]> {
@@ -200,7 +195,7 @@ export class MealPlansService {
       relations: { provider: true },
       order: { createdAt: 'ASC' },
     });
-    return plans.map(formatMealPlan) as any;
+    return plans.map(formatMealPlan);
   }
 
   async findById(id: string): Promise<MealPlan> {
@@ -211,6 +206,6 @@ export class MealPlansService {
     if (!plan) {
       throw new NotFoundException('Meal plan not found');
     }
-    return formatMealPlan(plan) as any;
+    return formatMealPlan(plan);
   }
 }

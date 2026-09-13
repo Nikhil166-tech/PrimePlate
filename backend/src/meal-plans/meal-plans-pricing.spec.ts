@@ -209,7 +209,10 @@ describe('PrimePlate — Original Price + Selling Price / Discount System Specif
       }),
     } as any;
     const fakeUserRepo = {
-      findOne: jest.fn(async () => ({ id: 'student-1', email: 'student1@primeplate.com' })),
+      findOne: jest.fn(async () => ({
+        id: 'student-1',
+        email: 'student1@primeplate.com',
+      })),
     } as any;
     const fakePaymentRepo = {
       create: jest.fn((dto) => dto),
@@ -287,11 +290,19 @@ describe('PrimePlate — Original Price + Selling Price / Discount System Specif
     expect(order7Day.amount).toBe(58300);
 
     // 15 Days = Math.round((2500 / 30) * 15) = 1250 -> ₹1250 (125000 paise)
-    const order15Day = await paymentsService.createOrder(savedPlan.id, 's1', 15);
+    const order15Day = await paymentsService.createOrder(
+      savedPlan.id,
+      's1',
+      15,
+    );
     expect(order15Day.amount).toBe(125000);
 
     // 30 Days = 2500 -> ₹2500 (250000 paise)
-    const order30Day = await paymentsService.createOrder(savedPlan.id, 's1', 30);
+    const order30Day = await paymentsService.createOrder(
+      savedPlan.id,
+      's1',
+      30,
+    );
     expect(order30Day.amount).toBe(250000);
   });
 
@@ -327,8 +338,8 @@ describe('PrimePlate — Original Price + Selling Price / Discount System Specif
       id: 'legacy-plan-1',
       title: 'Legacy Thali',
       pricePerMonth: 2500,
-      originalPrice: undefined as any,
-      sellingPrice: undefined as any,
+      originalPrice: undefined,
+      sellingPrice: undefined,
     };
 
     const formatted = formatMealPlan(legacyPlan as MealPlan);
@@ -340,7 +351,7 @@ describe('PrimePlate — Original Price + Selling Price / Discount System Specif
   });
 
   // 15. provider ownership is enforced
-  it('15. provider cannot modify another provider\'s meal plan pricing', async () => {
+  it("15. provider cannot modify another provider's meal plan pricing", async () => {
     const planB = await mealPlansService.create('user-provider-b', {
       title: 'Kitchen B Plan',
       originalPrice: 3000,
@@ -430,7 +441,7 @@ describe('PrimePlate — Original Price + Selling Price / Discount System Specif
 
     await providersService.update('user-provider-a', mockProviderA.id, {
       monthlyPrice: 4000,
-    } as any);
+    });
 
     // Verify Plan A and Plan B retain their configured prices
     expect(planA.sellingPrice).toBe(2500);

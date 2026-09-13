@@ -556,18 +556,17 @@ export async function renderOwnerPortal() {
             <span style="font-size: 11px; font-weight: 700; color: var(--color-neutral-500); text-transform: uppercase;">Select Recovery Percentage:</span>
             <div style="display: flex; gap: 8px; flex-wrap: wrap;" class="recovery-percentage-button-group">
               ${[50, 60, 70, 80, 90, 100].map((pct) => {
-                const currentPct = selectedHostel?.recoveryPercentage ?? recoveryStats?.recoveryPercentage ?? 80;
-                const isActive = currentPct === pct;
-                return `
-                  <button type="button" class="set-recovery-pct-btn btn-outline-action" data-pct="${pct}" style="padding: 6px 14px; font-size: 12px; font-weight: 800; border-radius: 8px; cursor: pointer; transition: all 0.15s ease; ${
-                    isActive
-                      ? 'background: var(--color-primary-600); color: #fff; border-color: var(--color-primary-600); box-shadow: 0 2px 6px rgba(234, 88, 12, 0.25);'
-                      : 'background: #fff; color: var(--color-neutral-700); border-color: var(--color-neutral-300);'
-                  }">
+      const currentPct = selectedHostel?.recoveryPercentage ?? recoveryStats?.recoveryPercentage ?? 80;
+      const isActive = currentPct === pct;
+      return `
+                  <button type="button" class="set-recovery-pct-btn btn-outline-action" data-pct="${pct}" style="padding: 6px 14px; font-size: 12px; font-weight: 800; border-radius: 8px; cursor: pointer; transition: all 0.15s ease; ${isActive
+          ? 'background: var(--color-primary-600); color: #fff; border-color: var(--color-primary-600); box-shadow: 0 2px 6px rgba(234, 88, 12, 0.25);'
+          : 'background: #fff; color: var(--color-neutral-700); border-color: var(--color-neutral-300);'
+        }">
                     ${pct}%
                   </button>
                 `;
-              }).join('')}
+    }).join('')}
             </div>
           </div>
         </div>
@@ -724,26 +723,26 @@ export async function renderOwnerPortal() {
     const renderEarningsHistoryContent = () => `
       <div style="display: flex; flex-direction: column; gap: 10px; max-height: 480px; overflow-y: auto;">
         ${earningsLoading
-          ? `<div style="text-align: center; padding: 36px;"><i class="fa-solid fa-spinner fa-spin" style="font-size: 24px; color: var(--color-primary-600);"></i></div>`
-          : earningsHistory.length === 0
-            ? `<div style="text-align: center; padding: 32px; background: var(--color-neutral-50); border: 1px dashed var(--color-neutral-300); border-radius: 16px;">
+        ? `<div style="text-align: center; padding: 36px;"><i class="fa-solid fa-spinner fa-spin" style="font-size: 24px; color: var(--color-primary-600);"></i></div>`
+        : earningsHistory.length === 0
+          ? `<div style="text-align: center; padding: 32px; background: var(--color-neutral-50); border: 1px dashed var(--color-neutral-300); border-radius: 16px;">
                 <i class="fa-solid fa-receipt" style="font-size: 28px; color: var(--color-neutral-400); margin-bottom: 8px;"></i>
                 <p style="font-size: 13px; color: var(--color-neutral-500); margin: 0;">No provider earning records found in ledger.</p>
               </div>`
-            : earningsHistory.map((item) => {
-                const dateStr = item.date ? new Date(item.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Recent';
-                const planText = item.subscription?.planTitle || `${item.subscription?.durationDays || 30} Day Subscription`;
-                const providerAmt = Number(item.providerAmount || 0);
-                const statusUpper = (item.status || 'PENDING').toUpperCase();
+          : earningsHistory.map((item) => {
+            const dateStr = item.date ? new Date(item.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Recent';
+            const planText = item.subscription?.planTitle || `${item.subscription?.durationDays || 30} Day Subscription`;
+            const providerAmt = Number(item.providerAmount || 0);
+            const statusUpper = (item.status || 'PENDING').toUpperCase();
 
-                let badgeStyle = 'background: #fef3c7; color: #d97706; border: 1px solid #fde68a;';
-                if (statusUpper === 'PAID') {
-                  badgeStyle = 'background: #dcfce7; color: #15803d; border: 1px solid #bbf7d0;';
-                } else if (statusUpper === 'REFUNDED' || statusUpper === 'REVERSED') {
-                  badgeStyle = 'background: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5;';
-                }
+            let badgeStyle = 'background: #fef3c7; color: #d97706; border: 1px solid #fde68a;';
+            if (statusUpper === 'PAID') {
+              badgeStyle = 'background: #dcfce7; color: #15803d; border: 1px solid #bbf7d0;';
+            } else if (statusUpper === 'REFUNDED' || statusUpper === 'REVERSED') {
+              badgeStyle = 'background: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5;';
+            }
 
-                return `
+            return `
                   <div style="background: var(--color-neutral-50); border: 1px solid var(--color-neutral-200); border-radius: 14px; padding: 14px; display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap;">
                     <div>
                       <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
@@ -759,8 +758,8 @@ export async function renderOwnerPortal() {
                     </div>
                   </div>
                 `;
-              }).join('')
-        }
+          }).join('')
+      }
       </div>
     `;
 
@@ -774,11 +773,11 @@ export async function renderOwnerPortal() {
             </span>
           </div>
           ${hostelImages.length >= 10
-            ? `<span style="font-size: 12px; font-weight: 700; color: #d97706; background: #fef3c7; padding: 6px 14px; border-radius: 8px; border: 1px solid #fde68a; display: inline-flex; align-items: center; gap: 6px;">
+        ? `<span style="font-size: 12px; font-weight: 700; color: #d97706; background: #fef3c7; padding: 6px 14px; border-radius: 8px; border: 1px solid #fde68a; display: inline-flex; align-items: center; gap: 6px;">
                  <i class="fa-solid fa-circle-exclamation"></i> Maximum 10 photos limit reached
                </span>`
-            : ''
-          }
+        : ''
+      }
         </div>
 
         ${hostelImages.length < 10 ? `
@@ -850,19 +849,19 @@ export async function renderOwnerPortal() {
                     <!-- Status Badge -->
                     <div style="display: flex; align-items: center; gap: 8px;">
                       ${item.status === 'WAITING'
-                        ? `<span style="font-size: 11px; font-weight: 700; background: #f1f5f9; color: #475569; padding: 2px 8px; border-radius: 999px;">Waiting in queue</span>`
-                        : item.status === 'UPLOADING'
-                          ? `<span style="font-size: 11px; font-weight: 700; background: #e0f2fe; color: #0284c7; padding: 2px 8px; border-radius: 999px; display: inline-flex; align-items: center; gap: 4px;">
+          ? `<span style="font-size: 11px; font-weight: 700; background: #f1f5f9; color: #475569; padding: 2px 8px; border-radius: 999px;">Waiting in queue</span>`
+          : item.status === 'UPLOADING'
+            ? `<span style="font-size: 11px; font-weight: 700; background: #e0f2fe; color: #0284c7; padding: 2px 8px; border-radius: 999px; display: inline-flex; align-items: center; gap: 4px;">
                                <i class="fa-solid fa-spinner fa-spin"></i> <span id="progress-text-${item.id}">Uploading ${item.progress}%</span>
                              </span>`
-                          : item.status === 'SUCCESS'
-                            ? `<span style="font-size: 11px; font-weight: 700; background: #dcfce7; color: #16a34a; padding: 2px 8px; border-radius: 999px; display: inline-flex; align-items: center; gap: 4px;">
+            : item.status === 'SUCCESS'
+              ? `<span style="font-size: 11px; font-weight: 700; background: #dcfce7; color: #16a34a; padding: 2px 8px; border-radius: 999px; display: inline-flex; align-items: center; gap: 4px;">
                                  <i class="fa-solid fa-check"></i> Uploaded ✓
                                </span>`
-                            : `<span style="font-size: 11px; font-weight: 700; background: #fee2e2; color: #dc2626; padding: 2px 8px; border-radius: 999px; display: inline-flex; align-items: center; gap: 4px;">
+              : `<span style="font-size: 11px; font-weight: 700; background: #fee2e2; color: #dc2626; padding: 2px 8px; border-radius: 999px; display: inline-flex; align-items: center; gap: 4px;">
                                  <i class="fa-solid fa-triangle-exclamation"></i> Upload Failed ❌
                                </span>`
-                      }
+        }
                     </div>
 
                     <!-- Progress Bar (Visible when uploading) -->
@@ -902,9 +901,9 @@ export async function renderOwnerPortal() {
         <!-- Carousel Gallery Section -->
         <div>
           ${imagesLoading
-            ? `<div style="text-align: center; padding: 36px;"><i class="fa-solid fa-spinner fa-spin" style="font-size: 24px; color: var(--color-primary-600);"></i></div>`
-            : hostelImages.length === 0 && uploadQueue.length === 0
-              ? `<div style="text-align: center; padding: 36px 20px; background: var(--color-neutral-50); border: 1px dashed var(--color-neutral-300); border-radius: 16px;">
+        ? `<div style="text-align: center; padding: 36px;"><i class="fa-solid fa-spinner fa-spin" style="font-size: 24px; color: var(--color-primary-600);"></i></div>`
+        : hostelImages.length === 0 && uploadQueue.length === 0
+          ? `<div style="text-align: center; padding: 36px 20px; background: var(--color-neutral-50); border: 1px dashed var(--color-neutral-300); border-radius: 16px;">
                    <div style="width: 56px; height: 56px; border-radius: 16px; background: #fff; display: flex; align-items: center; justify-content: center; margin: 0 auto 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); color: var(--color-neutral-400); font-size: 24px;">
                      <i class="fa-solid fa-images"></i>
                    </div>
@@ -913,7 +912,7 @@ export async function renderOwnerPortal() {
                      Upload photos of your front entrance, rooms, dining hall, and facilities to showcase to students.
                    </p>
                  </div>`
-              : hostelImages.length > 0 ? `
+          : hostelImages.length > 0 ? `
                 <div style="background: #fff; border: 1px solid var(--color-neutral-200); border-radius: 20px; padding: 18px; box-shadow: 0 4px 14px rgba(0,0,0,0.03); max-width: 620px; margin: 0 auto; width: 100%;">
                   <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; flex-wrap: wrap; gap: 8px;">
                     <h4 style="font-size: 15px; font-weight: 700; color: var(--color-neutral-900); margin: 0; display: flex; align-items: center; gap: 6px;">
@@ -1008,7 +1007,7 @@ export async function renderOwnerPortal() {
                   ` : ''}
                 </div>
               ` : ''
-          }
+      }
         </div>
       </div>
     `;
@@ -1411,15 +1410,15 @@ export async function renderOwnerPortal() {
 
               <!-- Hostels Switcher Bar -->
               ${hostels.length > 1
-            ? `<div style="display: flex; gap: 8px; overflow-x: auto; margin-bottom: 20px; padding-bottom: 4px;">
+          ? `<div style="display: flex; gap: 8px; overflow-x: auto; margin-bottom: 20px; padding-bottom: 4px;">
                     ${hostels.map((h) => `
                       <button class="select-hostel-tab-btn btn-outline-action" data-id="${h.id}" style="font-weight: 700; padding: 8px 16px; border-radius: 999px; font-size: 13px; background: ${selectedHostel.id === h.id ? 'var(--color-primary-600)' : '#fff'}; color: ${selectedHostel.id === h.id ? '#fff' : 'var(--color-neutral-700)'}; border-color: ${selectedHostel.id === h.id ? 'var(--color-primary-600)' : 'var(--color-neutral-300)'};">
                         ${escapeHtml(h.name)}
                       </button>
                     `).join('')}
                   </div>`
-            : ''
-          }
+          : ''
+        }
 
               <!-- Overview Stat Cards -->
               <div class="owner-stats-grid" style="margin-bottom: 24px;">
@@ -1450,10 +1449,10 @@ export async function renderOwnerPortal() {
                    1. MOBILE COMPACT DASHBOARD VIEW (<=768px)
                    ========================================================== -->
               ${(() => {
-                const effectiveMainImage = (hostelImages && hostelImages.length > 0)
-                  ? (hostelImages[0]?.imageUrl || selectedHostel?.imageUrl)
-                  : (selectedHostel?.imageUrl || '');
-                return `
+          const effectiveMainImage = (hostelImages && hostelImages.length > 0)
+            ? (hostelImages[0]?.imageUrl || selectedHostel?.imageUrl)
+            : (selectedHostel?.imageUrl || '');
+          return `
                   <div class="mobile-only-section" style="margin-bottom: 24px;">
                     <!-- Primary PG Card -->
                     <div style="background: #fff; border: 1px solid var(--color-neutral-200); border-radius: 20px; padding: 18px; margin-bottom: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.03);">
@@ -1471,16 +1470,24 @@ export async function renderOwnerPortal() {
                         </div>
                       </div>
                 `;
-              })()}
+        })()}
 
-                  <div style="background: var(--color-neutral-50); border: 1px solid var(--color-neutral-200); border-radius: 14px; padding: 10px 14px; margin-bottom: 14px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
-                    <div>
-                      ${pricingDisplayHtml}
+                  <div id="meal-plans-section" style="background: var(--color-neutral-50); border: 1px solid var(--color-neutral-200); border-radius: 14px; padding: 12px 14px; margin-bottom: 14px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 10px;">
+                      <div>
+                        <span style="font-size: 11px; font-weight: 700; color: var(--color-neutral-500); text-transform: uppercase; display: block; margin-bottom: 2px;">Meal Plan Pricing</span>
+                        ${pricingDisplayHtml}
+                      </div>
+                      <button type="button" class="open-edit-price-btn btn-outline-action" style="padding: 6px 14px; font-size: 12px; font-weight: 700; background: #fff; border-radius: 8px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
+                        <i class="fa-solid fa-pen-to-square"></i> Edit Plans
+                      </button>
                     </div>
-                    <span style="font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 999px; background: ${selectedHostel.acceptingSubscriptions !== false ? '#d1fae5' : '#fee2e2'}; color: ${selectedHostel.acceptingSubscriptions !== false ? '#047857' : '#b91c1c'};">
-                      ${selectedHostel.acceptingSubscriptions !== false ? '🟢 Kitchen OPEN' : '🔴 Kitchen CLOSED'}
-                    </span>
-                    <span style="font-size: 12px; font-weight: 600; color: var(--color-neutral-700);">👥 ${totalSubscribersCount} / ${selectedHostel.totalCapacity ?? 50}</span>
+                    <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; border-top: 1px dashed var(--color-neutral-200); padding-top: 8px;">
+                      <span style="font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 999px; background: ${selectedHostel.acceptingSubscriptions !== false ? '#d1fae5' : '#fee2e2'}; color: ${selectedHostel.acceptingSubscriptions !== false ? '#047857' : '#b91c1c'};">
+                        ${selectedHostel.acceptingSubscriptions !== false ? '🟢 Kitchen OPEN' : '🔴 Kitchen CLOSED'}
+                      </span>
+                      <span style="font-size: 12px; font-weight: 600; color: var(--color-neutral-700);">👥 ${totalSubscribersCount} / ${selectedHostel.totalCapacity ?? 50}</span>
+                    </div>
                   </div>
 
                   <div style="margin-bottom: 14px; padding-top: 10px; border-top: 1px solid var(--color-neutral-100);">
@@ -1490,9 +1497,9 @@ export async function renderOwnerPortal() {
                     <h4 style="font-size: 13px; font-weight: 700; color: var(--color-neutral-900); margin: 0 0 6px 0;">Hostel Amenities & Facilities</h4>
                     <div style="display: flex; gap: 6px; flex-wrap: wrap;">
                       ${selectedHostel.amenities && selectedHostel.amenities.length > 0
-                        ? selectedHostel.amenities.map((a: string) => `<span style="background: var(--color-neutral-100); color: var(--color-neutral-800); border: 1px solid var(--color-neutral-200); font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 999px; display: inline-flex; align-items: center; gap: 4px;"><i class="fa-solid fa-circle-check" style="color: var(--color-primary-600); font-size: 10px;"></i> ${escapeHtml(a)}</span>`).join('')
-                        : '<span style="color: var(--color-neutral-400); font-size: 12px; font-style: italic;">No amenities added yet.</span>'
-                      }
+          ? selectedHostel.amenities.map((a: string) => `<span style="background: var(--color-neutral-100); color: var(--color-neutral-800); border: 1px solid var(--color-neutral-200); font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 999px; display: inline-flex; align-items: center; gap: 4px;"><i class="fa-solid fa-circle-check" style="color: var(--color-primary-600); font-size: 10px;"></i> ${escapeHtml(a)}</span>`).join('')
+          : '<span style="color: var(--color-neutral-400); font-size: 12px; font-style: italic;">No amenities added yet.</span>'
+        }
                     </div>
                   </div>
 
@@ -1532,6 +1539,16 @@ export async function renderOwnerPortal() {
                 <h4 style="font-size: 12px; font-weight: 700; color: var(--color-neutral-500); text-transform: uppercase; letter-spacing: 0.5px; margin: 0 0 10px 4px;">Pending Actions & Operations</h4>
 
                 <div style="display: flex; flex-direction: column; gap: 10px;">
+                  <div class="compact-action-card">
+                    <div>
+                      <span style="font-size: 14px; font-weight: 700; color: var(--color-neutral-900); display: block;"><i class="fa-solid fa-utensils" style="color: var(--color-primary-600); margin-right: 6px;"></i> Meal Plans & Pricing</span>
+                      <span style="font-size: 12px; font-weight: 600; color: var(--color-neutral-600);">${primaryPlan?.sellingPrice ? `₹${primaryPlan.sellingPrice.toLocaleString('en-IN')}/mo active` : 'Set plan pricing'}</span>
+                    </div>
+                    <button class="open-edit-price-btn btn-outline-action" style="padding: 8px 14px; font-size: 12px; font-weight: 700; border-radius: 10px; min-height: 40px; background: #fff;">
+                      Edit Plans
+                    </button>
+                  </div>
+
                   <div class="compact-action-card">
                     <div>
                       <span style="font-size: 14px; font-weight: 700; color: var(--color-neutral-900); display: block;"><i class="fa-solid fa-camera" style="color: var(--color-primary-600); margin-right: 6px;"></i> Hostel Images</span>
@@ -1632,9 +1649,9 @@ export async function renderOwnerPortal() {
                     <h3 class="font-display" style="font-size: 15px; font-weight: 700; color: var(--color-neutral-900); margin: 0 0 8px 0;">Hostel Amenities & Facilities</h3>
                     <div style="display: flex; gap: 8px; flex-wrap: wrap;">
                       ${selectedHostel.amenities && selectedHostel.amenities.length > 0
-                        ? selectedHostel.amenities.map((a: string) => `<span style="background: var(--color-neutral-100); color: var(--color-neutral-800); border: 1px solid var(--color-neutral-200); font-size: 12px; font-weight: 700; padding: 5px 12px; border-radius: 999px; display: inline-flex; align-items: center; gap: 6px;"><i class="fa-solid fa-circle-check" style="color: var(--color-primary-600); font-size: 11px;"></i> ${escapeHtml(a)}</span>`).join('')
-                        : '<span style="color: var(--color-neutral-400); font-size: 13px; font-style: italic;">No amenities added yet.</span>'
-                      }
+          ? selectedHostel.amenities.map((a: string) => `<span style="background: var(--color-neutral-100); color: var(--color-neutral-800); border: 1px solid var(--color-neutral-200); font-size: 12px; font-weight: 700; padding: 5px 12px; border-radius: 999px; display: inline-flex; align-items: center; gap: 6px;"><i class="fa-solid fa-circle-check" style="color: var(--color-primary-600); font-size: 11px;"></i> ${escapeHtml(a)}</span>`).join('')
+          : '<span style="color: var(--color-neutral-400); font-size: 13px; font-style: italic;">No amenities added yet.</span>'
+        }
                     </div>
                   </div>
 
@@ -1795,24 +1812,24 @@ export async function renderOwnerPortal() {
               <h3 class="font-display" style="font-size: 20px; font-weight: 800; color: var(--color-neutral-900); margin: 0;">
                 ${mobileSheet === 'MANAGE_PG' ? 'Manage PG' :
           mobileSheet === 'HOSTEL_IMAGES' ? 'Hostel Images' :
-          mobileSheet === 'MEAL_QR' ? 'My Meal QR' :
-          mobileSheet === 'TODAYS_CHECKINS' ? "Today's Meal Check-ins" :
-            mobileSheet === 'SUBSCRIBERS' ? 'Subscribers' :
-              mobileSheet === 'WEEKLY_MENU' ? 'Weekly Menu Editor' :
-                mobileSheet === 'REVIEWS' ? 'Provider Reviews' :
-                  mobileSheet === 'EARNINGS_HISTORY' ? 'Provider Earnings History' :
-                    'Details'}
+            mobileSheet === 'MEAL_QR' ? 'My Meal QR' :
+              mobileSheet === 'TODAYS_CHECKINS' ? "Today's Meal Check-ins" :
+                mobileSheet === 'SUBSCRIBERS' ? 'Subscribers' :
+                  mobileSheet === 'WEEKLY_MENU' ? 'Weekly Menu Editor' :
+                    mobileSheet === 'REVIEWS' ? 'Provider Reviews' :
+                      mobileSheet === 'EARNINGS_HISTORY' ? 'Provider Earnings History' :
+                        'Details'}
               </h3>
               <button class="close-mobile-sheet-btn" style="background: none; border: none; font-size: 24px; cursor: pointer; color: var(--color-neutral-500); padding: 4px 8px;">&times;</button>
             </div>
             ${mobileSheet === 'MANAGE_PG' ? renderManagePgContent() :
           mobileSheet === 'HOSTEL_IMAGES' ? renderHostelImagesContent() :
-          mobileSheet === 'MEAL_QR' ? renderMealQrContent() :
-          mobileSheet === 'TODAYS_CHECKINS' ? renderTodayCheckInsContent() :
-            mobileSheet === 'SUBSCRIBERS' ? renderSubscribersContent() :
-              mobileSheet === 'WEEKLY_MENU' ? renderWeeklyMenuContent() :
-                mobileSheet === 'REVIEWS' ? renderReviewsContent() :
-                  mobileSheet === 'EARNINGS_HISTORY' ? `
+            mobileSheet === 'MEAL_QR' ? renderMealQrContent() :
+              mobileSheet === 'TODAYS_CHECKINS' ? renderTodayCheckInsContent() :
+                mobileSheet === 'SUBSCRIBERS' ? renderSubscribersContent() :
+                  mobileSheet === 'WEEKLY_MENU' ? renderWeeklyMenuContent() :
+                    mobileSheet === 'REVIEWS' ? renderReviewsContent() :
+                      mobileSheet === 'EARNINGS_HISTORY' ? `
                     <div style="display: flex; flex-direction: column; gap: 16px;">
                       ${renderEarningsSummaryContent()}
                       <div>
@@ -1823,7 +1840,7 @@ export async function renderOwnerPortal() {
                       </div>
                     </div>
                   ` :
-                    renderManagePgContent()
+                        renderManagePgContent()
         }
           </div>
         </div>
@@ -1974,14 +1991,14 @@ export async function renderOwnerPortal() {
               <label style="font-size: 13px; font-weight: 700; color: var(--color-neutral-800); display: block; margin-bottom: 6px;">Hostel Amenities & Facilities</label>
               <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 8px; margin-bottom: 12px;">
                 ${COMMON_AMENITIES.map((amenity, idx) => {
-                  const isChecked = (selectedHostel?.amenities || []).some((a: string) => a.trim().toLowerCase() === amenity.toLowerCase());
-                  return `
+          const isChecked = (selectedHostel?.amenities || []).some((a: string) => a.trim().toLowerCase() === amenity.toLowerCase());
+          return `
                     <label for="editAmenity_${idx}" style="display: flex; align-items: center; gap: 8px; padding: 8px 12px; border: 1px solid var(--color-neutral-200); border-radius: 10px; cursor: pointer; background: #fff; font-size: 13px; font-weight: 600; color: var(--color-neutral-800);">
                       <input type="checkbox" id="editAmenity_${idx}" name="editAmenities" value="${escapeHtml(amenity)}" ${isChecked ? 'checked' : ''} style="width: 16px; height: 16px; accent-color: var(--color-primary-600); cursor: pointer;" />
                       <span>${escapeHtml(amenity)}</span>
                     </label>
                   `;
-                }).join('')}
+        }).join('')}
               </div>
 
               <div style="margin-top: 8px;">
@@ -2031,17 +2048,17 @@ export async function renderOwnerPortal() {
               <span style="font-size: 11px; font-weight: 700; color: var(--color-neutral-500); text-transform: uppercase; display: block; margin-bottom: 6px;">Live Customer Display Preview</span>
               <div id="pricingPreviewContent" style="display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; min-height: 24px;">
                 ${hasDiscount && discountPercentage > 0
-                  ? `
+        ? `
                     <span style="font-size: 13px; color: var(--color-neutral-400); text-decoration: line-through;">₹${currentOriginalPrice.toLocaleString('en-IN')}</span>
                     <span style="font-size: 16px; font-weight: 800; color: var(--color-neutral-900);">₹${currentSellingPrice.toLocaleString('en-IN')}</span>
                     <span style="background: #dcfce7; color: #16a34a; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px;">${discountPercentage}% OFF</span>
                     <span style="font-size: 11px; font-weight: 600; color: #059669;">Save ₹${discountAmount.toLocaleString('en-IN')}</span>
                   `
-                  : `
+        : `
                     <span style="font-size: 15px; font-weight: 800; color: var(--color-neutral-900);">₹${currentSellingPrice.toLocaleString('en-IN')}</span>
                     <span style="font-size: 12px; color: var(--color-neutral-500);">(Regular price · No discount)</span>
                   `
-                }
+      }
               </div>
             </div>
 
@@ -2758,10 +2775,10 @@ export async function renderOwnerPortal() {
           showToast('No QR code available to download.', 'error');
           return;
         }
-        
+
         const mName = selectedHostel?.name || mealQrData.providerName || 'Mess';
         showToast('Generating branded QR Standee...', 'info');
-        
+
         const brandedDataUrl = await generateBrandedQrStandee(mealQrData.qrCodeDataUrl, mName);
         const fileName = `${mName.replace(/\s+/g, '_')}_PrimePlate_QR.png`;
         const a = document.createElement('a');
@@ -3792,7 +3809,7 @@ export async function renderOwnerPortal() {
     const subCalMount = document.getElementById('subscriber-meal-calendar-mount');
     if (subCalMount && subscriberAttendanceData && subscriberAttendanceData.days) {
       if (subscriberCalendarUnmount) {
-        try { subscriberCalendarUnmount(); } catch (_) {}
+        try { subscriberCalendarUnmount(); } catch (_) { }
         subscriberCalendarUnmount = null;
       }
 
@@ -3822,7 +3839,7 @@ export async function renderOwnerPortal() {
 
     const closeSubscriberModal = () => {
       if (subscriberCalendarUnmount) {
-        try { subscriberCalendarUnmount(); } catch (_) {}
+        try { subscriberCalendarUnmount(); } catch (_) { }
         subscriberCalendarUnmount = null;
       }
       showSubscriberDetailsModal = false;
@@ -4142,7 +4159,7 @@ export async function renderOwnerPortal() {
           fetchRecoveryStats(),
         ]);
       } else {
-        await fetchEarningsData().catch(() => {});
+        await fetchEarningsData().catch(() => { });
       }
     } catch (err) {
       console.error('Initial data load error:', err);

@@ -58,7 +58,14 @@ export async function renderDashboard() {
     return;
   }
 
-  let activeTab: 'PASSES' | 'HISTORY' | 'MEAL_HISTORY' = 'PASSES';
+  const searchParams = new URLSearchParams(window.location.search);
+  const tabParam = searchParams.get('tab');
+  let activeTab: 'PASSES' | 'HISTORY' | 'MEAL_HISTORY' =
+    tabParam === 'passes' || tabParam === 'active-passes'
+      ? 'PASSES'
+      : tabParam === 'history'
+        ? 'HISTORY'
+        : 'MEAL_HISTORY';
   let loadedSubs: any[] = [];
   let loadedMealHistory: any[] = [];
   let loadedRecoveryBalances: any[] = [];
@@ -101,40 +108,46 @@ export async function renderDashboard() {
             </button>
           </div>
 
-          <!-- 4-Metrics Overview Grid -->
-          <div class="dashboard-metrics-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); margin-bottom: 24px;">
-            <div class="dashboard-metric-card active-pass">
-              <div class="dashboard-metric-header">
+          <!-- 3-Metrics Overview Grid: ONLY IN MEAL HISTORY TAB (Square Cards in Same Line on Mobile) -->
+          ${activeTab === 'MEAL_HISTORY' ? `
+            <div class="dashboard-metrics-grid student-metrics-squares">
+              <div id="metricActivePassCard" class="dashboard-metric-card active-pass metric-square-card" style="cursor: pointer;" title="Click to view Active Mess Cards">
                 <div class="dashboard-metric-icon">
                   <i class="fa-solid fa-id-card"></i>
                 </div>
-                <span class="dashboard-metric-label">Active Cards</span>
+                <div class="metric-square-content">
+                  <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                    <span class="dashboard-metric-label">Active Pass</span>
+                    <i class="fa-solid fa-arrow-right" style="font-size: 9px; color: #16a34a; opacity: 0.8;"></i>
+                  </div>
+                  <p id="activeCardsCount" class="dashboard-metric-value">0</p>
+                </div>
               </div>
-              <p id="activeCardsCount" class="dashboard-metric-value">0</p>
-            </div>
 
-
-
-            <div class="dashboard-metric-card total-spent">
-              <div class="dashboard-metric-header">
+              <div class="dashboard-metric-card total-spent metric-square-card">
                 <div class="dashboard-metric-icon">
                   <i class="fa-solid fa-indian-rupee-sign"></i>
                 </div>
-                <span class="dashboard-metric-label">Total Spent</span>
+                <div class="metric-square-content">
+                  <span class="dashboard-metric-label">Total Spent</span>
+                  <p id="totalSpentAmount" class="dashboard-metric-value">--</p>
+                </div>
               </div>
-              <p id="totalSpentAmount" class="dashboard-metric-value">--</p>
-            </div>
 
-            <div class="dashboard-metric-card total-subs">
-              <div class="dashboard-metric-header">
+              <div id="metricTotalSubsCard" class="dashboard-metric-card total-subs metric-square-card" style="cursor: pointer;" title="Click to view Subscription History">
                 <div class="dashboard-metric-icon">
                   <i class="fa-solid fa-utensils"></i>
                 </div>
-                <span class="dashboard-metric-label">Total Subscriptions</span>
+                <div class="metric-square-content">
+                  <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                    <span class="dashboard-metric-label">Subscriptions</span>
+                    <i class="fa-solid fa-arrow-right" style="font-size: 9px; color: #0284c7; opacity: 0.8;"></i>
+                  </div>
+                  <p id="totalSubsCount" class="dashboard-metric-value">0</p>
+                </div>
               </div>
-              <p id="totalSubsCount" class="dashboard-metric-value">0</p>
             </div>
-          </div>
+          ` : ''}
 
           <!-- Main Grid Display -->
           <div id="subsGrid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px;">
@@ -249,6 +262,18 @@ export async function renderDashboard() {
       updateContentDisplay();
     });
 
+    document.getElementById('metricActivePassCard')?.addEventListener('click', () => {
+      activeTab = 'PASSES';
+      renderPage();
+      updateContentDisplay();
+    });
+
+    document.getElementById('metricTotalSubsCard')?.addEventListener('click', () => {
+      activeTab = 'HISTORY';
+      renderPage();
+      updateContentDisplay();
+    });
+
     const closeModal = () => {
       selectedSubForDetails = null;
       renderPage();
@@ -267,7 +292,7 @@ export async function renderDashboard() {
     calendarUnmountFns.forEach((unmount) => {
       try {
         unmount();
-      } catch (_) {}
+      } catch (_) { }
     });
     calendarUnmountFns = [];
 
@@ -293,31 +318,30 @@ export async function renderDashboard() {
     const totalSubsEl = document.getElementById('totalSubsCount');
     if (totalSubsEl) totalSubsEl.innerText = `${subs.length}`;
 
+
+
     const activeBalances = loadedRecoveryBalances.filter((b: any) => (b.remainingDays || 0) > 0);
 
     const renderActiveRecoveryBanners = () => {
       if (activeBalances.length === 0) return '';
       return `
-        <div class="active-recoveries-container" style="grid-column: 1/-1; display: flex; flex-direction: column; gap: 14px; margin-bottom: 20px;">
+        <div class="active-recoveries-container" style="grid-column: 1/-1; display: flex; flex-direction: column; gap: 12px; margin-top: 14px;">
           ${activeBalances.map((b: any) => `
-            <div class="active-recovery-banner" style="background: linear-gradient(135deg, #f0fdf4, #ecfdf5); border: 1.5px solid #86efac; border-radius: 20px; padding: 20px; box-shadow: 0 4px 16px rgba(34, 197, 94, 0.08); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
-              <div style="display: flex; align-items: center; gap: 14px;">
-                <div style="width: 48px; height: 48px; border-radius: 16px; background: #d1fae5; color: #047857; display: flex; align-items: center; justify-content: center; font-size: 24px; flex-shrink: 0;">
-                  🎁
-                </div>
-                <div>
-                  <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-                    <h3 class="font-display" style="font-size: 18px; font-weight: 800; color: #166534; margin: 0;">Meal Recovery</h3>
-                    <span style="background: #15803d; color: #fff; font-size: 12px; font-weight: 800; padding: 2px 10px; border-radius: 999px;">
-                      ${b.remainingDays} days available
-                    </span>
-                  </div>
-                  <p style="font-size: 13px; color: #15803d; margin: 4px 0 0 0;">
-                    You earned <strong>${b.remainingDays} recovery days</strong> from missed meals at <strong>${escapeHtml(b.providerName)}</strong>.
-                  </p>
-                </div>
+            <div class="active-recovery-banner" style="background: #f0fdf4; border: 1.5px solid #bbf7d0; border-radius: 16px; padding: 16px 18px; display: flex; flex-direction: column; gap: 8px; box-shadow: 0 2px 8px rgba(34, 197, 94, 0.04);">
+              <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px;">
+                <strong style="font-size: 15.5px; font-weight: 800; color: #111827; word-break: break-word; line-height: 1.3;">${escapeHtml(b.providerName)}</strong>
+                <span style="background: #15803d; color: #fff; font-size: 12px; font-weight: 800; padding: 4px 10px; border-radius: 999px; white-space: nowrap;">
+                  ${b.remainingDays} Day${b.remainingDays === 1 ? '' : 's'}
+                </span>
               </div>
-              <button class="use-recovery-plan-btn btn-primary-action" data-prov-id="${escapeHtml(b.providerId)}" style="padding: 10px 20px; font-size: 13px; font-weight: 700; background: #15803d; border-color: #15803d; cursor: pointer; white-space: nowrap;">
+              <p style="font-size: 13px; color: #047857; margin: 0; line-height: 1.4; display: flex; align-items: center; gap: 6px; font-weight: 500;">
+                <i class="fa-solid fa-circle-check" style="color: #22c55e;"></i> Automatically extends your next subscription
+              </p>
+              <div style="display: flex; justify-content: space-between; font-size: 12px; color: #6b7280; font-weight: 500; margin-top: 4px; padding-top: 6px; border-top: 1px dashed #bbf7d0;">
+                <span>Total: ${b.totalRecoveredDays || b.remainingDays}d</span>
+                <span>Used: ${b.usedDays || 0}d</span>
+              </div>
+              <button class="use-recovery-plan-btn btn-primary-action" data-prov-id="${escapeHtml(b.providerId)}" style="margin-top: 6px; padding: 10px 14px; font-size: 13px; font-weight: 700; background: #15803d; border-color: #15803d; width: 100%; justify-content: center; cursor: pointer; border-radius: 10px;">
                 Use on your next plan →
               </button>
             </div>
@@ -329,7 +353,6 @@ export async function renderDashboard() {
     if (activeTab === 'PASSES') {
       if (activeSubs.length === 0) {
         subsGrid.innerHTML = `
-          ${renderActiveRecoveryBanners()}
           <div style="grid-column: 1/-1; background: #fff; border: 1px solid var(--color-neutral-200); border-radius: 24px; padding: 60px; text-align: center;">
             <div style="width: 72px; height: 72px; border-radius: 999px; background: var(--color-neutral-100); display: flex; align-items: center; justify-content: center; font-size: 32px; color: var(--color-neutral-400); margin: 0 auto 16px;">
               <i class="fa-solid fa-qrcode"></i>
@@ -339,7 +362,8 @@ export async function renderDashboard() {
             <button id="emptyBrowseBtn" class="btn-primary-action">
               <i class="fa-solid fa-utensils"></i> Browse Mess
             </button>
-          </div>`;
+          </div>
+          ${renderActiveRecoveryBanners()}`;
         document.getElementById('emptyBrowseBtn')?.addEventListener('click', () => navigate('/providers'));
         subsGrid.querySelectorAll('.use-recovery-plan-btn').forEach((btn) => {
           btn.addEventListener('click', (e) => {
@@ -350,7 +374,7 @@ export async function renderDashboard() {
         return;
       }
 
-      subsGrid.innerHTML = renderActiveRecoveryBanners() + activeSubs
+      subsGrid.innerHTML = activeSubs
         .map((s) => {
           const recoveryBadgeHtml = s.recoveryDaysApplied > 0
             ? `
@@ -440,7 +464,7 @@ export async function renderDashboard() {
             </div>
           </div>
         `;
-        }).join('');
+        }).join('') + renderActiveRecoveryBanners();
 
       subsGrid.querySelectorAll('.use-recovery-plan-btn').forEach((btn) => {
         btn.addEventListener('click', (e) => {
@@ -468,82 +492,25 @@ export async function renderDashboard() {
         });
       });
     } else if (activeTab === 'MEAL_HISTORY') {
-      const renderRecoverySection = () => {
-        const activeBalances = loadedRecoveryBalances.filter((b: any) => (b.remainingDays || 0) > 0);
-        return `
-          <div id="studentMealRecoverySection" class="student-meal-recovery-card" style="grid-column: 1/-1; background: #fff; border: 1px solid var(--color-neutral-200); border-radius: 24px; padding: 24px; box-shadow: 0 4px 16px rgba(0,0,0,0.03); margin-top: 8px; box-sizing: border-box;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; border-bottom: 1px solid var(--color-neutral-100); padding-bottom: 14px; flex-wrap: wrap; gap: 8px;">
-              <div style="display: flex; align-items: center; gap: 10px;">
-                <div style="width: 38px; height: 38px; border-radius: 12px; background: linear-gradient(135deg, #ecfdf5, #d1fae5); color: #047857; display: flex; align-items: center; justify-content: center; font-size: 17px;">
-                  <i class="fa-solid fa-shield-halved"></i>
-                </div>
-                <div>
-                  <h3 class="font-display" style="font-size: 18px; font-weight: 800; color: var(--color-neutral-900); margin: 0;">Meal Recovery</h3>
-                  <span style="font-size: 12px; color: var(--color-neutral-500);">Unattended meals automatically recovered for future subscriptions</span>
-                </div>
-              </div>
-            </div>
-
-            ${activeBalances.length > 0 ? `
-              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px;">
-                ${activeBalances.map((b: any) => `
-                  <div style="background: linear-gradient(135deg, #f0fdf4, #ffffff); border: 1px solid #bbf7d0; border-radius: 16px; padding: 18px; display: flex; flex-direction: column; gap: 8px; box-shadow: 0 2px 8px rgba(34, 197, 94, 0.05);">
-                    <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px;">
-                      <strong style="font-size: 15px; color: var(--color-neutral-900); word-break: break-word;">${escapeHtml(b.providerName)}</strong>
-                      <span style="background: #15803d; color: #fff; font-size: 12px; font-weight: 800; padding: 4px 10px; border-radius: 999px; white-space: nowrap;">
-                        ${b.remainingDays} Recovery Day${b.remainingDays === 1 ? '' : 's'} Available
-                      </span>
-                    </div>
-                    <p style="font-size: 13px; color: #166534; margin: 0; line-height: 1.4; display: flex; align-items: center; gap: 6px;">
-                      <i class="fa-solid fa-circle-check" style="color: #22c55e;"></i> Automatically extends your next subscription at ${escapeHtml(b.providerName)}
-                    </p>
-                    <div style="display: flex; justify-content: space-between; font-size: 11px; color: var(--color-neutral-500); margin-top: 4px; padding-top: 6px; border-top: 1px dashed #dcfce7;">
-                      <span>Total Recovered: ${b.totalRecoveredDays || b.remainingDays} day(s)</span>
-                      <span>Used: ${b.usedDays || 0} day(s)</span>
-                    </div>
-                    <button class="use-recovery-plan-btn btn-primary-action" data-prov-id="${escapeHtml(b.providerId)}" style="margin-top: 6px; padding: 8px 14px; font-size: 12px; font-weight: 700; background: #15803d; border-color: #15803d; width: 100%; justify-content: center; cursor: pointer;">
-                      Use on your next plan →
-                    </button>
-                  </div>
-                `).join('')}
-              </div>
-            ` : `
-              <div style="text-align: center; padding: 28px 16px; background: var(--color-neutral-50); border: 1px dashed var(--color-neutral-300); border-radius: 16px;">
-                <div style="width: 44px; height: 44px; border-radius: 999px; background: var(--color-neutral-100); color: var(--color-neutral-400); display: flex; align-items: center; justify-content: center; font-size: 20px; margin: 0 auto 10px;">
-                  <i class="fa-solid fa-shield-halved"></i>
-                </div>
-                <p style="font-size: 14px; font-weight: 700; color: var(--color-neutral-800); margin: 0 0 4px 0;">
-                  Meal Recovery
-                </p>
-                <p style="font-size: 12px; color: var(--color-neutral-500); margin: 0; max-width: 440px; margin-left: auto; margin-right: auto;">
-                  Your eligible missed meal days will be calculated after your subscription period ends.
-                </p>
-              </div>
-            `}
-          </div>
-        `;
-      };
-
       if (loadedMealHistory.length === 0) {
         subsGrid.innerHTML = `
-          <div style="grid-column: 1/-1; background: #fff; border: 1px solid var(--color-neutral-200); border-radius: 24px; padding: 60px; text-align: center;">
-            <div style="width: 72px; height: 72px; border-radius: 999px; background: var(--color-primary-50); color: var(--color-primary-600); display: flex; align-items: center; justify-content: center; font-size: 32px; margin: 0 auto 16px;">
+          <div style="grid-column: 1/-1; background: #fff; border: 1px solid var(--color-neutral-200); border-radius: 20px; padding: 40px 20px; text-align: center;">
+            <div style="width: 56px; height: 56px; border-radius: 999px; background: var(--color-primary-50); color: var(--color-primary-600); display: flex; align-items: center; justify-content: center; font-size: 24px; margin: 0 auto 12px;">
               <i class="fa-solid fa-calendar-check"></i>
             </div>
-            <h3 class="font-display" style="font-size: 22px; font-weight: 700; margin-bottom: 8px;">No Meal History Yet</h3>
-            <p style="color: var(--color-neutral-500); margin-bottom: 24px; max-width: 440px; margin-left: auto; margin-right: auto;">
+            <h3 class="font-display" style="font-size: 19px; font-weight: 700; margin-bottom: 6px;">No Meal History Yet</h3>
+            <p style="color: var(--color-neutral-500); margin-bottom: 20px; max-width: 380px; margin-left: auto; margin-right: auto; font-size: 13px;">
               Once you subscribe to a mess and scan their QR code at mealtime, your daily attendance checklist will appear here.
             </p>
-            <div style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
-              <button id="historyScanQrBtn" class="btn-primary-action">
+            <div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
+              <button id="historyScanQrBtn" class="btn-primary-action" style="padding: 8px 16px; font-size: 13px;">
                 <i class="fa-solid fa-camera"></i> Scan Meal QR
               </button>
-              <button id="mealHistBrowseBtn" class="btn-outline-action" style="background: #fff;">
+              <button id="mealHistBrowseBtn" class="btn-outline-action" style="background: #fff; padding: 8px 16px; font-size: 13px;">
                 <i class="fa-solid fa-utensils"></i> Browse Mess
               </button>
             </div>
-          </div>
-          ${renderRecoverySection()}`;
+          </div>`;
         document.getElementById('mealHistBrowseBtn')?.addEventListener('click', () => navigate('/providers'));
         document.getElementById('historyScanQrBtn')?.addEventListener('click', () => {
           openMealScanner(async () => {
@@ -559,40 +526,40 @@ export async function renderDashboard() {
           const usedDaysCount = subHist.totalUsedCount ?? days.filter((d: any) => d.status === 'USED').length;
 
           return `
-            <div class="meal-history-subscription-card" style="grid-column: 1/-1; background: #fff; border: 1px solid var(--color-neutral-200); border-radius: 24px; padding: 24px; box-shadow: 0 4px 16px rgba(0,0,0,0.03); margin-bottom: 24px; box-sizing: border-box;">
-              <!-- Subscription Header -->
-              <div class="meal-history-sub-header" style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; flex-wrap: wrap; gap: 16px; border-bottom: 1px solid var(--color-neutral-100); padding-bottom: 16px;">
-                <div>
-                  <div style="display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--color-primary-700); background: var(--color-primary-50); padding: 4px 10px; border-radius: 999px; margin-bottom: 6px;">
+            <div class="meal-history-subscription-card" style="grid-column: 1/-1; background: #fff; border: 1px solid var(--color-neutral-200); border-radius: 20px; padding: 16px; box-shadow: 0 4px 16px rgba(0,0,0,0.03); margin-bottom: 16px; box-sizing: border-box;">
+              <!-- Compact Subscription Header -->
+              <div class="meal-history-sub-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 10px; border-bottom: 1px solid var(--color-neutral-100); padding-bottom: 12px;">
+                <div style="min-width: 0;">
+                  <div style="display: inline-flex; align-items: center; gap: 5px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--color-primary-700); background: var(--color-primary-50); padding: 2px 8px; border-radius: 999px; margin-bottom: 4px;">
                     <i class="fa-solid fa-utensils"></i> ${escapeHtml(subHist.planTitle)}
                   </div>
-                  <h2 class="font-display" style="font-size: 20px; font-weight: 800; color: var(--color-neutral-900); margin: 0 0 4px 0;">
+                  <h2 class="font-display" style="font-size: 17px; font-weight: 800; color: var(--color-neutral-900); margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                     ${escapeHtml(subHist.providerName)}
                   </h2>
                   ${subHist.providerArea ? `
-                    <p style="font-size: 13px; color: var(--color-neutral-500); margin: 0;">
-                      <i class="fa-solid fa-location-dot" style="color: var(--color-primary-600);"></i> ${escapeHtml(subHist.providerArea)}
+                    <p style="font-size: 11.5px; color: var(--color-neutral-500); margin: 2px 0 0 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                      <i class="fa-solid fa-location-dot" style="color: var(--color-primary-600); font-size: 10px;"></i> ${escapeHtml(subHist.providerArea)}
                     </p>
                   ` : ''}
                 </div>
 
-                <div class="meal-history-sub-actions" style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
-                  <div style="background: var(--color-neutral-50); border: 1px solid var(--color-neutral-200); border-radius: 14px; padding: 8px 16px; text-align: right;">
-                    <span style="font-size: 11px; color: var(--color-neutral-500); font-weight: 600; display: block;">Meals Checked In</span>
-                    <strong style="font-size: 16px; color: var(--color-primary-700);">${usedDaysCount} Day(s)</strong>
+                <div class="meal-history-sub-actions" style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                  <div style="background: var(--color-neutral-50); border: 1px solid var(--color-neutral-200); border-radius: 10px; padding: 5px 10px; text-align: center; display: inline-flex; align-items: center; gap: 5px;">
+                    <span style="font-size: 11px; color: var(--color-neutral-500); font-weight: 600;">Checked in:</span>
+                    <strong style="font-size: 13px; color: var(--color-primary-700);">${usedDaysCount} Days</strong>
                   </div>
-                  <button class="open-scanner-sub-btn btn-primary-action" style="padding: 10px 16px; font-size: 13px; font-weight: 700; border-radius: 12px;">
-                    <i class="fa-solid fa-camera"></i> Scan Today's Meal
+                  <button class="open-scanner-sub-btn btn-primary-action" style="padding: 7px 13px; font-size: 12px; font-weight: 700; border-radius: 10px;">
+                    <i class="fa-solid fa-camera"></i> Scan Meal
                   </button>
                 </div>
               </div>
 
-              <!-- Compact DayPicker Meal Calendar -->
-              <div id="meal-calendar-mount-${escapeHtml(subHist.subscriptionId)}" class="meal-calendar-mount-point" style="width: 100%; display: flex; justify-content: center; margin-top: 20px;"></div>
+              <!-- Compact DayPicker Meal Calendar Mount Point -->
+              <div id="meal-calendar-mount-${escapeHtml(subHist.subscriptionId)}" class="meal-calendar-mount-point" style="width: 100%; display: flex; justify-content: center; margin-top: 10px;"></div>
             </div>
           `;
         })
-        .join('') + renderRecoverySection();
+        .join('');
 
       // Mount DayPicker MealCalendar for each subscription
       loadedMealHistory.forEach((subHist) => {
@@ -618,8 +585,8 @@ export async function renderDashboard() {
           startDate: subHist.startDate,
           endDate: subHist.endDate,
           detailsByDate,
-          title: 'Meal History',
-          subtitle: 'Track your daily meal usage',
+          title: 'Meal Attendance',
+          subtitle: 'Daily check-in tracker',
         });
         calendarUnmountFns.push(unmount);
       });
@@ -629,6 +596,13 @@ export async function renderDashboard() {
           openMealScanner(async () => {
             await fetchSubs();
           });
+        });
+      });
+
+      subsGrid.querySelectorAll('.use-recovery-plan-btn').forEach((btn) => {
+        btn.addEventListener('click', (e) => {
+          const pId = (e.currentTarget as HTMLElement).getAttribute('data-prov-id');
+          if (pId) navigate(`/providers/${pId}`);
         });
       });
     } else {
@@ -864,6 +838,17 @@ export async function renderDashboard() {
       }
     }
   };
+
+  const tabListener = (e: Event) => {
+    const customEvent = e as CustomEvent<{ tab: 'PASSES' | 'HISTORY' | 'MEAL_HISTORY' }>;
+    const targetTab = customEvent.detail?.tab;
+    if (targetTab && (targetTab === 'PASSES' || targetTab === 'MEAL_HISTORY' || targetTab === 'HISTORY')) {
+      activeTab = targetTab;
+      renderPage();
+      updateContentDisplay();
+    }
+  };
+  window.addEventListener('primeplate:switch-tab', tabListener);
 
   renderPage();
   fetchSubs().then(() => checkPendingOrderOnDashboard());

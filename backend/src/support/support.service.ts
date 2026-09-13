@@ -8,10 +8,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In } from 'typeorm';
-import {
-  SupportTicket,
-  SupportTicketStatus,
-} from './support-ticket.entity';
+import { SupportTicket, SupportTicketStatus } from './support-ticket.entity';
 import { Payment } from '../payments/payment.entity';
 import { User } from '../users/user.entity';
 import { CreateSupportTicketDto } from './dto/create-support-ticket.dto';

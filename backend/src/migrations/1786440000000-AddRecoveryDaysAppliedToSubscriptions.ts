@@ -10,7 +10,10 @@ export class AddRecoveryDaysAppliedToSubscriptions1786440000000 implements Migra
   name = 'AddRecoveryDaysAppliedToSubscriptions1786440000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
-    const hasCol = await queryRunner.hasColumn('subscriptions', 'recoveryDaysApplied');
+    const hasCol = await queryRunner.hasColumn(
+      'subscriptions',
+      'recoveryDaysApplied',
+    );
     if (!hasCol) {
       await queryRunner.query(`
         ALTER TABLE "subscriptions"

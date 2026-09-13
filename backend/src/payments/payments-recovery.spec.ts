@@ -144,16 +144,29 @@ describe('PrimePlate Payment Security & Recovery Specification', () => {
           mockPaymentsStore.push(item);
           return item;
         }
-        if (arg1 === Subscription || item?.student || (item?.startDate && item?.endDate)) {
-          const idx = item?.id ? mockSubscriptionsStore.findIndex((s) => s.id === item.id) : -1;
+        if (
+          arg1 === Subscription ||
+          item?.student ||
+          (item?.startDate && item?.endDate)
+        ) {
+          const idx = item?.id
+            ? mockSubscriptionsStore.findIndex((s) => s.id === item.id)
+            : -1;
           if (idx >= 0) {
-            mockSubscriptionsStore[idx] = { ...mockSubscriptionsStore[idx], ...item };
+            mockSubscriptionsStore[idx] = {
+              ...mockSubscriptionsStore[idx],
+              ...item,
+            };
             return mockSubscriptionsStore[idx];
           }
           mockSubscriptionsStore.push(item);
           return item;
         }
-        if (arg1 === ProviderEarning || item?.paymentId || item?.grossAmount !== undefined) {
+        if (
+          arg1 === ProviderEarning ||
+          item?.paymentId ||
+          item?.grossAmount !== undefined
+        ) {
           mockEarningsStore.push(item);
           return item;
         }
@@ -741,7 +754,9 @@ describe('PrimePlate Payment Security & Recovery Specification', () => {
     });
 
     it('rolls back transaction if recovery consumption throws an error', async () => {
-      mealRecoveryService.consumeRecovery.mockRejectedValue(new Error('Transaction failure'));
+      mealRecoveryService.consumeRecovery.mockRejectedValue(
+        new Error('Transaction failure'),
+      );
 
       const orderId = 'order_recovery_fail';
       mockPaymentsStore.push({
@@ -769,4 +784,3 @@ describe('PrimePlate Payment Security & Recovery Specification', () => {
     });
   });
 });
-

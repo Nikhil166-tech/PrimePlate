@@ -65,7 +65,9 @@ export class MealRecoverySchedulerService
       clearInterval(this.intervalTimer);
       this.intervalTimer = null;
     }
-    this.logger.log('MealRecoverySchedulerService destroyed and timers cleared');
+    this.logger.log(
+      'MealRecoverySchedulerService destroyed and timers cleared',
+    );
   }
 
   /**

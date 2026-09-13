@@ -15,7 +15,10 @@ export class CreateMealRecoverySchema1786420000000 implements MigrationInterface
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     // 1. Add recoveryPercentage to meal_providers if not exists
-    const hasRecoveryPct = await queryRunner.hasColumn('meal_providers', 'recoveryPercentage');
+    const hasRecoveryPct = await queryRunner.hasColumn(
+      'meal_providers',
+      'recoveryPercentage',
+    );
     if (!hasRecoveryPct) {
       await queryRunner.query(`
         ALTER TABLE "meal_providers"
@@ -61,9 +64,15 @@ export class CreateMealRecoverySchema1786420000000 implements MigrationInterface
 
   public async down(queryRunner: QueryRunner): Promise<void> {
     // Drop indexes
-    await queryRunner.query(`DROP INDEX IF EXISTS "IDX_meal_recoveries_student_id";`);
-    await queryRunner.query(`DROP INDEX IF EXISTS "IDX_meal_recoveries_provider_status";`);
-    await queryRunner.query(`DROP INDEX IF EXISTS "IDX_meal_recoveries_student_provider";`);
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS "IDX_meal_recoveries_student_id";`,
+    );
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS "IDX_meal_recoveries_provider_status";`,
+    );
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS "IDX_meal_recoveries_student_provider";`,
+    );
 
     // Drop meal_recoveries table
     await queryRunner.query(`DROP TABLE IF EXISTS "meal_recoveries";`);

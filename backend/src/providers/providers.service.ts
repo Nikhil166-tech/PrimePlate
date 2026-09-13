@@ -147,7 +147,9 @@ export class ProvidersService {
     if (mealPlans && mealPlans.length > 0) {
       const bestPlan = mealPlans[0];
       const sPrice = Number(
-        bestPlan.sellingPrice ?? bestPlan.pricePerMonth ?? provider.monthlyPrice,
+        bestPlan.sellingPrice ??
+          bestPlan.pricePerMonth ??
+          provider.monthlyPrice,
       );
       const oPrice = Number(
         bestPlan.originalPrice ?? bestPlan.pricePerMonth ?? sPrice,
@@ -635,6 +637,10 @@ export class ProvidersService {
 
     provider.recoveryPercentage = pct;
     const saved = await this.providerRepo.save(provider);
-    return { id: saved.id, name: saved.name, recoveryPercentage: saved.recoveryPercentage };
+    return {
+      id: saved.id,
+      name: saved.name,
+      recoveryPercentage: saved.recoveryPercentage,
+    };
   }
 }

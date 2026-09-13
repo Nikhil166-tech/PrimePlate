@@ -48,19 +48,22 @@ export class MealRecoveryService {
     providerId?: string,
   ): Promise<MealProvider> {
     const where: any = providerId
-      ? [{ id: providerId, userId }, { id: providerId, user: { id: userId } }]
+      ? [
+          { id: providerId, userId },
+          { id: providerId, user: { id: userId } },
+        ]
       : [{ userId }, { user: { id: userId } }];
     const provider = await this.providerRepo.findOne({
       where,
       relations: { user: true },
     });
     if (!provider) {
-      throw new NotFoundException('Provider kitchen not found or access denied');
+      throw new NotFoundException(
+        'Provider kitchen not found or access denied',
+      );
     }
     if (provider.user?.id !== userId && provider.userId !== userId) {
-      throw new ForbiddenException(
-        'You do not own this provider kitchen',
-      );
+      throw new ForbiddenException('You do not own this provider kitchen');
     }
     return provider;
   }
@@ -351,7 +354,10 @@ export class MealRecoveryService {
   > {
     const where: any = {
       studentId,
-      status: In([MealRecoveryStatus.AVAILABLE, MealRecoveryStatus.PARTIALLY_USED]),
+      status: In([
+        MealRecoveryStatus.AVAILABLE,
+        MealRecoveryStatus.PARTIALLY_USED,
+      ]),
     };
     if (providerId) {
       where.providerId = providerId;
@@ -417,11 +423,14 @@ export class MealRecoveryService {
       manager = managerOrNull as EntityManager;
     } else {
       manager = daysToConsumeOrManager;
-      daysToConsume = typeof managerOrNull === 'number' ? managerOrNull : undefined;
+      daysToConsume =
+        typeof managerOrNull === 'number' ? managerOrNull : undefined;
     }
 
     if (!manager) {
-      throw new Error('EntityManager is required for transactional recovery consumption');
+      throw new Error(
+        'EntityManager is required for transactional recovery consumption',
+      );
     }
 
     // Fetch all available/partially-used records for this student+provider (FIFO)
@@ -429,7 +438,10 @@ export class MealRecoveryService {
       where: {
         studentId,
         providerId,
-        status: In([MealRecoveryStatus.AVAILABLE, MealRecoveryStatus.PARTIALLY_USED]),
+        status: In([
+          MealRecoveryStatus.AVAILABLE,
+          MealRecoveryStatus.PARTIALLY_USED,
+        ]),
       },
       order: { createdAt: 'ASC' },
       lock: { mode: 'pessimistic_write' },
@@ -441,9 +453,10 @@ export class MealRecoveryService {
     if (totalAvailable <= 0) return 0;
 
     // Consume up to requested daysToConsume, or all available if omitted / non-positive
-    let toConsume = (daysToConsume !== undefined && daysToConsume > 0)
-      ? Math.min(totalAvailable, daysToConsume)
-      : totalAvailable;
+    let toConsume =
+      daysToConsume !== undefined && daysToConsume > 0
+        ? Math.min(totalAvailable, daysToConsume)
+        : totalAvailable;
 
     let actuallyConsumed = 0;
 
@@ -497,9 +510,15 @@ export class MealRecoveryService {
     });
 
     const missedMealDays = records.reduce((s, r) => s + r.missedDays, 0);
-    const recoveryDaysGranted = records.reduce((s, r) => s + r.recoveredDays, 0);
+    const recoveryDaysGranted = records.reduce(
+      (s, r) => s + r.recoveredDays,
+      0,
+    );
     const recoveryDaysUsed = records.reduce((s, r) => s + r.usedDays, 0);
-    const recoveryDaysRemaining = records.reduce((s, r) => s + r.remainingDays, 0);
+    const recoveryDaysRemaining = records.reduce(
+      (s, r) => s + r.remainingDays,
+      0,
+    );
 
     return {
       providerId: provider.id,

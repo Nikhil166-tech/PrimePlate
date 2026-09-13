@@ -22,16 +22,17 @@ const STUDENT_ID = 'student-1';
 const USER_ID = 'user-provider-1';
 const SUB_ID = 'sub-1';
 
-const makeProvider = (overrides: Partial<MealProvider> = {}): MealProvider => ({
-  id: PROVIDER_ID,
-  name: 'Test Mess',
-  userId: USER_ID,
-  recoveryPercentage: 80,
-  user: { id: USER_ID } as any,
-  approvalStatus: 'APPROVED',
-  acceptingSubscriptions: true,
-  ...overrides,
-} as any);
+const makeProvider = (overrides: Partial<MealProvider> = {}): MealProvider =>
+  ({
+    id: PROVIDER_ID,
+    name: 'Test Mess',
+    userId: USER_ID,
+    recoveryPercentage: 80,
+    user: { id: USER_ID } as any,
+    approvalStatus: 'APPROVED',
+    acceptingSubscriptions: true,
+    ...overrides,
+  }) as any;
 
 const makeSub = (overrides: any = {}): Subscription => ({
   id: SUB_ID,
@@ -40,7 +41,7 @@ const makeSub = (overrides: any = {}): Subscription => ({
   student: { id: STUDENT_ID } as any,
   mealPlan: { provider: makeProvider() } as any,
   ...overrides,
-} as any);
+});
 
 describe('MealRecoveryService', () => {
   let service: MealRecoveryService;
@@ -81,7 +82,15 @@ describe('MealRecoveryService', () => {
     subRepo.findOne.mockResolvedValue(sub);
     recoveryRepo.findOne.mockResolvedValue(null); // not yet processed
     usageRepo.find.mockResolvedValue([]); // no check-ins
-    const created = { id: 'rec-1', missedDays: 10, recoveryRate: 80, recoveredDays: 8, usedDays: 0, remainingDays: 8, status: MealRecoveryStatus.AVAILABLE };
+    const created = {
+      id: 'rec-1',
+      missedDays: 10,
+      recoveryRate: 80,
+      recoveredDays: 8,
+      usedDays: 0,
+      remainingDays: 8,
+      status: MealRecoveryStatus.AVAILABLE,
+    };
     recoveryRepo.create.mockReturnValue(created);
     recoveryRepo.save.mockResolvedValue(created);
 
@@ -93,13 +102,21 @@ describe('MealRecoveryService', () => {
 
   it('2. 7 missed days @ 50% → 3 recovered (floor)', async () => {
     const sub = makeSub({
-      startDate: '2026-08-01', endDate: '2026-08-07',
+      startDate: '2026-08-01',
+      endDate: '2026-08-07',
       mealPlan: { provider: makeProvider({ recoveryPercentage: 50 }) } as any,
     });
     subRepo.findOne.mockResolvedValue(sub);
     recoveryRepo.findOne.mockResolvedValue(null);
     usageRepo.find.mockResolvedValue([]);
-    const created = { missedDays: 7, recoveryRate: 50, recoveredDays: 3, usedDays: 0, remainingDays: 3, status: MealRecoveryStatus.AVAILABLE };
+    const created = {
+      missedDays: 7,
+      recoveryRate: 50,
+      recoveredDays: 3,
+      usedDays: 0,
+      remainingDays: 3,
+      status: MealRecoveryStatus.AVAILABLE,
+    };
     recoveryRepo.create.mockReturnValue(created);
     recoveryRepo.save.mockResolvedValue(created);
 
@@ -110,7 +127,8 @@ describe('MealRecoveryService', () => {
 
   it('3. 1 missed day @ 50% → 0 recovered (no record created)', async () => {
     const sub = makeSub({
-      startDate: '2026-08-01', endDate: '2026-08-01',
+      startDate: '2026-08-01',
+      endDate: '2026-08-01',
       mealPlan: { provider: makeProvider({ recoveryPercentage: 50 }) } as any,
     });
     subRepo.findOne.mockResolvedValue(sub);
@@ -125,13 +143,21 @@ describe('MealRecoveryService', () => {
 
   it('4. 10 missed days @ 100% → 10 recovered', async () => {
     const sub = makeSub({
-      startDate: '2026-08-01', endDate: '2026-08-10',
+      startDate: '2026-08-01',
+      endDate: '2026-08-10',
       mealPlan: { provider: makeProvider({ recoveryPercentage: 100 }) } as any,
     });
     subRepo.findOne.mockResolvedValue(sub);
     recoveryRepo.findOne.mockResolvedValue(null);
     usageRepo.find.mockResolvedValue([]);
-    const created = { missedDays: 10, recoveryRate: 100, recoveredDays: 10, usedDays: 0, remainingDays: 10, status: MealRecoveryStatus.AVAILABLE };
+    const created = {
+      missedDays: 10,
+      recoveryRate: 100,
+      recoveredDays: 10,
+      usedDays: 0,
+      remainingDays: 10,
+      status: MealRecoveryStatus.AVAILABLE,
+    };
     recoveryRepo.create.mockReturnValue(created);
     recoveryRepo.save.mockResolvedValue(created);
 
@@ -147,7 +173,14 @@ describe('MealRecoveryService', () => {
     recoveryRepo.findOne.mockResolvedValue(null);
     usageRepo.find.mockResolvedValue([]);
     // Only 2026-09-08 and 2026-09-09 are strictly < 2026-09-10
-    const created = { missedDays: 2, recoveryRate: 80, recoveredDays: 1, usedDays: 0, remainingDays: 1, status: MealRecoveryStatus.AVAILABLE };
+    const created = {
+      missedDays: 2,
+      recoveryRate: 80,
+      recoveredDays: 1,
+      usedDays: 0,
+      remainingDays: 1,
+      status: MealRecoveryStatus.AVAILABLE,
+    };
     recoveryRepo.create.mockReturnValue(created);
     recoveryRepo.save.mockResolvedValue(created);
 
@@ -162,7 +195,14 @@ describe('MealRecoveryService', () => {
     subRepo.findOne.mockResolvedValue(sub);
     recoveryRepo.findOne.mockResolvedValue(null);
     usageRepo.find.mockResolvedValue([]);
-    const created = { missedDays: 3, recoveryRate: 80, recoveredDays: 2, usedDays: 0, remainingDays: 2, status: MealRecoveryStatus.AVAILABLE };
+    const created = {
+      missedDays: 3,
+      recoveryRate: 80,
+      recoveredDays: 2,
+      usedDays: 0,
+      remainingDays: 2,
+      status: MealRecoveryStatus.AVAILABLE,
+    };
     recoveryRepo.create.mockReturnValue(created);
     recoveryRepo.save.mockResolvedValue(created);
 
@@ -177,7 +217,14 @@ describe('MealRecoveryService', () => {
     subRepo.findOne.mockResolvedValue(sub);
     recoveryRepo.findOne.mockResolvedValue(null);
     usageRepo.find.mockResolvedValue([]);
-    const created = { missedDays: 1, recoveryRate: 80, recoveredDays: 0, usedDays: 0, remainingDays: 0, status: MealRecoveryStatus.AVAILABLE };
+    const created = {
+      missedDays: 1,
+      recoveryRate: 80,
+      recoveredDays: 0,
+      usedDays: 0,
+      remainingDays: 0,
+      status: MealRecoveryStatus.AVAILABLE,
+    };
     recoveryRepo.create.mockReturnValue(created);
     recoveryRepo.save.mockResolvedValue(created);
 
@@ -209,7 +256,14 @@ describe('MealRecoveryService', () => {
       { mealDate: '2026-08-01' },
       { mealDate: '2026-08-02' },
     ]);
-    const created = { missedDays: 1, recoveryRate: 80, recoveredDays: 0, usedDays: 0, remainingDays: 0, status: MealRecoveryStatus.AVAILABLE };
+    const created = {
+      missedDays: 1,
+      recoveryRate: 80,
+      recoveredDays: 0,
+      usedDays: 0,
+      remainingDays: 0,
+      status: MealRecoveryStatus.AVAILABLE,
+    };
     recoveryRepo.create.mockReturnValue(created);
     recoveryRepo.save.mockResolvedValue(created);
 
@@ -219,7 +273,15 @@ describe('MealRecoveryService', () => {
 
   // ======= IDEMPOTENCY =======
   it('9. Same subscription cannot be processed twice — returns existing record', async () => {
-    const existingRec = { id: 'rec-1', missedDays: 10, recoveryRate: 80, recoveredDays: 8, usedDays: 0, remainingDays: 8, status: MealRecoveryStatus.AVAILABLE };
+    const existingRec = {
+      id: 'rec-1',
+      missedDays: 10,
+      recoveryRate: 80,
+      recoveredDays: 8,
+      usedDays: 0,
+      remainingDays: 8,
+      status: MealRecoveryStatus.AVAILABLE,
+    };
     const sub = makeSub();
     subRepo.findOne.mockResolvedValue(sub);
     recoveryRepo.findOne.mockResolvedValue(existingRec); // already processed
@@ -230,7 +292,14 @@ describe('MealRecoveryService', () => {
   });
 
   it('10. Retry does not create duplicate recovery', async () => {
-    const existingRec = { id: 'rec-1', missedDays: 5, recoveryRate: 80, recoveredDays: 4, usedDays: 0, remainingDays: 4 };
+    const existingRec = {
+      id: 'rec-1',
+      missedDays: 5,
+      recoveryRate: 80,
+      recoveredDays: 4,
+      usedDays: 0,
+      remainingDays: 4,
+    };
     const sub = makeSub();
     subRepo.findOne.mockResolvedValue(sub);
     recoveryRepo.findOne.mockResolvedValue(existingRec);
@@ -247,11 +316,23 @@ describe('MealRecoveryService', () => {
     subRepo.findOne.mockResolvedValue(sub);
     recoveryRepo.findOne
       .mockResolvedValueOnce(null) // first check: not processed
-      .mockResolvedValueOnce({ id: 'raced', missedDays: 10, recoveryRate: 80, recoveredDays: 8, usedDays: 0, remainingDays: 8 }); // second check after conflict
+      .mockResolvedValueOnce({
+        id: 'raced',
+        missedDays: 10,
+        recoveryRate: 80,
+        recoveredDays: 8,
+        usedDays: 0,
+        remainingDays: 8,
+      }); // second check after conflict
     recoveryRepo.create.mockReturnValue({});
     usageRepo.find.mockResolvedValue([]);
     // Simulate unique constraint violation
-    recoveryRepo.save.mockRejectedValue(Object.assign(new Error('duplicate key value violates unique constraint'), { code: '23505' }));
+    recoveryRepo.save.mockRejectedValue(
+      Object.assign(
+        new Error('duplicate key value violates unique constraint'),
+        { code: '23505' },
+      ),
+    );
 
     const result = await service.processSubscriptionRecovery(sub.id, USER_ID);
     expect(result.alreadyProcessed).toBe(true);
@@ -261,33 +342,70 @@ describe('MealRecoveryService', () => {
   it('12. Provider A recovery cannot be consumed by Provider B', async () => {
     const providerA = 'prov-a';
     const providerB = 'prov-b';
-    const recA = { id: 'rec-a', studentId: STUDENT_ID, providerId: providerA, remainingDays: 8, usedDays: 0, status: MealRecoveryStatus.AVAILABLE, createdAt: new Date() };
+    const recA = {
+      id: 'rec-a',
+      studentId: STUDENT_ID,
+      providerId: providerA,
+      remainingDays: 8,
+      usedDays: 0,
+      status: MealRecoveryStatus.AVAILABLE,
+      createdAt: new Date(),
+    };
     const mockManager = {
       find: jest.fn().mockResolvedValue([]), // no records for providerB
       save: jest.fn(),
     } as unknown as EntityManager;
 
-    const consumed = await service.consumeRecovery(STUDENT_ID, providerB, mockManager);
+    const consumed = await service.consumeRecovery(
+      STUDENT_ID,
+      providerB,
+      mockManager,
+    );
     expect(consumed).toBe(0); // providerA balance NOT consumed at providerB
     expect(mockManager.save).not.toHaveBeenCalled();
   });
 
   it('13. Multiple recovery records accumulate for the same provider', async () => {
     const records = [
-      { id: 'r1', studentId: STUDENT_ID, providerId: PROVIDER_ID, remainingDays: 5, status: MealRecoveryStatus.AVAILABLE },
-      { id: 'r2', studentId: STUDENT_ID, providerId: PROVIDER_ID, remainingDays: 3, status: MealRecoveryStatus.AVAILABLE },
+      {
+        id: 'r1',
+        studentId: STUDENT_ID,
+        providerId: PROVIDER_ID,
+        remainingDays: 5,
+        status: MealRecoveryStatus.AVAILABLE,
+      },
+      {
+        id: 'r2',
+        studentId: STUDENT_ID,
+        providerId: PROVIDER_ID,
+        remainingDays: 3,
+        status: MealRecoveryStatus.AVAILABLE,
+      },
     ];
     recoveryRepo.find.mockResolvedValue(records);
-    providerRepo.find.mockResolvedValue([{ id: PROVIDER_ID, name: 'Test Mess' }]);
+    providerRepo.find.mockResolvedValue([
+      { id: PROVIDER_ID, name: 'Test Mess' },
+    ]);
 
-    const balance = await service.getStudentRecoveryBalance(STUDENT_ID, PROVIDER_ID);
+    const balance = await service.getStudentRecoveryBalance(
+      STUDENT_ID,
+      PROVIDER_ID,
+    );
     expect(balance[0].remainingDays).toBe(8); // 5 + 3 accumulated
   });
 
   it('14. Historical recovery rate unchanged after provider changes percentage', async () => {
     // Existing recovery record at rate 70 — remains 70 even after provider changes to 50
-    const existingRec = { id: 'rec-1', recoveryRate: 70, recoveredDays: 7, remainingDays: 7, sourceSubscriptionId: SUB_ID };
-    const sub = makeSub({ mealPlan: { provider: makeProvider({ recoveryPercentage: 50 }) } as any });
+    const existingRec = {
+      id: 'rec-1',
+      recoveryRate: 70,
+      recoveredDays: 7,
+      remainingDays: 7,
+      sourceSubscriptionId: SUB_ID,
+    };
+    const sub = makeSub({
+      mealPlan: { provider: makeProvider({ recoveryPercentage: 50 }) } as any,
+    });
     subRepo.findOne.mockResolvedValue(sub);
     recoveryRepo.findOne.mockResolvedValue(existingRec); // already processed with old rate
 
@@ -298,10 +416,19 @@ describe('MealRecoveryService', () => {
 
   it('15. Recovery remains available without immediate resubscription', async () => {
     const records = [
-      { id: 'r1', studentId: STUDENT_ID, providerId: PROVIDER_ID, remainingDays: 8, usedDays: 0, status: MealRecoveryStatus.AVAILABLE },
+      {
+        id: 'r1',
+        studentId: STUDENT_ID,
+        providerId: PROVIDER_ID,
+        remainingDays: 8,
+        usedDays: 0,
+        status: MealRecoveryStatus.AVAILABLE,
+      },
     ];
     recoveryRepo.find.mockResolvedValue(records);
-    providerRepo.find.mockResolvedValue([{ id: PROVIDER_ID, name: 'Test Mess' }]);
+    providerRepo.find.mockResolvedValue([
+      { id: PROVIDER_ID, name: 'Test Mess' },
+    ]);
 
     const balance = await service.getStudentRecoveryBalance(STUDENT_ID);
     // Balance exists even without resubscription
@@ -310,14 +437,29 @@ describe('MealRecoveryService', () => {
 
   // ======= CONSUMPTION CORRECTNESS =======
   it('16. Recovery balance never becomes negative', async () => {
-    const rec = { id: 'r1', studentId: STUDENT_ID, providerId: PROVIDER_ID, remainingDays: 3, usedDays: 0, status: MealRecoveryStatus.AVAILABLE, createdAt: new Date() };
+    const rec = {
+      id: 'r1',
+      studentId: STUDENT_ID,
+      providerId: PROVIDER_ID,
+      remainingDays: 3,
+      usedDays: 0,
+      status: MealRecoveryStatus.AVAILABLE,
+      createdAt: new Date(),
+    };
     const savedRecs: any[] = [];
     const mockManager = {
       find: jest.fn().mockResolvedValue([rec]),
-      save: jest.fn().mockImplementation((_entity: any, r: any) => { savedRecs.push(r); return r; }),
+      save: jest.fn().mockImplementation((_entity: any, r: any) => {
+        savedRecs.push(r);
+        return r;
+      }),
     } as unknown as EntityManager;
 
-    const consumed = await service.consumeRecovery(STUDENT_ID, PROVIDER_ID, mockManager);
+    const consumed = await service.consumeRecovery(
+      STUDENT_ID,
+      PROVIDER_ID,
+      mockManager,
+    );
     // Cannot consume more than 3
     expect(consumed).toBe(3);
     // remainingDays must never be negative
@@ -326,11 +468,22 @@ describe('MealRecoveryService', () => {
   });
 
   it('24. Recovery consumption correctly updates status to USED', async () => {
-    const rec = { id: 'r1', studentId: STUDENT_ID, providerId: PROVIDER_ID, remainingDays: 5, usedDays: 0, status: MealRecoveryStatus.AVAILABLE, createdAt: new Date() };
+    const rec = {
+      id: 'r1',
+      studentId: STUDENT_ID,
+      providerId: PROVIDER_ID,
+      remainingDays: 5,
+      usedDays: 0,
+      status: MealRecoveryStatus.AVAILABLE,
+      createdAt: new Date(),
+    };
     const savedRecs: any[] = [];
     const mockManager = {
       find: jest.fn().mockResolvedValue([rec]),
-      save: jest.fn().mockImplementation((_e: any, r: any) => { savedRecs.push(r); return r; }),
+      save: jest.fn().mockImplementation((_e: any, r: any) => {
+        savedRecs.push(r);
+        return r;
+      }),
     } as unknown as EntityManager;
 
     await service.consumeRecovery(STUDENT_ID, PROVIDER_ID, mockManager);
@@ -340,27 +493,57 @@ describe('MealRecoveryService', () => {
   });
 
   it('25. Partial consumption sets PARTIALLY_USED status', async () => {
-    const rec = { id: 'r1', studentId: STUDENT_ID, providerId: PROVIDER_ID, remainingDays: 10, usedDays: 0, status: MealRecoveryStatus.AVAILABLE, createdAt: new Date() };
+    const rec = {
+      id: 'r1',
+      studentId: STUDENT_ID,
+      providerId: PROVIDER_ID,
+      remainingDays: 10,
+      usedDays: 0,
+      status: MealRecoveryStatus.AVAILABLE,
+      createdAt: new Date(),
+    };
     const savedRecs: any[] = [];
     const mockManager = {
       // Consume all (10 days total)
       find: jest.fn().mockResolvedValue([rec]),
-      save: jest.fn().mockImplementation((_e: any, r: any) => { savedRecs.push(r); return r; }),
+      save: jest.fn().mockImplementation((_e: any, r: any) => {
+        savedRecs.push(r);
+        return r;
+      }),
     } as unknown as EntityManager;
 
     // Give only 10 days available — all consumed → USED
-    const consumed = await service.consumeRecovery(STUDENT_ID, PROVIDER_ID, mockManager);
+    const consumed = await service.consumeRecovery(
+      STUDENT_ID,
+      PROVIDER_ID,
+      mockManager,
+    );
     expect(consumed).toBe(10);
 
     // Now simulate partial: rec has 10 but we mock it to have 15 originally, 5 already used
-    const rec2 = { id: 'r2', studentId: STUDENT_ID, providerId: PROVIDER_ID, remainingDays: 10, usedDays: 5, status: MealRecoveryStatus.PARTIALLY_USED, createdAt: new Date() };
+    const rec2 = {
+      id: 'r2',
+      studentId: STUDENT_ID,
+      providerId: PROVIDER_ID,
+      remainingDays: 10,
+      usedDays: 5,
+      status: MealRecoveryStatus.PARTIALLY_USED,
+      createdAt: new Date(),
+    };
     const savedRecs2: any[] = [];
     const mockManager2 = {
       find: jest.fn().mockResolvedValue([rec2]),
-      save: jest.fn().mockImplementation((_e: any, r: any) => { savedRecs2.push(r); return r; }),
+      save: jest.fn().mockImplementation((_e: any, r: any) => {
+        savedRecs2.push(r);
+        return r;
+      }),
     } as unknown as EntityManager;
 
-    const consumed2 = await service.consumeRecovery(STUDENT_ID, PROVIDER_ID, mockManager2);
+    const consumed2 = await service.consumeRecovery(
+      STUDENT_ID,
+      PROVIDER_ID,
+      mockManager2,
+    );
     expect(consumed2).toBe(10);
     expect(savedRecs2[0].status).toBe(MealRecoveryStatus.USED);
   });
@@ -392,7 +575,14 @@ describe('MealRecoveryService', () => {
 
   it('20. Provider cannot process another provider subscription', async () => {
     const otherProviderUserId = 'other-user';
-    const sub = makeSub({ mealPlan: { provider: makeProvider({ userId: otherProviderUserId, user: { id: otherProviderUserId } as any }) } as any });
+    const sub = makeSub({
+      mealPlan: {
+        provider: makeProvider({
+          userId: otherProviderUserId,
+          user: { id: otherProviderUserId } as any,
+        }),
+      } as any,
+    });
     subRepo.findOne.mockResolvedValue(sub);
     recoveryRepo.findOne.mockResolvedValue(null);
     providerRepo.findOne.mockResolvedValue(null); // user does not own the provider
@@ -405,7 +595,8 @@ describe('MealRecoveryService', () => {
   it('22. Zero recovery result does not create incorrect positive balance', async () => {
     // 1 missed @ 50% = 0 recovered → no record saved
     const sub = makeSub({
-      startDate: '2026-08-01', endDate: '2026-08-01',
+      startDate: '2026-08-01',
+      endDate: '2026-08-01',
       mealPlan: { provider: makeProvider({ recoveryPercentage: 50 }) } as any,
     });
     subRepo.findOne.mockResolvedValue(sub);
@@ -424,7 +615,14 @@ describe('MealRecoveryService', () => {
     subRepo.findOne.mockResolvedValue(sub);
     recoveryRepo.findOne.mockResolvedValue(null);
     usageRepo.find.mockResolvedValue([{ mealDate: '2026-08-02' }]);
-    const created = { missedDays: 2, recoveryRate: 80, recoveredDays: 1, usedDays: 0, remainingDays: 1, status: MealRecoveryStatus.AVAILABLE };
+    const created = {
+      missedDays: 2,
+      recoveryRate: 80,
+      recoveredDays: 1,
+      usedDays: 0,
+      remainingDays: 1,
+      status: MealRecoveryStatus.AVAILABLE,
+    };
     recoveryRepo.create.mockReturnValue(created);
     recoveryRepo.save.mockResolvedValue(created);
 
@@ -438,7 +636,15 @@ describe('MealRecoveryService', () => {
     subRepo.findOne.mockResolvedValue(sub);
     recoveryRepo.findOne.mockResolvedValue(null);
     usageRepo.find.mockResolvedValue([]);
-    const created = { id: 'rec-auto-1', missedDays: 10, recoveryRate: 80, recoveredDays: 8, usedDays: 0, remainingDays: 8, status: MealRecoveryStatus.AVAILABLE };
+    const created = {
+      id: 'rec-auto-1',
+      missedDays: 10,
+      recoveryRate: 80,
+      recoveredDays: 8,
+      usedDays: 0,
+      remainingDays: 8,
+      status: MealRecoveryStatus.AVAILABLE,
+    };
     recoveryRepo.create.mockReturnValue(created);
     recoveryRepo.save.mockResolvedValue(created);
 
@@ -449,8 +655,16 @@ describe('MealRecoveryService', () => {
   });
 
   it('27. processEligibleEndedSubscriptions processes candidates and returns safe metrics', async () => {
-    const sub1 = makeSub({ id: 'sub-ended-1', startDate: '2026-08-01', endDate: '2026-08-10' });
-    const sub2 = makeSub({ id: 'sub-ended-2', startDate: '2026-08-01', endDate: '2026-08-05' });
+    const sub1 = makeSub({
+      id: 'sub-ended-1',
+      startDate: '2026-08-01',
+      endDate: '2026-08-10',
+    });
+    const sub2 = makeSub({
+      id: 'sub-ended-2',
+      startDate: '2026-08-01',
+      endDate: '2026-08-05',
+    });
 
     const qbMock: any = {
       leftJoin: jest.fn().mockReturnThis(),
@@ -463,9 +677,26 @@ describe('MealRecoveryService', () => {
     subRepo.createQueryBuilder.mockReturnValue(qbMock);
 
     // Spy on processSubscriptionRecovery
-    jest.spyOn(service, 'processSubscriptionRecovery')
-      .mockResolvedValueOnce({ processed: true, alreadyProcessed: false, subscriptionId: sub1.id, missedDays: 10, recoveryRate: 80, recoveredDays: 8, recovery: {} as any })
-      .mockResolvedValueOnce({ processed: false, alreadyProcessed: true, subscriptionId: sub2.id, missedDays: 5, recoveryRate: 80, recoveredDays: 4, recovery: {} as any });
+    jest
+      .spyOn(service, 'processSubscriptionRecovery')
+      .mockResolvedValueOnce({
+        processed: true,
+        alreadyProcessed: false,
+        subscriptionId: sub1.id,
+        missedDays: 10,
+        recoveryRate: 80,
+        recoveredDays: 8,
+        recovery: {} as any,
+      })
+      .mockResolvedValueOnce({
+        processed: false,
+        alreadyProcessed: true,
+        subscriptionId: sub2.id,
+        missedDays: 5,
+        recoveryRate: 80,
+        recoveredDays: 4,
+        recovery: {} as any,
+      });
 
     const metrics = await service.processEligibleEndedSubscriptions();
     expect(metrics.inspected).toBe(2);
@@ -475,19 +706,34 @@ describe('MealRecoveryService', () => {
   });
 
   it('28. consumeRecovery with specific daysToConsume consumes requested portion FIFO', async () => {
-    const rec1 = { id: 'r1', studentId: STUDENT_ID, providerId: PROVIDER_ID, remainingDays: 8, usedDays: 0, status: MealRecoveryStatus.AVAILABLE, createdAt: new Date('2026-08-01') };
+    const rec1 = {
+      id: 'r1',
+      studentId: STUDENT_ID,
+      providerId: PROVIDER_ID,
+      remainingDays: 8,
+      usedDays: 0,
+      status: MealRecoveryStatus.AVAILABLE,
+      createdAt: new Date('2026-08-01'),
+    };
     const savedRecs: any[] = [];
     const mockManager = {
       find: jest.fn().mockResolvedValue([rec1]),
-      save: jest.fn().mockImplementation((_e: any, r: any) => { savedRecs.push(r); return r; }),
+      save: jest.fn().mockImplementation((_e: any, r: any) => {
+        savedRecs.push(r);
+        return r;
+      }),
     } as unknown as EntityManager;
 
     // Request to consume only 3 days out of 8
-    const consumed = await service.consumeRecovery(STUDENT_ID, PROVIDER_ID, 3, mockManager);
+    const consumed = await service.consumeRecovery(
+      STUDENT_ID,
+      PROVIDER_ID,
+      3,
+      mockManager,
+    );
     expect(consumed).toBe(3);
     expect(savedRecs[0].usedDays).toBe(3);
     expect(savedRecs[0].remainingDays).toBe(5);
     expect(savedRecs[0].status).toBe(MealRecoveryStatus.PARTIALLY_USED);
   });
 });
-

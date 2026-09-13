@@ -1,5 +1,11 @@
 import { navigate, getCurrentPath } from '../router';
 import { openMealScanner } from './meal-scanner';
+import {
+  renderStudentBottomNav,
+  attachStudentBottomNavEvents,
+  renderProviderBottomNav,
+  attachProviderBottomNavEvents,
+} from './bottom-nav';
 
 export function renderNavbar(): string {
   const token = localStorage.getItem('accessToken');
@@ -96,6 +102,8 @@ export function renderNavbar(): string {
         </div>
       </div>
     </nav>
+    ${renderStudentBottomNav(currentPath)}
+    ${renderProviderBottomNav(currentPath)}
   `;
 }
 
@@ -192,4 +200,7 @@ export function attachNavbarEvents() {
       }
     });
   }
+
+  attachStudentBottomNavEvents();
+  attachProviderBottomNavEvents();
 }

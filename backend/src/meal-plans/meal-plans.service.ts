@@ -101,7 +101,8 @@ export class MealPlansService {
       relations: { user: true },
     });
     if (!provider) throw new NotFoundException('Provider kitchen not found');
-    if (provider.user && provider.user.id !== userId) {
+    const ownerId = provider.userId || provider.user?.id;
+    if (!ownerId || ownerId !== userId) {
       throw new ForbiddenException(
         'Cannot create meal plans for another provider',
       );
@@ -135,7 +136,8 @@ export class MealPlansService {
       throw new NotFoundException('Meal plan not found');
     }
 
-    if (plan.provider?.user && plan.provider.user.id !== userId) {
+    const planOwnerId = plan.provider?.userId || plan.provider?.user?.id;
+    if (!planOwnerId || planOwnerId !== userId) {
       throw new ForbiddenException(
         "Cannot modify another provider's meal plan pricing",
       );

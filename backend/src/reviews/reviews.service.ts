@@ -38,18 +38,6 @@ export class ReviewsService {
     });
     if (!provider) throw new NotFoundException('Provider not found');
 
-    if (
-      currentUser &&
-      (currentUser.role || '').toUpperCase() === Role.PROVIDER
-    ) {
-      const ownerId = provider.userId || provider.user?.id;
-      if (ownerId !== currentUser.userId) {
-        throw new ForbiddenException(
-          'You can only view reviews for your own PG',
-        );
-      }
-    }
-
     const reviews = await this.reviewRepo
       .createQueryBuilder('review')
       .leftJoinAndSelect('review.student', 'student')

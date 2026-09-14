@@ -736,4 +736,26 @@ describe('MealRecoveryService', () => {
     expect(savedRecs[0].remainingDays).toBe(5);
     expect(savedRecs[0].status).toBe(MealRecoveryStatus.PARTIALLY_USED);
   });
+
+  it('30. SHOULD strictly bound MealUsage queries to eligibleDates using In operator', async () => {
+    const sub = makeSub({
+      startDate: '2026-08-01',
+      endDate: '2026-08-05',
+    });
+    subRepo.findOne.mockResolvedValue(sub);
+    recoveryRepo.findOne.mockResolvedValue(null);
+    usageRepo.find.mockResolvedValue([]);
+
+    await service.processSubscriptionRecovery(sub.id, USER_ID);
+
+    // Both usageRepo.find calls must be called with mealDate filter containing In(eligibleDates)
+    expect(usageRepo.find).toHaveBeenCalled();
+    const calls = usageRepo.find.mock.calls;
+    for (const call of calls) {
+      const where = call[0]?.where;
+      expect(where).toBeDefined();
+      expect(where.mealDate).toBeDefined();
+    }
+  });
 });
+

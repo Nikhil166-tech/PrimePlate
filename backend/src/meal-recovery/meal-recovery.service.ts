@@ -172,17 +172,21 @@ export class MealRecoveryService {
       };
     }
 
-    // 5. Query existing check-ins for this subscription
+    // 5. Query existing check-ins for this subscription bounded strictly to eligible dates
     const usages = await this.usageRepo.find({
-      where: { subscriptionId: sub.id },
+      where: { subscriptionId: sub.id, mealDate: In(eligibleDates) },
       select: { mealDate: true },
     });
     const checkedInDates = new Set(usages.map((u) => u.mealDate));
 
-    // Also check by student+provider as a fallback (matches MealUsageService pattern)
+    // Also check by student+provider as a fallback (strictly bounded to eligible dates)
     if (sub.student?.id) {
       const fallbackUsages = await this.usageRepo.find({
-        where: { studentId: sub.student.id, providerId: provider.id },
+        where: {
+          studentId: sub.student.id,
+          providerId: provider.id,
+          mealDate: In(eligibleDates),
+        },
         select: { mealDate: true },
       });
       fallbackUsages.forEach((u) => checkedInDates.add(u.mealDate));
@@ -434,7 +438,7 @@ export class MealRecoveryService {
     }
 
     // Fetch all available/partially-used records for this student+provider (FIFO)
-    const records = await manager.find(MealRecovery, {
+    const findOptions: any = {
       where: {
         studentId,
         providerId,
@@ -444,8 +448,13 @@ export class MealRecoveryService {
         ]),
       },
       order: { createdAt: 'ASC' },
-      lock: { mode: 'pessimistic_write' },
-    });
+    };
+
+    if (manager.connection?.options?.type === 'postgres') {
+      findOptions.lock = { mode: 'pessimistic_write' };
+    }
+
+    const records = await manager.find(MealRecovery, findOptions);
 
     if (records.length === 0) return 0;
 

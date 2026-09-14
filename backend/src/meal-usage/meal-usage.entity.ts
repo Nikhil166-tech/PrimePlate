@@ -23,7 +23,8 @@ export enum MealUsageSource {
 }
 
 @Entity({ name: 'meal_usages' })
-@Unique('UQ_meal_usages_student_date', ['studentId', 'mealDate'])
+@Unique('UQ_meal_usages_subscription_date', ['subscriptionId', 'mealDate'])
+@Index('IDX_meal_usages_student_date', ['studentId', 'mealDate'])
 @Index('IDX_meal_usages_provider_date', ['providerId', 'mealDate'])
 @Index('IDX_meal_usages_student_sub', ['studentId', 'subscriptionId'])
 export class MealUsage {

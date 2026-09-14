@@ -248,13 +248,12 @@ describe('PrimePlate Comprehensive QA Suite (Sections 19, 24, 26, 27, 28, 30, 40
       expect(res.success).toBe(true);
     });
 
-    it('prevents provider from accessing reviews of another provider', async () => {
-      await expect(
-        reviewsService.findByProvider('prov-1', {
-          userId: 'different-provider-user',
-          role: Role.PROVIDER,
-        }),
-      ).rejects.toThrow(ForbiddenException);
+    it('allows provider to view public reviews of another provider', async () => {
+      const res = await reviewsService.findByProvider('prov-1', {
+        userId: 'different-provider-user',
+        role: Role.PROVIDER,
+      });
+      expect(Array.isArray(res)).toBe(true);
     });
   });
 

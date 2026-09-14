@@ -221,10 +221,10 @@ export class MealUsageService {
       throw new BadRequestException("Your subscription isn't active today.");
     }
 
-    // 4. Check for existing check-in today (Application Level Check)
+    // 4. Check for existing check-in today for this subscription (Application Level Check)
     const existingUsageToday = await this.usageRepo.findOne({
       where: {
-        studentId,
+        subscriptionId: matchingProviderSub.id,
         mealDate: todayIst,
       },
     });
@@ -270,9 +270,10 @@ export class MealUsageService {
         planTitle: matchingProviderSub.mealPlan?.title,
       };
     } catch (err: any) {
-      // Catch PostgreSQL / SQLite unique constraint violation on (studentId, mealDate)
+      // Catch PostgreSQL / SQLite unique constraint violation on (subscriptionId, mealDate)
       const isUniqueViolation =
         err?.code === '23505' ||
+        err?.message?.includes('UQ_meal_usages_subscription_date') ||
         err?.message?.includes('UQ_meal_usages_student_date') ||
         err?.message?.includes('UNIQUE constraint failed') ||
         err?.message?.includes('duplicate key');
@@ -281,7 +282,7 @@ export class MealUsageService {
         // Concurrency / duplicate scan race condition safely converted to ALREADY_CHECKED_IN
         const usageAfterRace = await this.usageRepo.findOne({
           where: {
-            studentId,
+            subscriptionId: matchingProviderSub.id,
             mealDate: todayIst,
           },
         });
@@ -705,10 +706,10 @@ export class MealUsageService {
 
     const studentId = subscription.student.id;
 
-    // Check if usage already exists today
+    // Check if usage already exists today for this subscription
     const existing = await this.usageRepo.findOne({
       where: {
-        studentId,
+        subscriptionId: subscription.id,
         mealDate: todayIst,
       },
     });

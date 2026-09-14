@@ -73,7 +73,17 @@ export async function renderDashboard() {
   let selectedSubForDetails: any = null;
   const todayStr = new Date().toISOString().split('T')[0];
 
+  const cleanupCalendars = () => {
+    calendarUnmountFns.forEach((unmount) => {
+      try {
+        unmount();
+      } catch (_) { }
+    });
+    calendarUnmountFns = [];
+  };
+
   const renderPage = () => {
+    cleanupCalendars();
     container.innerHTML = `
       ${renderNavbar()}
       <main class="main-content" style="padding-top: 88px; padding-bottom: 60px; background: #f8fafc;">
@@ -289,12 +299,7 @@ export async function renderDashboard() {
     if (!subsGrid) return;
 
     // Cleanly unmount previously mounted React calendars to avoid leaks
-    calendarUnmountFns.forEach((unmount) => {
-      try {
-        unmount();
-      } catch (_) { }
-    });
-    calendarUnmountFns = [];
+    cleanupCalendars();
 
     const subs = loadedSubs;
     const activeSubs = subs.filter((s) => {

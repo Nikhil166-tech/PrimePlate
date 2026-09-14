@@ -7,6 +7,7 @@ import {
   Body,
   UseGuards,
   Req,
+  BadRequestException,
 } from '@nestjs/common';
 import { SubscriptionsService } from './subscriptions.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -49,10 +50,15 @@ export class SubscriptionsController {
   @Roles(Role.ADMIN)
   async create(
     @Req() req: AuthenticatedRequest,
-    @Body() body: { mealPlanId: string; startDate?: string; endDate?: string },
+    @Body() body: { studentId: string; mealPlanId: string; startDate?: string; endDate?: string },
   ) {
+    if (!body.studentId) {
+      throw new BadRequestException(
+        'Target studentId is required for admin subscription creation',
+      );
+    }
     return this.subscriptionsService.create(
-      req.user.userId,
+      body.studentId,
       body.mealPlanId,
       body.startDate,
       body.endDate,

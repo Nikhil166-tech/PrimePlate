@@ -15,6 +15,7 @@ import { CreateSupportTicketDto } from './dto/create-support-ticket.dto';
 
 import { Optional } from '@nestjs/common';
 import { EmailService } from '../common/email.service';
+import * as crypto from 'crypto';
 
 @Injectable()
 export class SupportService {
@@ -94,24 +95,59 @@ export class SupportService {
       );
     }
 
-    // Generate Server-Side Ticket Number (NEVER client-side Math.random()!)
-    const datePrefix = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-    const randomSuffix = Math.floor(1000 + Math.random() * 9000);
-    const ticketNumber = `TK-${datePrefix}-${randomSuffix}`;
+    // Generate Server-Side Collision-Resistant Ticket Number with Safe Retry
+    const maxRetries = 3;
+    let saved: SupportTicket | null = null;
 
-    const ticket = this.ticketRepo.create({
-      ticketNumber,
-      student,
-      payment,
-      razorpayOrderId: dto.razorpayOrderId,
-      razorpayPaymentId: payment.razorpayPaymentId || undefined,
-      issueType: dto.issueType,
-      description: dto.description.trim(),
-      utrReference: dto.utrReference ? dto.utrReference.trim() : undefined,
-      status: SupportTicketStatus.OPEN,
-    });
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      const datePrefix = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+      const randomHex = crypto.randomBytes(3).toString('hex').toUpperCase();
+      const ticketNumber = `TK-${datePrefix}-${randomHex}`;
 
-    const saved = await this.ticketRepo.save(ticket);
+      const ticket = this.ticketRepo.create({
+        ticketNumber,
+        student,
+        payment,
+        razorpayOrderId: dto.razorpayOrderId,
+        razorpayPaymentId: payment.razorpayPaymentId || undefined,
+        issueType: dto.issueType,
+        description: dto.description.trim(),
+        utrReference: dto.utrReference ? dto.utrReference.trim() : undefined,
+        status: SupportTicketStatus.OPEN,
+      });
+
+      try {
+        saved = await this.ticketRepo.save(ticket);
+        break;
+      } catch (err: any) {
+        const isDuplicateTicket =
+          err?.code === '23505' ||
+          err?.message?.includes('ticketNumber') ||
+          err?.message?.includes('UQ_support_tickets_ticket_number') ||
+          err?.message?.includes('UNIQUE constraint failed') ||
+          err?.message?.includes('duplicate key');
+
+        if (isDuplicateTicket) {
+          if (attempt < maxRetries) {
+            this.logger.warn(
+              `Support ticket number collision on ${ticketNumber}, retrying (attempt ${attempt}/${maxRetries})...`,
+            );
+            continue;
+          }
+          throw new ConflictException(
+            'Failed to generate a unique support ticket number due to collisions. Please try again.',
+          );
+        }
+        throw err;
+      }
+    }
+
+    if (!saved) {
+      throw new ConflictException(
+        'Failed to generate a unique support ticket number. Please try again.',
+      );
+    }
+
     this.logger.log(
       `SUPPORT_TICKET_CREATED: ticketNumber=${saved.ticketNumber}, orderId=${saved.razorpayOrderId}, studentId=${userId}`,
     );

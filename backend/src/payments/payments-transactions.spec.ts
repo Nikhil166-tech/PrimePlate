@@ -359,7 +359,7 @@ describe('PrimePlate PrimeMate Transactions & Payment Support Center Specificati
         },
       );
 
-      expect(ticket.ticketNumber).toMatch(/^TK-\d{8}-\d{4}$/);
+      expect(ticket.ticketNumber).toMatch(/^TK-\d{8}-[0-9A-F]{6}$/);
       expect(ticket.status).toBe(SupportTicketStatus.OPEN);
       expect(ticket.razorpayOrderId).toBe('order_failed_student1');
     });

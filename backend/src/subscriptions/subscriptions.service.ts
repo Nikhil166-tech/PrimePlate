@@ -17,6 +17,8 @@ import { Payment } from '../payments/payment.entity';
 import { ProviderEarning } from '../payouts/provider-earning.entity';
 import { PaymentsService } from '../payments/payments.service';
 
+import { Role } from '../common/roles.enum';
+
 @Injectable()
 export class SubscriptionsService {
   constructor(
@@ -50,6 +52,12 @@ export class SubscriptionsService {
       const student = await manager.findOne(User, { where: { id: studentId } });
       if (!student) {
         throw new NotFoundException('Student user not found');
+      }
+
+      if (student.role !== Role.STUDENT) {
+        throw new BadRequestException(
+          'Target user must have the STUDENT role to receive a subscription',
+        );
       }
 
       const mealPlan = await manager.findOne(MealPlan, {

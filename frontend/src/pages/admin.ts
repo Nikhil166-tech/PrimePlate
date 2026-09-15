@@ -30,6 +30,16 @@ export async function renderAdminPortal() {
           </div>
         </div>
 
+        <!-- Navigation Tabs -->
+        <div style="display: flex; gap: 8px; margin-bottom: 24px; border-bottom: 1px solid var(--color-neutral-200); padding-bottom: 12px; overflow-x: auto;">
+          <a href="/admin" class="btn-primary-action" style="font-size: 13px; text-decoration: none; padding: 8px 16px; border-radius: 999px; white-space: nowrap; background: var(--color-primary-600);">
+            <i class="fa-solid fa-shield-halved"></i> Provider Approvals
+          </a>
+          <a href="/admin/earnings" class="btn-outline-action" style="font-size: 13px; text-decoration: none; padding: 8px 16px; border-radius: 999px; white-space: nowrap;">
+            <i class="fa-solid fa-wallet"></i> Provider Earnings
+          </a>
+        </div>
+
         <!-- Metrics Overview from Analytics Module -->
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 28px;">
           <div style="background: #fff; border: 1px solid var(--color-neutral-200); border-radius: 20px; padding: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.03);">

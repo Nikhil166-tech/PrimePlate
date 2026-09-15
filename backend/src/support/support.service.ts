@@ -100,7 +100,10 @@ export class SupportService {
     let saved: SupportTicket | null = null;
 
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
-      const datePrefix = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+      const datePrefix = new Date()
+        .toISOString()
+        .slice(0, 10)
+        .replace(/-/g, '');
       const randomHex = crypto.randomBytes(3).toString('hex').toUpperCase();
       const ticketNumber = `TK-${datePrefix}-${randomHex}`;
 

@@ -48,14 +48,18 @@ describe('SecureInternalTablesRls1786460000000 Migration', () => {
     for (const table of sensitiveTables) {
       expect(
         executedQueries.some((q) =>
-          q.includes(`ALTER TABLE IF EXISTS "${table}" ENABLE ROW LEVEL SECURITY;`),
+          q.includes(
+            `ALTER TABLE IF EXISTS "${table}" ENABLE ROW LEVEL SECURITY;`,
+          ),
         ),
       ).toBe(true);
     }
 
     const doBlock = executedQueries[executedQueries.length - 1];
-    expect(doBlock).toContain("REVOKE ALL ON TABLE public.%I FROM \"anon\"");
-    expect(doBlock).toContain("REVOKE ALL ON TABLE public.%I FROM \"authenticated\"");
+    expect(doBlock).toContain('REVOKE ALL ON TABLE public.%I FROM "anon"');
+    expect(doBlock).toContain(
+      'REVOKE ALL ON TABLE public.%I FROM "authenticated"',
+    );
   });
 
   it('should execute PostgreSQL RLS disable queries and restore access in down()', async () => {
@@ -75,8 +79,12 @@ describe('SecureInternalTablesRls1786460000000 Migration', () => {
 
     expect(mockQueryRunner.query).toHaveBeenCalledTimes(12);
     const doBlock = executedQueries[0];
-    expect(doBlock).toContain("GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.%I TO \"anon\"");
-    expect(doBlock).toContain("GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.%I TO \"authenticated\"");
+    expect(doBlock).toContain(
+      'GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.%I TO "anon"',
+    );
+    expect(doBlock).toContain(
+      'GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.%I TO "authenticated"',
+    );
   });
 
   it('should no-op if connection is not postgres (e.g. SQLite)', async () => {

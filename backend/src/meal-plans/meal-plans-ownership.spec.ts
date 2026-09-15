@@ -105,9 +105,9 @@ describe('MealPlansService Fail-Closed Provider Ownership Validation', () => {
         },
       });
 
-      await expect(service.update(validOwnerId, planId, updateDto)).rejects.toThrow(
-        ForbiddenException,
-      );
+      await expect(
+        service.update(validOwnerId, planId, updateDto),
+      ).rejects.toThrow(ForbiddenException);
     });
 
     it('5. wrong owner updating meal plan → REJECTED with ForbiddenException', async () => {
@@ -122,9 +122,9 @@ describe('MealPlansService Fail-Closed Provider Ownership Validation', () => {
         },
       });
 
-      await expect(service.update(validOwnerId, planId, updateDto)).rejects.toThrow(
-        "Cannot modify another provider's meal plan pricing",
-      );
+      await expect(
+        service.update(validOwnerId, planId, updateDto),
+      ).rejects.toThrow("Cannot modify another provider's meal plan pricing");
     });
 
     it('6. correct owner updating meal plan → ALLOWED', async () => {

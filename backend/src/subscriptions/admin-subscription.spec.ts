@@ -45,7 +45,10 @@ describe('Admin Subscription Provisioning Bug Fix (Target Student Assignment)', 
         SubscriptionsService,
         { provide: getRepositoryToken(Subscription), useValue: subRepo },
         { provide: getRepositoryToken(User), useValue: { findOne: jest.fn() } },
-        { provide: getRepositoryToken(MealPlan), useValue: { findOne: jest.fn() } },
+        {
+          provide: getRepositoryToken(MealPlan),
+          useValue: { findOne: jest.fn() },
+        },
       ],
     }).compile();
 
@@ -155,9 +158,7 @@ describe('Admin Subscription Provisioning Bug Fix (Target Student Assignment)', 
       return Promise.resolve(null);
     });
 
-    await expect(
-      service.create(nonStudentId, mealPlanId),
-    ).rejects.toThrow(
+    await expect(service.create(nonStudentId, mealPlanId)).rejects.toThrow(
       'Target user must have the STUDENT role to receive a subscription',
     );
   });

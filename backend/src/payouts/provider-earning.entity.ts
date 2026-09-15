@@ -67,6 +67,12 @@ export class ProviderEarning {
   @Column({ default: ProviderEarningStatus.PENDING })
   status: string;
 
+  @Column({ nullable: true })
+  paidAt?: Date;
+
+  @Column({ nullable: true })
+  settlementReference?: string;
+
   @CreateDateColumn()
   earnedAt: Date;
 

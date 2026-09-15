@@ -108,6 +108,25 @@ export const getProviderEarningsSummary = (kitchenId?: string) =>
 export const getProviderEarningsHistory = (kitchenId?: string) =>
   api.get(`/payouts/provider/history${kitchenId ? `?kitchenId=${encodeURIComponent(kitchenId)}` : ''}`);
 
+export const getAdminProviderEarningsSummaryAndList = (params?: { search?: string; status?: string }) => {
+  const query = new URLSearchParams();
+  if (params?.search) query.append('search', params.search);
+  if (params?.status) query.append('status', params.status);
+  const qStr = query.toString();
+  return api.get(`/admin/provider-earnings${qStr ? `?${qStr}` : ''}`);
+};
+
+export const getAdminProviderEarningsDetail = (providerId: string, params?: { status?: string }) => {
+  const query = new URLSearchParams();
+  if (params?.status) query.append('status', params.status);
+  const qStr = query.toString();
+  return api.get(`/admin/provider-earnings/${encodeURIComponent(providerId)}${qStr ? `?${qStr}` : ''}`);
+};
+
+export const markAdminProviderEarningPaid = (earningId: string, payload?: { settlementReference?: string }) =>
+  api.patch(`/admin/provider-earnings/${encodeURIComponent(earningId)}/mark-paid`, payload || {});
+
+
 export const uploadProviderHostelImage = (
   formData: FormData,
   providerId?: string,

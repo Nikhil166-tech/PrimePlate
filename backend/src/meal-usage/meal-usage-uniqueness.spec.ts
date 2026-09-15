@@ -4,7 +4,10 @@ import { MealUsageService } from './meal-usage.service';
 import { MealUsage, MealUsageStatus } from './meal-usage.entity';
 import { MealUsageAudit } from './meal-usage-audit.entity';
 import { MealProvider } from '../providers/meal-provider.entity';
-import { Subscription, SubscriptionStatus } from '../subscriptions/subscription.entity';
+import {
+  Subscription,
+  SubscriptionStatus,
+} from '../subscriptions/subscription.entity';
 import { User } from '../users/user.entity';
 import { DataSource } from 'typeorm';
 import { UpdateMealUsageUniquenessToSubscriptionDate1786470000000 } from '../migrations/1786470000000-UpdateMealUsageUniquenessToSubscriptionDate';
@@ -45,7 +48,10 @@ describe('Meal Check-in Uniqueness Model — (subscriptionId, mealDate)', () => 
       providers: [
         MealUsageService,
         { provide: getRepositoryToken(MealUsage), useValue: usageRepo },
-        { provide: getRepositoryToken(MealUsageAudit), useValue: { create: jest.fn(), save: jest.fn() } },
+        {
+          provide: getRepositoryToken(MealUsageAudit),
+          useValue: { create: jest.fn(), save: jest.fn() },
+        },
         { provide: getRepositoryToken(MealProvider), useValue: providerRepo },
         { provide: getRepositoryToken(Subscription), useValue: subRepo },
         { provide: getRepositoryToken(User), useValue: { findOne: jest.fn() } },
@@ -58,7 +64,8 @@ describe('Meal Check-in Uniqueness Model — (subscriptionId, mealDate)', () => 
 
   describe('Migration: UpdateMealUsageUniquenessToSubscriptionDate1786470000000', () => {
     it('should drop old student_date constraint and create UQ_meal_usages_subscription_date in PostgreSQL', async () => {
-      const migration = new UpdateMealUsageUniquenessToSubscriptionDate1786470000000();
+      const migration =
+        new UpdateMealUsageUniquenessToSubscriptionDate1786470000000();
       const executedQueries: string[] = [];
       const mockQueryRunner: any = {
         connection: { options: { type: 'postgres' } },
@@ -99,7 +106,11 @@ describe('Meal Check-in Uniqueness Model — (subscriptionId, mealDate)', () => 
     const mockSubA = {
       id: subAId,
       student: { id: studentId },
-      mealPlan: { id: 'plan-lunch', provider: mockProviderA, title: 'Lunch Plan' },
+      mealPlan: {
+        id: 'plan-lunch',
+        provider: mockProviderA,
+        title: 'Lunch Plan',
+      },
       status: SubscriptionStatus.ACTIVE,
       startDate: '2026-08-01',
       endDate: '2026-10-01',
@@ -108,7 +119,11 @@ describe('Meal Check-in Uniqueness Model — (subscriptionId, mealDate)', () => 
     const mockSubB = {
       id: subBId,
       student: { id: studentId },
-      mealPlan: { id: 'plan-dinner', provider: mockProviderB, title: 'Dinner Plan' },
+      mealPlan: {
+        id: 'plan-dinner',
+        provider: mockProviderB,
+        title: 'Dinner Plan',
+      },
       status: SubscriptionStatus.ACTIVE,
       startDate: '2026-08-01',
       endDate: '2026-10-01',

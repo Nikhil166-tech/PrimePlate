@@ -14,6 +14,7 @@ import { renderCheckout } from './pages/checkout';
 import { renderDashboard } from './pages/dashboard';
 import { renderOwnerPortal } from './pages/owner';
 import { renderAdminPortal } from './pages/admin';
+import { renderAdminEarnings } from './pages/admin-earnings';
 import { renderForgotPassword } from './pages/forgot-password';
 import { renderResetPassword } from './pages/reset-password';
 import { renderTransactions } from './pages/transactions';
@@ -71,6 +72,14 @@ registerRoute('/owner', () =>
   requireRole(['PROVIDER', 'MEAL_PROVIDER'], renderOwnerPortal),
 );
 registerRoute('/admin', () => requireRole(['ADMIN'], renderAdminPortal));
+registerRoute('/admin/earnings', () =>
+  requireRole(['ADMIN'], renderAdminEarnings),
+);
+registerRoute('/admin/earnings/:providerId', () => {
+  const parts = getPathSegments();
+  const providerId = parts[2];
+  requireRole(['ADMIN'], () => renderAdminEarnings(providerId));
+});
 registerRoute('/providers/:id', () => {
   const parts = getPathSegments();
   const id = parts[1];

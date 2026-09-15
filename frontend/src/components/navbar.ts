@@ -56,6 +56,9 @@ export function renderNavbar(): string {
       token && isAdmin
         ? `<a href="/admin" class="nav-item-btn ${currentPath === '/admin' ? 'active' : ''}">
             <i class="fa-solid fa-user-shield"></i> Admin Portal
+          </a>
+          <a href="/admin/earnings" class="nav-item-btn ${currentPath.startsWith('/admin/earnings') ? 'active' : ''}">
+            <i class="fa-solid fa-wallet"></i> Provider Earnings
           </a>`
         : ''
     }

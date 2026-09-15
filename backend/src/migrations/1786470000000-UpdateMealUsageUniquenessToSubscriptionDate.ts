@@ -12,9 +12,7 @@ import { MigrationInterface, QueryRunner } from 'typeorm';
  * - Prevents duplicate scans for the same subscription while allowing legitimate check-ins
  *   across separate subscriptions/providers on the same calendar day.
  */
-export class UpdateMealUsageUniquenessToSubscriptionDate1786470000000
-  implements MigrationInterface
-{
+export class UpdateMealUsageUniquenessToSubscriptionDate1786470000000 implements MigrationInterface {
   name = 'UpdateMealUsageUniquenessToSubscriptionDate1786470000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
@@ -63,9 +61,7 @@ export class UpdateMealUsageUniquenessToSubscriptionDate1786470000000
       `);
     } else {
       await queryRunner
-        .query(
-          `DROP INDEX IF EXISTS "UQ_meal_usages_subscription_date";`,
-        )
+        .query(`DROP INDEX IF EXISTS "UQ_meal_usages_subscription_date";`)
         .catch(() => {});
     }
   }

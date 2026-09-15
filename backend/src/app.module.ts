@@ -22,6 +22,7 @@ import { WeeklyMenu } from './weekly-menus/weekly-menu.entity';
 import { PasswordResetToken } from './auth/password-reset-token.entity';
 import { WeeklyMenusModule } from './weekly-menus/weekly-menus.module';
 import { ProviderEarning } from './payouts/provider-earning.entity';
+import { ProviderSettlementAudit } from './payouts/provider-settlement-audit.entity';
 import { PayoutsModule } from './payouts/payouts.module';
 import { SupportTicket } from './support/support-ticket.entity';
 import { SupportModule } from './support/support.module';

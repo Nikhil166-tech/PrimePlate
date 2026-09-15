@@ -1,7 +1,11 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { SupportService } from './support.service';
-import { SupportTicket, SupportTicketStatus, SupportTicketIssueType } from './support-ticket.entity';
+import {
+  SupportTicket,
+  SupportTicketStatus,
+  SupportTicketIssueType,
+} from './support-ticket.entity';
 import { Payment } from '../payments/payment.entity';
 import { User } from '../users/user.entity';
 import { ConflictException } from '@nestjs/common';
@@ -82,7 +86,9 @@ describe('SupportService — Collision-Resistant Ticket Number Generation & Safe
     ticketRepo.save.mockImplementation(async (ticket: any) => {
       callCount++;
       if (callCount === 1) {
-        const err: any = new Error('duplicate key value violates unique constraint "UQ_support_tickets_ticket_number"');
+        const err: any = new Error(
+          'duplicate key value violates unique constraint "UQ_support_tickets_ticket_number"',
+        );
         err.code = '23505';
         throw err;
       }
@@ -106,7 +112,9 @@ describe('SupportService — Collision-Resistant Ticket Number Generation & Safe
     ticketRepo.findOne.mockResolvedValue(null);
 
     ticketRepo.save.mockImplementation(async () => {
-      const err: any = new Error('UNIQUE constraint failed: support_tickets.ticketNumber');
+      const err: any = new Error(
+        'UNIQUE constraint failed: support_tickets.ticketNumber',
+      );
       err.code = '23505';
       throw err;
     });

@@ -50,7 +50,13 @@ export class SubscriptionsController {
   @Roles(Role.ADMIN)
   async create(
     @Req() req: AuthenticatedRequest,
-    @Body() body: { studentId: string; mealPlanId: string; startDate?: string; endDate?: string },
+    @Body()
+    body: {
+      studentId: string;
+      mealPlanId: string;
+      startDate?: string;
+      endDate?: string;
+    },
   ) {
     if (!body.studentId) {
       throw new BadRequestException(

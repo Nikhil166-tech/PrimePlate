@@ -4339,3 +4339,100 @@ input:checked+.toggle-slider:before {
     border-radius: 14px;
   }
 }
+
+/* ==========================================================================
+   Home Hero Responsive Alignment (Desktop Left, Mobile Center)
+   ========================================================================== */
+.hero-content-col {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: left;
+}
+
+@media (max-width: 768px) {
+  .hero-section {
+    padding: 36px 16px 48px !important;
+  }
+
+  .hero-grid-container {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    text-align: center !important;
+    gap: 32px !important;
+    width: 100% !important;
+  }
+
+  .hero-content-col {
+    align-items: center !important;
+    text-align: center !important;
+    margin: 0 auto !important;
+    max-width: 580px;
+    width: 100% !important;
+  }
+
+  .hero-badges-wrapper {
+    justify-content: center !important;
+    width: 100% !important;
+  }
+
+  .hero-title {
+    text-align: center !important;
+    width: 100% !important;
+  }
+
+  .hero-subtitle {
+    text-align: center !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+    width: 100% !important;
+  }
+
+  .hero-recovery-note {
+    justify-content: center !important;
+    text-align: center !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+    width: 100% !important;
+  }
+
+  .hero-btn-group {
+    justify-content: center !important;
+    width: 100% !important;
+  }
+
+  .hero-btn-group button {
+    flex: 1 1 160px;
+    max-width: 240px;
+    justify-content: center;
+  }
+
+  .hero-image-col {
+    margin: 0 auto !important;
+    max-width: 480px;
+    width: 100% !important;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .hero-floating-pass-badge {
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    align-self: center !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .hero-btn-group {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .hero-btn-group button {
+    max-width: 100%;
+    width: 100%;
+    flex: 1 1 auto;
+  }
+}

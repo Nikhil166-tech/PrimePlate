@@ -22,4 +22,3 @@ import { AdminProviderEarningsController } from './admin-provider-earnings.contr
   exports: [PayoutsService],
 })
 export class PayoutsModule {}
-

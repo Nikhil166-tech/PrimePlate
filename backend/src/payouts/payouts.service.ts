@@ -664,10 +664,9 @@ export class PayoutsService {
       }
 
       const previousStatus = earning.status;
-      const ref =
-        customSettlementReference?.trim()
-          ? customSettlementReference.trim().slice(0, 255)
-          : `PRIMEPLATE-SETTLE-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${earning.id.slice(0, 8).toUpperCase()}`;
+      const ref = customSettlementReference?.trim()
+        ? customSettlementReference.trim().slice(0, 255)
+        : `PRIMEPLATE-SETTLE-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${earning.id.slice(0, 8).toUpperCase()}`;
 
       earning.status = ProviderEarningStatus.PAID;
       earning.paidAt = new Date();
@@ -723,4 +722,3 @@ export class PayoutsService {
     return await executeInTx(mgr || (this.earningRepo as any));
   }
 }
-

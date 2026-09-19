@@ -113,7 +113,9 @@ export class AddPaidAtAndSettlementAudits1786480000000 implements MigrationInter
   public async down(queryRunner: QueryRunner): Promise<void> {
     const isPostgres = queryRunner.connection.options.type === 'postgres';
 
-    await queryRunner.query(`DROP TABLE IF EXISTS "provider_settlement_audits"`);
+    await queryRunner.query(
+      `DROP TABLE IF EXISTS "provider_settlement_audits"`,
+    );
 
     if (isPostgres) {
       await queryRunner.query(`

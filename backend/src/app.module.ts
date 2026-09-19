@@ -106,4 +106,4 @@ import { AppController } from './app.controller';
   controllers: [AppController],
   providers: [SeedService],
 })
-export class AppModule {}
+export class AppModule { }

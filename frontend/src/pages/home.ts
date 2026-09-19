@@ -12,10 +12,10 @@ export async function renderHome() {
     ${renderNavbar()}
     <main class="main-content" style="padding-top: 64px;">
       <!-- Hero Section -->
-      <section style="position: relative; padding: 48px 16px 64px; background: linear-gradient(135deg, #fff7ed 0%, #ffffff 50%, #f0f9ff 100%); overflow: hidden;">
-        <div style="max-width: 1280px; margin: 0 auto; display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 36px; align-items: center;">
-          <div class="animate-fade-in-up">
-            <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px;">
+      <section class="hero-section" style="position: relative; padding: 48px 16px 64px; background: linear-gradient(135deg, #fff7ed 0%, #ffffff 50%, #f0f9ff 100%); overflow: hidden;">
+        <div class="hero-grid-container" style="max-width: 1280px; margin: 0 auto; display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 36px; align-items: center;">
+          <div class="hero-content-col animate-fade-in-up">
+            <div class="hero-badges-wrapper" style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px;">
               <div style="display: inline-flex; align-items: center; gap: 8px; background: var(--color-primary-100); color: var(--color-primary-700); padding: 6px 16px; border-radius: 999px; font-size: 13px; font-weight: 600;">
                 <i class="fa-solid fa-utensils"></i> Digital Mess Card Platform
               </div>
@@ -23,15 +23,15 @@ export async function renderHome() {
                 <i class="fa-solid fa-rotate-left"></i> Meal Recovery Included
               </a>
             </div>
-            <h1 class="font-display" style="font-size: clamp(2rem, 5vw, 3rem); font-weight: 800; color: var(--color-neutral-900); line-height: 1.15; margin-bottom: 20px;">
+            <h1 class="hero-title font-display" style="font-size: clamp(2rem, 5vw, 3rem); font-weight: 800; color: var(--color-neutral-900); line-height: 1.15; margin-bottom: 20px;">
               Your Food.<br />
               Your Time.<br />
               <span style="color: var(--color-primary-600);">Your PrimePlate.</span>
             </h1>
-            <p style="font-size: clamp(0.95rem, 2.5vw, 1.125rem); color: var(--color-neutral-600); line-height: 1.6; margin-bottom: 12px; max-width: 540px;">
+            <p class="hero-subtitle" style="font-size: clamp(0.95rem, 2.5vw, 1.125rem); color: var(--color-neutral-600); line-height: 1.6; margin-bottom: 12px; max-width: 540px;">
               Find nearby messes, compare meal plans, view menus, and manage your subscription — all in one place.
             </p>
-            <p style="font-size: 12.5px; color: var(--color-neutral-600); margin-bottom: 28px; display: flex; align-items: center; gap: 6px; font-weight: 500;">
+            <p class="hero-recovery-note" style="font-size: 12.5px; color: var(--color-neutral-600); margin-bottom: 28px; display: flex; align-items: center; gap: 6px; font-weight: 500;">
               <i class="fa-solid fa-shield-halved" style="color: #10b981;"></i> Missed eligible meal days? Recover them on your next plan.
             </p>
             <div class="hero-btn-group" style="display: flex; gap: 12px; flex-wrap: wrap;">
@@ -42,32 +42,23 @@ export async function renderHome() {
                 <i class="fa-solid fa-qrcode"></i> Sign Up Free
               </button>
             </div>
-            <div style="display: flex; gap: 16px 24px; margin-top: 32px; border-top: 1px solid var(--color-neutral-200); padding-top: 20px; flex-wrap: wrap;">
-              <div>
-                <p id="statsProvidersCount" class="font-display" style="font-size: 22px; font-weight: 700; color: var(--color-neutral-900);">--</p>
-                <p style="font-size: 12px; color: var(--color-neutral-500);">Verified Mess Providers</p>
-              </div>
-              <div style="border-left: 1px solid var(--color-neutral-200); padding-left: 16px;">
-                <p id="statsStudentsCount" class="font-display" style="font-size: 22px; font-weight: 700; color: var(--color-neutral-900);">--</p>
-                <p style="font-size: 12px; color: var(--color-neutral-500);">Registered Users</p>
-              </div>
-              <div style="border-left: 1px solid var(--color-neutral-200); padding-left: 16px;">
-                <p class="font-display" style="font-size: 22px; font-weight: 700; color: var(--color-primary-600);">100%</p>
-                <p style="font-size: 12px; color: var(--color-neutral-500);">Verified Approval</p>
-              </div>
+            <!-- Hidden stats section (hidden per user request) -->
+            <div style="display: none;" aria-hidden="true">
+              <span id="statsProvidersCount">--</span>
+              <span id="statsStudentsCount">--</span>
             </div>
           </div>
 
-          <div style="position: relative; width: 100%;">
-            <div style="border-radius: 24px; overflow: hidden; box-shadow: 0 20px 40px rgba(0,0,0,0.12);">
-              <img src="https://images.pexels.com/photos/5775684/pexels-photo-5775684.jpeg?auto=compress&cs=tinysrgb&h=650&w=940" alt="Delicious Thali" style="width: 100%; height: auto; max-height: 380px; object-fit: cover;" />
+          <div class="hero-image-col" style="position: relative; width: 100%;">
+            <div style="border-radius: 24px; overflow: hidden; box-shadow: 0 20px 40px rgba(0,0,0,0.12); width: 100%;">
+              <img src="https://images.pexels.com/photos/5775684/pexels-photo-5775684.jpeg?auto=compress&cs=tinysrgb&h=650&w=940" alt="Delicious Thali" style="width: 100%; height: auto; max-height: 380px; object-fit: cover; display: block;" />
             </div>
             
-            <div style="position: relative; margin-top: -30px; margin-left: 12px; background: #fff; border-radius: 16px; padding: 14px; box-shadow: 0 12px 30px rgba(0,0,0,0.12); display: inline-flex; align-items: center; gap: 12px; max-width: 100%;">
+            <div class="hero-floating-pass-badge" style="position: relative; margin-top: -30px; margin-left: 12px; background: #fff; border-radius: 16px; padding: 14px; box-shadow: 0 12px 30px rgba(0,0,0,0.12); display: inline-flex; align-items: center; gap: 12px; max-width: 100%;">
               <div style="width: 40px; height: 40px; border-radius: 12px; background: var(--color-success-50); color: var(--color-success-600); display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0;">
                 <i class="fa-solid fa-circle-check"></i>
               </div>
-              <div>
+              <div style="text-align: left;">
                 <p style="font-weight: 700; font-size: 13px; color: var(--color-neutral-900);">Digital Mess Card Pass</p>
                 <p style="font-size: 11px; color: var(--color-neutral-500);">Instant QR Pass & Daily Meal Access</p>
               </div>
@@ -909,10 +900,9 @@ export async function renderHome() {
               <p style="font-size: 14px; color: var(--color-neutral-600); margin-bottom: 12px; line-height: 1.4;">${escapeHtml(h.description || 'No description available.')}</p>
               <div class="card-pricing-footer">
                 <div class="card-pricing-info">
-                  ${
-                    hasValidPrices
-                      ? isDiscounted
-                        ? `
+                  ${hasValidPrices
+              ? isDiscounted
+                ? `
                           <div class="card-original-row">
                             <span class="card-original-price">₹${origNum.toLocaleString('en-IN')}</span>
                             <span class="card-discount-badge">${discountPct}% OFF</span>
@@ -923,18 +913,18 @@ export async function renderHome() {
                           </div>
                           <div class="card-savings-text">Save ₹${saveAmt.toLocaleString('en-IN')}</div>
                         `
-                        : `
+                : `
                           <div class="card-selling-row">
                             <span class="card-selling-price">₹${sellNum.toLocaleString('en-IN')}</span>
                             <span class="card-price-unit">${unitText}</span>
                           </div>
                         `
-                      : `
+              : `
                         <div class="card-selling-row">
                           <span class="card-price-unit" style="font-size: 14px; color: var(--color-neutral-500);">Price Unavailable</span>
                         </div>
                       `
-                  }
+            }
                 </div>
                 <button class="btn-primary-action card-action-btn">
                   View Plan <i class="fa-solid fa-arrow-right"></i>
@@ -1007,7 +997,7 @@ export async function renderHome() {
         (window as any).va('event', { name: eventName });
       }
       window.dispatchEvent(new CustomEvent('primeplate_analytics', { detail: { event: eventName } }));
-    } catch {}
+    } catch { }
   };
 
   // Safe tracking for Meal Recovery impressions & info interactions

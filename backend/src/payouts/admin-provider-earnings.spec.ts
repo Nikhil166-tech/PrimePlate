@@ -123,7 +123,9 @@ describe('Admin Provider Earnings & Manual Settlement Specification', () => {
     const mockEarningRepo = {
       find: jest.fn(async (opts?: any) => {
         if (opts?.where?.providerId) {
-          return mockEarnings.filter((e) => e.providerId === opts.where.providerId);
+          return mockEarnings.filter(
+            (e) => e.providerId === opts.where.providerId,
+          );
         }
         return [...mockEarnings];
       }),
@@ -202,10 +204,19 @@ describe('Admin Provider Earnings & Manual Settlement Specification', () => {
       providers: [
         PayoutsService,
         Reflector,
-        { provide: getRepositoryToken(ProviderEarning), useValue: mockEarningRepo },
-        { provide: getRepositoryToken(MealProvider), useValue: mockProviderRepo },
+        {
+          provide: getRepositoryToken(ProviderEarning),
+          useValue: mockEarningRepo,
+        },
+        {
+          provide: getRepositoryToken(MealProvider),
+          useValue: mockProviderRepo,
+        },
         { provide: getRepositoryToken(Payment), useValue: mockPaymentRepo },
-        { provide: getRepositoryToken(ProviderSettlementAudit), useValue: mockAuditRepo },
+        {
+          provide: getRepositoryToken(ProviderSettlementAudit),
+          useValue: mockAuditRepo,
+        },
       ],
     }).compile();
 
@@ -337,7 +348,9 @@ describe('Admin Provider Earnings & Manual Settlement Specification', () => {
     const res = await controller.markPaid(mockReq, 'earn-2');
     expect(res.success).toBe(true);
     expect(res.alreadyPaid).toBe(true);
-    expect(res.message).toBe('These earnings have already been marked as paid.');
+    expect(res.message).toBe(
+      'These earnings have already been marked as paid.',
+    );
   });
 
   // 11. No duplicate audit from repeated settlement
@@ -404,9 +417,9 @@ describe('Admin Provider Earnings & Manual Settlement Specification', () => {
     });
 
     const mockReq: any = { user: adminUser };
-    await expect(
-      controller.markPaid(mockReq, 'earn-refunded'),
-    ).rejects.toThrow(BadRequestException);
+    await expect(controller.markPaid(mockReq, 'earn-refunded')).rejects.toThrow(
+      BadRequestException,
+    );
   });
 
   // 17. Unauthorized provider cannot settle another provider
@@ -479,7 +492,9 @@ describe('Admin Provider Earnings & Manual Settlement Specification', () => {
     expect(res2.success).toBe(true);
 
     // One succeeds with alreadyPaid false, the second reports alreadyPaid true (or both gracefully succeed)
-    const alreadyPaidCount = [res1.alreadyPaid, res2.alreadyPaid].filter(Boolean).length;
+    const alreadyPaidCount = [res1.alreadyPaid, res2.alreadyPaid].filter(
+      Boolean,
+    ).length;
     expect(alreadyPaidCount).toBeGreaterThanOrEqual(1);
 
     // Audits must not exceed 1

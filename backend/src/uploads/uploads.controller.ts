@@ -23,7 +23,7 @@ import { UploadsService } from './uploads.service';
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('providers')
 export class UploadsController {
-  constructor(private readonly uploadsService: UploadsService) {}
+  constructor(private readonly uploadsService: UploadsService) { }
 
   @Post('upload-image')
   @Roles(Role.PROVIDER)

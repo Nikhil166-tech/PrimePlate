@@ -97,7 +97,7 @@ export async function renderOwnerPortal() {
   let subscriberAttendanceError: string | null = null;
   let subscriberCalendarUnmount: (() => void) | null = null;
   let showManagePanel = false;
-  let mobileSheet: 'NONE' | 'MANAGE_PG' | 'SUBSCRIBERS' | 'WEEKLY_MENU' | 'REVIEWS' | 'EARNINGS_HISTORY' | 'HOSTEL_IMAGES' | 'MEAL_QR' | 'TODAYS_CHECKINS' | 'MEAL_RECOVERY' = 'NONE';
+  let mobileSheet: 'NONE' | 'MANAGE_PG' | 'SUBSCRIBERS' | 'WEEKLY_MENU' | 'REVIEWS' | 'EARNINGS_HISTORY' | 'HOSTEL_IMAGES' | 'MEAL_QR' | 'TODAYS_CHECKINS' | 'MEAL_RECOVERY' | 'RECOVERY_SETTINGS' = 'NONE';
   let recoveryStats: {
     providerId?: string;
     providerName?: string;
@@ -532,43 +532,101 @@ export async function renderOwnerPortal() {
           </button>
         </div>
 
-        <!-- Meal Recovery Policy Settings Card -->
-        <div style="display: flex; flex-direction: column; gap: 10px; padding: 14px; background: var(--color-neutral-50); border: 1px solid var(--color-neutral-200); border-radius: 14px;">
-          <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 8px;">
-            <div>
-              <span style="font-size: 11px; font-weight: 700; color: var(--color-neutral-500); text-transform: uppercase; display: block; margin-bottom: 2px;">
-                Meal Recovery Policy
-              </span>
-              <span style="font-size: 14px; font-weight: 800; color: var(--color-neutral-900);">
-                Current Rate: <strong style="color: var(--color-primary-600); font-size: 16px;">${selectedHostel?.recoveryPercentage ?? recoveryStats?.recoveryPercentage ?? 80}%</strong>
-              </span>
-            </div>
-            <span style="font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 999px; background: #ecfdf5; color: #047857; display: inline-flex; align-items: center; gap: 4px;">
-              <i class="fa-solid fa-shield-halved"></i> Active Policy
+        ${renderRecoveryPolicyCard()}
+      </div>
+    `;
+
+    const renderRecoveryPolicyCard = () => `
+      <!-- Meal Recovery Policy Settings Card -->
+      <div style="display: flex; flex-direction: column; gap: 10px; padding: 14px; background: var(--color-neutral-50); border: 1px solid var(--color-neutral-200); border-radius: 14px;">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 8px;">
+          <div>
+            <span style="font-size: 11px; font-weight: 700; color: var(--color-neutral-500); text-transform: uppercase; display: block; margin-bottom: 2px;">
+              Meal Recovery Policy
+            </span>
+            <span style="font-size: 14px; font-weight: 800; color: var(--color-neutral-900);">
+              Current Rate: <strong style="color: var(--color-primary-600); font-size: 16px;">${selectedHostel?.recoveryPercentage ?? recoveryStats?.recoveryPercentage ?? 80}%</strong>
             </span>
           </div>
+          <span style="font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 999px; background: #ecfdf5; color: #047857; display: inline-flex; align-items: center; gap: 4px;">
+            <i class="fa-solid fa-shield-halved"></i> Active Policy
+          </span>
+        </div>
 
-          <p style="font-size: 12px; color: var(--color-neutral-600); margin: 0; line-height: 1.4;">
-            Students will receive <strong>${selectedHostel?.recoveryPercentage ?? recoveryStats?.recoveryPercentage ?? 80}%</strong> of their unattended meal days as recovery days added to their next subscription at your mess.
-          </p>
+        <p style="font-size: 12px; color: var(--color-neutral-600); margin: 0; line-height: 1.4;">
+          Students will receive <strong>${selectedHostel?.recoveryPercentage ?? recoveryStats?.recoveryPercentage ?? 80}%</strong> of their unattended meal days as recovery days added to their next subscription at your mess.
+        </p>
 
-          <div style="display: flex; flex-direction: column; gap: 6px; margin-top: 4px;">
-            <span style="font-size: 11px; font-weight: 700; color: var(--color-neutral-500); text-transform: uppercase;">Select Recovery Percentage:</span>
-            <div style="display: flex; gap: 8px; flex-wrap: wrap;" class="recovery-percentage-button-group">
-              ${[50, 60, 70, 80, 90, 100].map((pct) => {
-      const currentPct = selectedHostel?.recoveryPercentage ?? recoveryStats?.recoveryPercentage ?? 80;
-      const isActive = currentPct === pct;
-      return `
-                  <button type="button" class="set-recovery-pct-btn btn-outline-action" data-pct="${pct}" style="padding: 6px 14px; font-size: 12px; font-weight: 800; border-radius: 8px; cursor: pointer; transition: all 0.15s ease; ${isActive
-          ? 'background: var(--color-primary-600); color: #fff; border-color: var(--color-primary-600); box-shadow: 0 2px 6px rgba(234, 88, 12, 0.25);'
-          : 'background: #fff; color: var(--color-neutral-700); border-color: var(--color-neutral-300);'
-        }">
-                    ${pct}%
-                  </button>
-                `;
-    }).join('')}
-            </div>
+        <div style="display: flex; flex-direction: column; gap: 6px; margin-top: 4px;">
+          <span style="font-size: 11px; font-weight: 700; color: var(--color-neutral-500); text-transform: uppercase;">Select Recovery Percentage:</span>
+          <div style="display: flex; gap: 8px; flex-wrap: wrap;" class="recovery-percentage-button-group">
+            ${[50, 60, 70, 80, 90, 100].map((pct) => {
+              const currentPct = selectedHostel?.recoveryPercentage ?? recoveryStats?.recoveryPercentage ?? 80;
+              const isActive = currentPct === pct;
+              return `
+                <button type="button" class="set-recovery-pct-btn btn-outline-action" data-pct="${pct}" style="padding: 6px 14px; font-size: 12px; font-weight: 800; border-radius: 8px; cursor: pointer; transition: all 0.15s ease; ${isActive
+                  ? 'background: var(--color-primary-600); color: #fff; border-color: var(--color-primary-600); box-shadow: 0 2px 6px rgba(234, 88, 12, 0.25);'
+                  : 'background: #fff; color: var(--color-neutral-700); border-color: var(--color-neutral-300);'
+                }">
+                  ${pct}%
+                </button>
+              `;
+            }).join('')}
           </div>
+        </div>
+      </div>
+    `;
+
+    const renderRecoveryStatsGrid = () => `
+      ${recoveryLoading ? `
+        <div style="text-align: center; padding: 28px;"><i class="fa-solid fa-spinner fa-spin" style="font-size: 22px; color: var(--color-primary-600);"></i></div>
+      ` : recoveryStats ? `
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px;">
+          <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 14px; padding: 14px;">
+            <span style="font-size: 11px; font-weight: 700; color: #15803d; text-transform: uppercase; display: block; margin-bottom: 4px;">Recovery Rate</span>
+            <p style="font-size: 24px; font-weight: 800; color: #166534; margin: 0;">${recoveryStats.recoveryPercentage ?? 80}%</p>
+            <span style="font-size: 11px; color: #15803d;">Current policy</span>
+          </div>
+          <div style="background: #fffbeb; border: 1px solid #fde68a; border-radius: 14px; padding: 14px;">
+            <span style="font-size: 11px; font-weight: 700; color: #92400e; text-transform: uppercase; display: block; margin-bottom: 4px;">Missed Days</span>
+            <p style="font-size: 24px; font-weight: 800; color: #78350f; margin: 0;">${recoveryStats.missedMealDays ?? 0}</p>
+            <span style="font-size: 11px; color: #92400e;">Across all subs</span>
+          </div>
+          <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 14px; padding: 14px;">
+            <span style="font-size: 11px; font-weight: 700; color: #1d4ed8; text-transform: uppercase; display: block; margin-bottom: 4px;">Granted</span>
+            <p style="font-size: 24px; font-weight: 800; color: #1e40af; margin: 0;">${recoveryStats.recoveryDaysGranted ?? 0}</p>
+            <span style="font-size: 11px; color: #1d4ed8;">Total granted</span>
+          </div>
+          <div style="background: #fdf4ff; border: 1px solid #e9d5ff; border-radius: 14px; padding: 14px;">
+            <span style="font-size: 11px; font-weight: 700; color: #7e22ce; text-transform: uppercase; display: block; margin-bottom: 4px;">Used</span>
+            <p style="font-size: 24px; font-weight: 800; color: #6b21a8; margin: 0;">${recoveryStats.recoveryDaysUsed ?? 0}</p>
+            <span style="font-size: 11px; color: #7e22ce;">Consumed</span>
+          </div>
+          <div style="background: #f0fdf4; border: 1px solid #86efac; border-radius: 14px; padding: 14px;">
+            <span style="font-size: 11px; font-weight: 700; color: #15803d; text-transform: uppercase; display: block; margin-bottom: 4px;">Remaining</span>
+            <p style="font-size: 24px; font-weight: 800; color: #166534; margin: 0;">${recoveryStats.recoveryDaysRemaining ?? 0}</p>
+            <span style="font-size: 11px; color: #15803d;">Pending use</span>
+          </div>
+        </div>
+      ` : `
+        <div style="text-align: center; padding: 28px; background: var(--color-neutral-50); border: 1px dashed var(--color-neutral-300); border-radius: 16px;">
+          <p style="font-size: 13px; color: var(--color-neutral-500); margin: 0;">No recovery records yet. Process a subscription to generate recovery data.</p>
+        </div>
+      `}
+    `;
+
+    const renderRecoverySettingsContent = () => `
+      <div style="display: flex; flex-direction: column; gap: 20px;">
+        ${renderRecoveryPolicyCard()}
+
+        <div>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+            <h4 style="font-size: 14px; font-weight: 700; color: var(--color-neutral-900); margin: 0; display: flex; align-items: center; gap: 6px;">
+              <i class="fa-solid fa-chart-pie" style="color: #047857;"></i> Cumulative Recovery Stats
+            </h4>
+            <span style="font-size: 12px; color: var(--color-neutral-500);">Data across all subscribers</span>
+          </div>
+          ${renderRecoveryStatsGrid()}
         </div>
       </div>
     `;
@@ -1608,6 +1666,16 @@ export async function renderOwnerPortal() {
                       View Reviews
                     </button>
                   </div>
+
+                  <div class="compact-action-card">
+                    <div>
+                      <span style="font-size: 14px; font-weight: 700; color: var(--color-neutral-900); display: block;"><i class="fa-solid fa-sliders" style="color: #047857; margin-right: 6px;"></i> Recovery Settings</span>
+                      <span style="font-size: 12px; font-weight: 600; color: var(--color-neutral-600);">${selectedHostel?.recoveryPercentage ?? recoveryStats?.recoveryPercentage ?? 80}% Policy Active</span>
+                    </div>
+                    <button class="open-recovery-settings-sheet-btn btn-outline-action" style="padding: 8px 14px; font-size: 12px; font-weight: 700; border-radius: 10px; min-height: 40px; background: #fff;">
+                      Configure Rate
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -1752,51 +1820,17 @@ export async function renderOwnerPortal() {
                   ${renderTodayCheckInsContent()}
                 </div>
 
-                <!-- Meal Recovery Stats Section -->
-                <div id="recoveryStatsSection" style="background: #fff; border: 1px solid var(--color-neutral-200); border-radius: 24px; padding: 24px; margin-bottom: 24px; box-shadow: 0 4px 12px rgba(0,0,0,0.03);">
-                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; border-bottom: 1px solid var(--color-neutral-100); padding-bottom: 14px; flex-wrap: wrap; gap: 8px;">
+                <!-- Recovery Settings & Stats Section -->
+                <div id="recoverySettingsSection" style="background: #fff; border: 1px solid var(--color-neutral-200); border-radius: 24px; padding: 24px; margin-bottom: 24px; box-shadow: 0 4px 12px rgba(0,0,0,0.03);">
+                  <div id="recoveryStatsSection" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; border-bottom: 1px solid var(--color-neutral-100); padding-bottom: 14px; flex-wrap: wrap; gap: 8px;">
                     <div>
                       <h3 class="font-display" style="font-size: 18px; font-weight: 700; color: var(--color-neutral-900); margin: 0 0 2px 0;">
-                        <i class="fa-solid fa-shield-halved" style="color: #047857; margin-right: 6px;"></i> Meal Recovery Stats
+                        <i class="fa-solid fa-sliders" style="color: #047857; margin-right: 6px;"></i> Recovery Settings & Stats
                       </h3>
-                      <span style="font-size: 12px; color: var(--color-neutral-500);">Cumulative recovery data across all subscribers</span>
+                      <span style="font-size: 12px; color: var(--color-neutral-500);">Adjust policy rate (50% – 100%) and view cumulative recovery statistics</span>
                     </div>
                   </div>
-                  ${recoveryLoading ? `
-                    <div style="text-align: center; padding: 28px;"><i class="fa-solid fa-spinner fa-spin" style="font-size: 22px; color: var(--color-primary-600);"></i></div>
-                  ` : recoveryStats ? `
-                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px;">
-                      <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 14px; padding: 14px;">
-                        <span style="font-size: 11px; font-weight: 700; color: #15803d; text-transform: uppercase; display: block; margin-bottom: 4px;">Recovery Rate</span>
-                        <p style="font-size: 26px; font-weight: 800; color: #166534; margin: 0;">${recoveryStats.recoveryPercentage ?? 80}%</p>
-                        <span style="font-size: 11px; color: #15803d;">Current policy</span>
-                      </div>
-                      <div style="background: #fffbeb; border: 1px solid #fde68a; border-radius: 14px; padding: 14px;">
-                        <span style="font-size: 11px; font-weight: 700; color: #92400e; text-transform: uppercase; display: block; margin-bottom: 4px;">Missed Days</span>
-                        <p style="font-size: 26px; font-weight: 800; color: #78350f; margin: 0;">${recoveryStats.missedMealDays ?? 0}</p>
-                        <span style="font-size: 11px; color: #92400e;">Across all subs</span>
-                      </div>
-                      <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 14px; padding: 14px;">
-                        <span style="font-size: 11px; font-weight: 700; color: #1d4ed8; text-transform: uppercase; display: block; margin-bottom: 4px;">Granted</span>
-                        <p style="font-size: 26px; font-weight: 800; color: #1e40af; margin: 0;">${recoveryStats.recoveryDaysGranted ?? 0}</p>
-                        <span style="font-size: 11px; color: #1d4ed8;">Total granted</span>
-                      </div>
-                      <div style="background: #fdf4ff; border: 1px solid #e9d5ff; border-radius: 14px; padding: 14px;">
-                        <span style="font-size: 11px; font-weight: 700; color: #7e22ce; text-transform: uppercase; display: block; margin-bottom: 4px;">Used</span>
-                        <p style="font-size: 26px; font-weight: 800; color: #6b21a8; margin: 0;">${recoveryStats.recoveryDaysUsed ?? 0}</p>
-                        <span style="font-size: 11px; color: #7e22ce;">Consumed</span>
-                      </div>
-                      <div style="background: #f0fdf4; border: 1px solid #86efac; border-radius: 14px; padding: 14px;">
-                        <span style="font-size: 11px; font-weight: 700; color: #15803d; text-transform: uppercase; display: block; margin-bottom: 4px;">Remaining</span>
-                        <p style="font-size: 26px; font-weight: 800; color: #166534; margin: 0;">${recoveryStats.recoveryDaysRemaining ?? 0}</p>
-                        <span style="font-size: 11px; color: #15803d;">Pending use</span>
-                      </div>
-                    </div>
-                  ` : `
-                    <div style="text-align: center; padding: 28px; background: var(--color-neutral-50); border: 1px dashed var(--color-neutral-300); border-radius: 16px;">
-                      <p style="font-size: 13px; color: var(--color-neutral-500); margin: 0;">No recovery records yet. Process a subscription to generate recovery data.</p>
-                    </div>
-                  `}
+                  ${renderRecoverySettingsContent()}
                 </div>
               </div>
             `
@@ -1818,7 +1852,8 @@ export async function renderOwnerPortal() {
                   mobileSheet === 'WEEKLY_MENU' ? 'Weekly Menu Editor' :
                     mobileSheet === 'REVIEWS' ? 'Provider Reviews' :
                       mobileSheet === 'EARNINGS_HISTORY' ? 'Provider Earnings History' :
-                        'Details'}
+                        (mobileSheet === 'RECOVERY_SETTINGS' || mobileSheet === 'MEAL_RECOVERY') ? 'Recovery Settings' :
+                          'Details'}
               </h3>
               <button class="close-mobile-sheet-btn" style="background: none; border: none; font-size: 24px; cursor: pointer; color: var(--color-neutral-500); padding: 4px 8px;">&times;</button>
             </div>
@@ -1840,7 +1875,8 @@ export async function renderOwnerPortal() {
                       </div>
                     </div>
                   ` :
-                        renderManagePgContent()
+                        (mobileSheet === 'RECOVERY_SETTINGS' || mobileSheet === 'MEAL_RECOVERY') ? renderRecoverySettingsContent() :
+                          renderManagePgContent()
         }
           </div>
         </div>
@@ -2902,6 +2938,13 @@ export async function renderOwnerPortal() {
     document.querySelectorAll('.open-reviews-sheet-btn').forEach((btn) => {
       btn.addEventListener('click', () => {
         mobileSheet = 'REVIEWS';
+        render();
+      });
+    });
+
+    document.querySelectorAll('.open-recovery-settings-sheet-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        mobileSheet = 'RECOVERY_SETTINGS';
         render();
       });
     });

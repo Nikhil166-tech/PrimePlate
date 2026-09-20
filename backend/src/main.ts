@@ -176,4 +176,4 @@ async function bootstrap() {
     `📚 OpenAPI Swagger Documentation: http://localhost:${port}/api/v1/docs`,
   );
 }
-bootstrap();
+void bootstrap();

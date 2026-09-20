@@ -601,18 +601,6 @@ export function renderProviderBottomNav(currentPath: string): string {
           <i class="fa-solid fa-chevron-right more-item-arrow"></i>
         </button>
 
-        <!-- 🎁 Meal Recovery -->
-        <button type="button" class="provider-more-item" id="providerMoreRecoveryBtn">
-          <div class="more-item-icon-box" style="background: #ecfdf5; color: #059669;">
-            <i class="fa-solid fa-shield-halved"></i>
-          </div>
-          <div class="more-item-text">
-            <strong class="more-item-title">Meal Recovery</strong>
-            <span class="more-item-desc">Policy percentage & recovery statistics</span>
-          </div>
-          <i class="fa-solid fa-chevron-right more-item-arrow"></i>
-        </button>
-
         <!-- ⚙ Recovery Settings -->
         <button type="button" class="provider-more-item" id="providerMoreRecoverySettingsBtn">
           <div class="more-item-icon-box" style="background: #f0fdf4; color: #16a34a;">
@@ -620,7 +608,7 @@ export function renderProviderBottomNav(currentPath: string): string {
           </div>
           <div class="more-item-text">
             <strong class="more-item-title">Recovery Settings</strong>
-            <span class="more-item-desc">Adjust policy rate (50% – 100%)</span>
+            <span class="more-item-desc">Adjust policy rate (50% – 100%) & stats</span>
           </div>
           <i class="fa-solid fa-chevron-right more-item-arrow"></i>
         </button>
@@ -946,23 +934,17 @@ export function attachProviderBottomNavEvents(): void {
     }
   });
 
-  // 🎁 Meal Recovery
-  document.getElementById('providerMoreRecoveryBtn')?.addEventListener('click', () => {
-    closeSheet();
-    closeOwnerMobileSheetOverlay();
-    const recSec = document.getElementById('recoveryStatsSection');
-    if (recSec) {
-      recSec.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
-  });
-
   // ⚙ Recovery Settings
   document.getElementById('providerMoreRecoverySettingsBtn')?.addEventListener('click', () => {
     closeSheet();
-    closeOwnerMobileSheetOverlay();
-    const recSec = document.getElementById('recoveryStatsSection');
-    if (recSec) {
-      recSec.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    const openRecoveryBtn = document.querySelector('.open-recovery-settings-sheet-btn') as HTMLElement | null;
+    if (openRecoveryBtn) {
+      openRecoveryBtn.click();
+    } else {
+      const recSec = document.getElementById('recoverySettingsSection') || document.getElementById('recoveryStatsSection');
+      if (recSec) {
+        recSec.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
     }
   });
 

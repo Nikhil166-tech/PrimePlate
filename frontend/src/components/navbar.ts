@@ -89,10 +89,16 @@ export function renderNavbar(): string {
           ${authBtnHtml}
         </div>
 
-        <!-- Mobile Toggle Button -->
-        <button id="mobileNavToggleBtn" class="mobile-nav-toggle" aria-label="Toggle navigation">
-          <i class="fa-solid fa-bars" id="mobileNavToggleIcon"></i>
-        </button>
+        <!-- Mobile Action: Hamburger if Logged In, Sign In Button if Logged Out -->
+        ${
+          token
+            ? `<button id="mobileNavToggleBtn" class="mobile-nav-toggle" aria-label="Toggle navigation">
+                 <i class="fa-solid fa-bars" id="mobileNavToggleIcon"></i>
+               </button>`
+            : `<a href="/login" class="mobile-auth-btn btn-primary-action" style="padding: 7px 14px; font-size: 13px; font-weight: 700; border-radius: 10px; text-decoration: none;">
+                 <i class="fa-solid fa-user"></i> Sign In
+               </a>`
+        }
       </div>
 
       <!-- Mobile Dropdown Drawer -->

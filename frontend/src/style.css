@@ -882,6 +882,10 @@ body {
    Responsive Utilities & Layout Controls
    ========================================================================== */
 
+.mobile-auth-btn {
+  display: none;
+}
+
 .mobile-nav-toggle {
   display: none;
   background: transparent;
@@ -941,6 +945,10 @@ body {
 
   .mobile-nav-toggle {
     display: flex;
+  }
+
+  .mobile-auth-btn {
+    display: inline-flex !important;
   }
 
   .navbar-container {

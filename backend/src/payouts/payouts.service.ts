@@ -46,14 +46,14 @@ export class PayoutsService {
           where: { user: { id: userId } },
         });
         if (single) providers.push(single);
-      } catch (_) {}
+      } catch {}
       if (providers.length === 0) {
         try {
           const single = await this.providerRepo.findOne({
             where: { userId: userId },
           });
           if (single) providers.push(single);
-        } catch (_) {}
+        } catch {}
       }
     }
 
@@ -70,7 +70,7 @@ export class PayoutsService {
             }
           }
         }
-      } catch (_) {}
+      } catch {}
       try {
         const listByCol = await this.providerRepo.find({
           where: { userId: userId },
@@ -82,7 +82,7 @@ export class PayoutsService {
             }
           }
         }
-      } catch (_) {}
+      } catch {}
     }
 
     if (!providers || providers.length === 0) {
@@ -254,8 +254,9 @@ export class PayoutsService {
     }
 
     const grossAmount = Number(payment.amount);
-    const platformFee = 0; // Current 0% commission business model
-    const providerAmount = grossAmount - platformFee;
+    const platformFee = Number(payment.platformFee || 0);
+    const mealAmount = Number(payment.mealAmount || grossAmount - platformFee);
+    const providerAmount = Math.max(0, mealAmount);
 
     if (manager) {
       const existing = await manager.findOne(ProviderEarning, {

@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { Repository, DataSource } from 'typeorm';
+import { DataSource } from 'typeorm';
 import { BadRequestException, ForbiddenException } from '@nestjs/common';
 
 // Entities & Services
@@ -28,7 +28,6 @@ describe('PrimePlate Comprehensive QA Suite (Sections 19, 24, 26, 27, 28, 30, 40
   // Section 19 & 40: Historical Price / Revenue
   describe('SECTION 19 & 40: Historical Price and Revenue Integrity', () => {
     let analyticsService: AnalyticsService;
-    let paymentRepo: Repository<Payment>;
 
     const mockPayments: Payment[] = [
       { id: 'p1', amount: 3000, status: 'paid' } as Payment,
@@ -71,9 +70,6 @@ describe('PrimePlate Comprehensive QA Suite (Sections 19, 24, 26, 27, 28, 30, 40
       }).compile();
 
       analyticsService = module.get<AnalyticsService>(AnalyticsService);
-      paymentRepo = module.get<Repository<Payment>>(
-        getRepositoryToken(Payment),
-      );
     });
 
     it('calculates total revenue as ₹10,500 from historical paid records (excluding failed/unverified)', async () => {
@@ -124,7 +120,6 @@ describe('PrimePlate Comprehensive QA Suite (Sections 19, 24, 26, 27, 28, 30, 40
     let subscriptionRepo: any;
 
     const studentA: any = { id: 'student-A', name: 'Alice' };
-    const studentB: any = { id: 'student-B', name: 'Bob' };
     const providerObj: any = {
       id: 'prov-1',
       name: 'Alpha Mess',

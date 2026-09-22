@@ -17,6 +17,21 @@ export class Payment {
   @Column('decimal', { precision: 10, scale: 2 })
   amount: number;
 
+  @Column('decimal', { precision: 10, scale: 2, default: 0 })
+  mealAmount: number;
+
+  @Column('decimal', { precision: 10, scale: 2, default: 0 })
+  platformFee: number;
+
+  @Column('decimal', { precision: 10, scale: 2, nullable: true })
+  totalAmount?: number | null;
+
+  @Column({ type: 'varchar', length: 32, nullable: true })
+  platformFeeType?: string | null;
+
+  @Column({ type: 'varchar', length: 128, nullable: true })
+  platformFeeLabel?: string | null;
+
   @Index({ unique: true })
   @Column()
   razorpayOrderId: string;

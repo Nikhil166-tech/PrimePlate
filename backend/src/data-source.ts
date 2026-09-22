@@ -15,7 +15,7 @@ export const AppDataSource = new DataSource(
         migrationsRun: true,
         logging: true,
         entities: [__dirname + '/**/*.entity{.ts,.js}'],
-        migrations: [__dirname + '/migrations/*{.ts,.js}'],
+        migrations: [__dirname + '/migrations/[0-9]*-*{.ts,.js}'],
         ssl: useSsl ? { rejectUnauthorized: false } : false,
       }
     : {
@@ -24,6 +24,6 @@ export const AppDataSource = new DataSource(
         synchronize: false,
         logging: true,
         entities: [__dirname + '/**/*.entity{.ts,.js}'],
-        migrations: [__dirname + '/migrations/*{.ts,.js}'],
+        migrations: [__dirname + '/migrations/[0-9]*-*{.ts,.js}'],
       },
 );

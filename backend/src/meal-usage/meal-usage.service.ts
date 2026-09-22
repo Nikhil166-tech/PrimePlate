@@ -92,7 +92,10 @@ export class MealUsageService {
     qrDataUrl: string;
   }> {
     const where: any = providerId
-      ? [{ id: providerId, userId }, { id: providerId, user: { id: userId } }]
+      ? [
+          { id: providerId, userId },
+          { id: providerId, user: { id: userId } },
+        ]
       : [{ userId }, { user: { id: userId } }];
 
     const provider = await this.providerRepo.findOne({

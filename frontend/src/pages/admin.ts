@@ -38,6 +38,9 @@ export async function renderAdminPortal() {
           <a href="/admin/earnings" class="btn-outline-action" style="font-size: 13px; text-decoration: none; padding: 8px 16px; border-radius: 999px; white-space: nowrap;">
             <i class="fa-solid fa-wallet"></i> Provider Earnings
           </a>
+          <a href="/admin/settings" class="btn-outline-action" style="font-size: 13px; text-decoration: none; padding: 8px 16px; border-radius: 999px; white-space: nowrap;">
+            <i class="fa-solid fa-sliders"></i> Platform & Fee Settings
+          </a>
         </div>
 
         <!-- Metrics Overview from Analytics Module -->

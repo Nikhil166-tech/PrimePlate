@@ -27,6 +27,7 @@ import {
 } from '../payouts/provider-earning.entity';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { MealRecoveryService } from '../meal-recovery/meal-recovery.service';
+import { SettingsService } from '../settings/settings.service';
 import * as crypto from 'crypto';
 import Razorpay from 'razorpay';
 
@@ -122,6 +123,8 @@ export class PaymentsService {
     private readonly subscriptionsService: SubscriptionsService,
     @Optional()
     private readonly mealRecoveryService?: MealRecoveryService,
+    @Optional()
+    private readonly settingsService?: SettingsService,
   ) {
     const keyId = this.config.get<string>('RAZORPAY_KEY_ID');
     const keySecret = this.config.get<string>('RAZORPAY_KEY_SECRET');
@@ -172,12 +175,26 @@ export class PaymentsService {
     const baseMonthlyPrice = Number(
       plan.sellingPrice ?? plan.pricePerMonth ?? provider?.monthlyPrice ?? 0,
     );
-    const authoritativeAmount = calculateAuthoritativeAmount(
+    const mealAmount = calculateAuthoritativeAmount(
       baseMonthlyPrice,
       durationDays,
       plan.customOneDayPrice,
     );
-    const amountInPaise = Math.round(authoritativeAmount * 100);
+
+    // Retrieve active platform fee setting (authoritative from system_settings)
+    const feeConfig = this.settingsService
+      ? await this.settingsService.getFeeSettings()
+      : {
+          enabled: false,
+          type: 'FLAT',
+          amount: 5,
+          label: 'PrimePlate Platform Fee',
+        };
+
+    const platformFee =
+      feeConfig.enabled && feeConfig.amount > 0 ? Number(feeConfig.amount) : 0;
+    const totalAmount = mealAmount + platformFee;
+    const amountInPaise = Math.round(totalAmount * 100);
     if (amountInPaise < 100) {
       throw new BadRequestException(
         'Minimum order amount must be at least 100 paise (₹1.00)',
@@ -207,7 +224,14 @@ export class PaymentsService {
         receipt,
         status: 'created',
         key_id: keyId,
-        notes: { mealPlanId, userId, durationDays, authoritativeAmount },
+        notes: {
+          mealPlanId,
+          userId,
+          durationDays,
+          authoritativeAmount: totalAmount,
+          mealAmount,
+          platformFee,
+        },
       };
     } else {
       try {
@@ -215,7 +239,14 @@ export class PaymentsService {
           amount: amountInPaise,
           currency: 'INR',
           receipt,
-          notes: { mealPlanId, userId, durationDays, authoritativeAmount },
+          notes: {
+            mealPlanId,
+            userId,
+            durationDays,
+            authoritativeAmount: totalAmount,
+            mealAmount,
+            platformFee,
+          },
         });
         orderId = order.id;
         orderResult = {
@@ -243,16 +274,23 @@ export class PaymentsService {
           receipt,
           status: 'created',
           key_id: keyId,
-          notes: { mealPlanId, userId, durationDays, authoritativeAmount },
+          notes: {
+            mealPlanId,
+            userId,
+            durationDays,
+            authoritativeAmount: totalAmount,
+            mealAmount,
+            platformFee,
+          },
         };
       }
     }
 
     this.logger.log(
-      `CREATE_RAZORPAY_ORDER_SUCCESS: orderId=${orderId}, userId=${userId}, amount=${authoritativeAmount}`,
+      `CREATE_RAZORPAY_ORDER_SUCCESS: orderId=${orderId}, userId=${userId}, totalAmount=${totalAmount}, mealAmount=${mealAmount}, platformFee=${platformFee}`,
     );
 
-    // Pre-persist order in Payment table to establish authoritative ownership and duration metadata
+    // Pre-persist order in Payment table to establish authoritative ownership, fee snapshot, and duration metadata
     const student = await this.userRepo.findOne({ where: { id: userId } });
     if (!student) {
       throw new NotFoundException('Student user not found for order creation');
@@ -262,7 +300,12 @@ export class PaymentsService {
       const prePayment = this.paymentRepo.create({
         student,
         provider: provider || undefined,
-        amount: authoritativeAmount,
+        amount: totalAmount,
+        totalAmount,
+        mealAmount,
+        platformFee,
+        platformFeeType: feeConfig.type,
+        platformFeeLabel: feeConfig.label,
         razorpayOrderId: orderId,
         status: 'created',
         durationDays,
@@ -545,9 +588,10 @@ export class PaymentsService {
         }
       }
 
-      const studentExistingActiveForMealType = studentActiveSubsForProvider.find(
-        (s) => (s.mealPlan?.mealType || MealType.FULL_DAY) === targetMealType,
-      );
+      const studentExistingActiveForMealType =
+        studentActiveSubsForProvider.find(
+          (s) => (s.mealPlan?.mealType || MealType.FULL_DAY) === targetMealType,
+        );
 
       const effectiveActiveSeats = studentExistingActiveForMealType
         ? Math.max(0, activeCount - 1)
@@ -826,7 +870,7 @@ export class PaymentsService {
           processedAt: new Date(),
         });
         await this.webhookEventRepo.save(webhookEvent);
-      } catch (_) {}
+      } catch {}
       return { status: 'OK', message: 'payment.authorized acknowledged' };
     }
 
@@ -947,7 +991,7 @@ export class PaymentsService {
           processedAt: new Date(),
         });
         await this.webhookEventRepo.save(webhookEvent);
-      } catch (_) {}
+      } catch {}
     }
 
     return { status: 'OK' };
@@ -1309,7 +1353,7 @@ export class PaymentsService {
     if (this.subscriptionsService) {
       try {
         subscriptions = await this.subscriptionsService.findByStudent(userId);
-      } catch (_) {
+      } catch {
         subscriptions = [];
       }
     }
@@ -1514,7 +1558,7 @@ export class PaymentsService {
         if (earning?.subscription) {
           sub = earning.subscription;
         }
-      } catch (_) {}
+      } catch {}
 
       if (!sub && this.subscriptionsService) {
         try {
@@ -1525,7 +1569,7 @@ export class PaymentsService {
               s.mealPlan?.id === payment.mealPlanId ||
               (provider && s.provider?.id === provider.id),
           );
-        } catch (_) {}
+        } catch {}
       }
     }
 

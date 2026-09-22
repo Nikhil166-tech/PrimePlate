@@ -31,7 +31,7 @@ export class SeedService implements OnApplicationBootstrap {
     @InjectRepository(Review) private reviewRepo: Repository<Review>,
     @InjectRepository(WeeklyMenu)
     private weeklyMenuRepo: Repository<WeeklyMenu>,
-  ) { }
+  ) {}
 
   async onApplicationBootstrap() {
     const isProduction = process.env.NODE_ENV === 'production';
@@ -41,7 +41,7 @@ export class SeedService implements OnApplicationBootstrap {
       await this.providerRepo.query(
         `ALTER TABLE "meal_providers" ADD COLUMN IF NOT EXISTS "latitude" double precision, ADD COLUMN IF NOT EXISTS "longitude" double precision;`,
       );
-    } catch (_) {
+    } catch {
       // Ignore for SQLite or if columns exist
     }
 
@@ -49,7 +49,7 @@ export class SeedService implements OnApplicationBootstrap {
       await this.planRepo.query(
         `UPDATE "meal_plans" SET "originalPrice" = "pricePerMonth", "sellingPrice" = "pricePerMonth" WHERE "originalPrice" <= 0 OR "originalPrice" IS NULL`,
       );
-    } catch (_) {
+    } catch {
       // Ignore if table or columns not yet ready
     }
 

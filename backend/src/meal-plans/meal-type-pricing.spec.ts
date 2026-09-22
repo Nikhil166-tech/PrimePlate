@@ -11,7 +11,10 @@ import { MealUsage } from '../meal-usage/meal-usage.entity';
 import { MealUsageAudit } from '../meal-usage/meal-usage-audit.entity';
 import { User } from '../users/user.entity';
 import { DataSource } from 'typeorm';
-import { Subscription, SubscriptionStatus } from '../subscriptions/subscription.entity';
+import {
+  Subscription,
+  SubscriptionStatus,
+} from '../subscriptions/subscription.entity';
 import { MealUsageService } from '../meal-usage/meal-usage.service';
 
 describe('PrimePlate — Meal Type & Custom 1-Day Pricing Specification', () => {
@@ -127,9 +130,16 @@ describe('PrimePlate — Meal Type & Custom 1-Day Pricing Specification', () => 
       expect(dinnerOnly.customOneDayPrice).toBe(65);
 
       // Verify all 3 meal plans exist independently for the provider
-      const plans = await mealPlansService.findByProvider(mockProvider.id, true);
+      const plans = await mealPlansService.findByProvider(
+        mockProvider.id,
+        true,
+      );
       expect(plans.length).toBe(3);
-      expect(plans.map((p) => p.mealType).sort()).toEqual([MealType.DINNER_ONLY, MealType.FULL_DAY, MealType.LUNCH_ONLY]);
+      expect(plans.map((p) => p.mealType).sort()).toEqual([
+        MealType.DINNER_ONLY,
+        MealType.FULL_DAY,
+        MealType.LUNCH_ONLY,
+      ]);
     });
 
     it('defaults mealType to FULL_DAY if not specified', async () => {
@@ -180,9 +190,15 @@ describe('PrimePlate — Meal Type & Custom 1-Day Pricing Specification', () => 
     });
 
     it('rejects duration 1 if customOneDayPrice is missing or not configured', () => {
-      expect(() => calculateAuthoritativeAmount(2500, 1, undefined)).toThrow(BadRequestException);
-      expect(() => calculateAuthoritativeAmount(2500, 1, null)).toThrow(BadRequestException);
-      expect(() => calculateAuthoritativeAmount(2500, 1, 0)).toThrow(BadRequestException);
+      expect(() => calculateAuthoritativeAmount(2500, 1, undefined)).toThrow(
+        BadRequestException,
+      );
+      expect(() => calculateAuthoritativeAmount(2500, 1, null)).toThrow(
+        BadRequestException,
+      );
+      expect(() => calculateAuthoritativeAmount(2500, 1, 0)).toThrow(
+        BadRequestException,
+      );
     });
   });
 
@@ -210,13 +226,21 @@ describe('PrimePlate — Meal Type & Custom 1-Day Pricing Specification', () => 
         providers: [
           MealRecoveryService,
           { provide: getRepositoryToken(MealRecovery), useValue: recoveryRepo },
-          { provide: getRepositoryToken(MealProvider), useValue: { findOne: jest.fn().mockResolvedValue({ id: 'prov-1', recoveryPercentage: 80 }) } },
+          {
+            provide: getRepositoryToken(MealProvider),
+            useValue: {
+              findOne: jest
+                .fn()
+                .mockResolvedValue({ id: 'prov-1', recoveryPercentage: 80 }),
+            },
+          },
           { provide: getRepositoryToken(MealUsage), useValue: usageRepo },
           { provide: getRepositoryToken(Subscription), useValue: subRepo },
         ],
       }).compile();
 
-      mealRecoveryService = module.get<MealRecoveryService>(MealRecoveryService);
+      mealRecoveryService =
+        module.get<MealRecoveryService>(MealRecoveryService);
     });
 
     it('gracefully skips meal recovery processing for LUNCH_ONLY subscription without creating records', async () => {
@@ -227,11 +251,16 @@ describe('PrimePlate — Meal Type & Custom 1-Day Pricing Specification', () => 
         endDate: '2026-08-30',
         student: { id: 'stud-1', email: 'stud@test.com' },
         provider: { id: 'prov-1' },
-        mealPlan: { id: 'plan-lunch', mealType: MealType.LUNCH_ONLY, provider: { id: 'prov-1', recoveryPercentage: 80 } },
+        mealPlan: {
+          id: 'plan-lunch',
+          mealType: MealType.LUNCH_ONLY,
+          provider: { id: 'prov-1', recoveryPercentage: 80 },
+        },
       };
       subRepo.findOne.mockResolvedValue(lunchSub);
 
-      const result = await mealRecoveryService.processSubscriptionRecovery('sub-lunch');
+      const result =
+        await mealRecoveryService.processSubscriptionRecovery('sub-lunch');
       expect(result.processed).toBe(false);
       expect(result.recovery).toBeNull();
       expect(recoveryRepo.save).not.toHaveBeenCalled();
@@ -245,11 +274,16 @@ describe('PrimePlate — Meal Type & Custom 1-Day Pricing Specification', () => 
         endDate: '2026-08-30',
         student: { id: 'stud-1', email: 'stud@test.com' },
         provider: { id: 'prov-1' },
-        mealPlan: { id: 'plan-dinner', mealType: MealType.DINNER_ONLY, provider: { id: 'prov-1', recoveryPercentage: 80 } },
+        mealPlan: {
+          id: 'plan-dinner',
+          mealType: MealType.DINNER_ONLY,
+          provider: { id: 'prov-1', recoveryPercentage: 80 },
+        },
       };
       subRepo.findOne.mockResolvedValue(dinnerSub);
 
-      const result = await mealRecoveryService.processSubscriptionRecovery('sub-dinner');
+      const result =
+        await mealRecoveryService.processSubscriptionRecovery('sub-dinner');
       expect(result.processed).toBe(false);
       expect(result.recovery).toBeNull();
       expect(recoveryRepo.save).not.toHaveBeenCalled();
@@ -263,12 +297,17 @@ describe('PrimePlate — Meal Type & Custom 1-Day Pricing Specification', () => 
         endDate: '2026-08-05',
         student: { id: 'stud-1', email: 'stud@test.com' },
         provider: { id: 'prov-1', recoveryPercentage: 80 },
-        mealPlan: { id: 'plan-full', mealType: MealType.FULL_DAY, provider: { id: 'prov-1', recoveryPercentage: 80 } },
+        mealPlan: {
+          id: 'plan-full',
+          mealType: MealType.FULL_DAY,
+          provider: { id: 'prov-1', recoveryPercentage: 80 },
+        },
       };
       subRepo.findOne.mockResolvedValue(fullDaySub);
       recoveryRepo.findOne.mockResolvedValue(null);
 
-      const result = await mealRecoveryService.processSubscriptionRecovery('sub-fullday');
+      const result =
+        await mealRecoveryService.processSubscriptionRecovery('sub-fullday');
       expect(result).toBeDefined();
       expect(result.processed).toBe(true);
       expect(recoveryRepo.save).toHaveBeenCalled();
@@ -293,7 +332,12 @@ describe('PrimePlate — Meal Type & Custom 1-Day Pricing Specification', () => 
     const mockLunchSub = {
       id: 'sub-lunch-101',
       student: { id: 'student-A' },
-      mealPlan: { id: 'plan-lunch', title: 'Lunch Plan', provider: { id: 'prov-mess-1' }, mealType: MealType.LUNCH_ONLY },
+      mealPlan: {
+        id: 'plan-lunch',
+        title: 'Lunch Plan',
+        provider: { id: 'prov-mess-1' },
+        mealType: MealType.LUNCH_ONLY,
+      },
       status: SubscriptionStatus.ACTIVE,
       paymentStatus: 'PAID',
       startDate: '2026-01-01',
@@ -303,7 +347,12 @@ describe('PrimePlate — Meal Type & Custom 1-Day Pricing Specification', () => 
     const mockDinnerSub = {
       id: 'sub-dinner-202',
       student: { id: 'student-A' },
-      mealPlan: { id: 'plan-dinner', title: 'Dinner Plan', provider: { id: 'prov-mess-1' }, mealType: MealType.DINNER_ONLY },
+      mealPlan: {
+        id: 'plan-dinner',
+        title: 'Dinner Plan',
+        provider: { id: 'prov-mess-1' },
+        mealType: MealType.DINNER_ONLY,
+      },
       status: SubscriptionStatus.ACTIVE,
       paymentStatus: 'PAID',
       startDate: '2026-01-01',
@@ -317,11 +366,17 @@ describe('PrimePlate — Meal Type & Custom 1-Day Pricing Specification', () => 
 
       usageRepo = {
         findOne: jest.fn(async ({ where }) => {
-          return usageDb.find((u) => {
-            if (where.subscriptionId && u.subscriptionId !== where.subscriptionId) return false;
-            if (where.mealDate && u.mealDate !== where.mealDate) return false;
-            return true;
-          }) || null;
+          return (
+            usageDb.find((u) => {
+              if (
+                where.subscriptionId &&
+                u.subscriptionId !== where.subscriptionId
+              )
+                return false;
+              if (where.mealDate && u.mealDate !== where.mealDate) return false;
+              return true;
+            }) || null
+          );
         }),
         find: jest.fn(async ({ where }) => {
           return usageDb.filter((u) => {
@@ -329,7 +384,10 @@ describe('PrimePlate — Meal Type & Custom 1-Day Pricing Specification', () => 
             return true;
           });
         }),
-        create: jest.fn((dto) => ({ id: 'usage-' + Math.random().toString(36).substring(2, 8), ...dto })),
+        create: jest.fn((dto) => ({
+          id: 'usage-' + Math.random().toString(36).substring(2, 8),
+          ...dto,
+        })),
         save: jest.fn(async (entity) => {
           usageDb.push(entity);
           return entity;
@@ -343,7 +401,10 @@ describe('PrimePlate — Meal Type & Custom 1-Day Pricing Specification', () => 
 
       providerRepoForUsage = {
         findOne: jest.fn(async ({ where }) => {
-          if (where.qrToken === mockProviderForQr.qrToken || where.id === mockProviderForQr.id) {
+          if (
+            where.qrToken === mockProviderForQr.qrToken ||
+            where.id === mockProviderForQr.id
+          ) {
             return mockProviderForQr;
           }
           return null;
@@ -359,10 +420,12 @@ describe('PrimePlate — Meal Type & Custom 1-Day Pricing Specification', () => 
       };
 
       dataSource = {
-        transaction: jest.fn((cb) => cb({
-          create: (_entity: any, dto: any) => dto,
-          save: async (_entity: any, entity: any) => entity,
-        })),
+        transaction: jest.fn((cb) =>
+          cb({
+            create: (_entity: any, dto: any) => dto,
+            save: async (_entity: any, entity: any) => entity,
+          }),
+        ),
       };
 
       const module: TestingModule = await Test.createTestingModule({
@@ -370,7 +433,10 @@ describe('PrimePlate — Meal Type & Custom 1-Day Pricing Specification', () => 
           MealUsageService,
           { provide: getRepositoryToken(MealUsage), useValue: usageRepo },
           { provide: getRepositoryToken(MealUsageAudit), useValue: auditRepo },
-          { provide: getRepositoryToken(MealProvider), useValue: providerRepoForUsage },
+          {
+            provide: getRepositoryToken(MealProvider),
+            useValue: providerRepoForUsage,
+          },
           { provide: getRepositoryToken(Subscription), useValue: subRepo },
           { provide: getRepositoryToken(User), useValue: userRepo },
           { provide: DataSource, useValue: dataSource },
@@ -382,11 +448,19 @@ describe('PrimePlate — Meal Type & Custom 1-Day Pricing Specification', () => 
 
     it('allows check-in for both Lunch Only and Dinner Only on the same date without collision', async () => {
       // 1. Check in for lunch subscription
-      const lunchCheckIn = await mealUsageService.checkIn('student-A', 'pp_qr_mocktoken123456789', 'sub-lunch-101');
+      const lunchCheckIn = await mealUsageService.checkIn(
+        'student-A',
+        'pp_qr_mocktoken123456789',
+        'sub-lunch-101',
+      );
       expect(lunchCheckIn.code).toBe('CHECKED_IN');
 
       // 2. Check in for dinner subscription on the same day
-      const dinnerCheckIn = await mealUsageService.checkIn('student-A', 'pp_qr_mocktoken123456789', 'sub-dinner-202');
+      const dinnerCheckIn = await mealUsageService.checkIn(
+        'student-A',
+        'pp_qr_mocktoken123456789',
+        'sub-dinner-202',
+      );
       expect(dinnerCheckIn.code).toBe('CHECKED_IN');
 
       // Both usage records exist with different subscriptionIds on the same date
@@ -396,10 +470,18 @@ describe('PrimePlate — Meal Type & Custom 1-Day Pricing Specification', () => 
     });
 
     it('rejects double check-in on the SAME subscription on the same day', async () => {
-      const firstCheckIn = await mealUsageService.checkIn('student-A', 'pp_qr_mocktoken123456789', 'sub-lunch-101');
+      const firstCheckIn = await mealUsageService.checkIn(
+        'student-A',
+        'pp_qr_mocktoken123456789',
+        'sub-lunch-101',
+      );
       expect(firstCheckIn.code).toBe('CHECKED_IN');
 
-      const secondCheckIn = await mealUsageService.checkIn('student-A', 'pp_qr_mocktoken123456789', 'sub-lunch-101');
+      const secondCheckIn = await mealUsageService.checkIn(
+        'student-A',
+        'pp_qr_mocktoken123456789',
+        'sub-lunch-101',
+      );
       expect(secondCheckIn.code).toBe('ALREADY_CHECKED_IN');
     });
   });

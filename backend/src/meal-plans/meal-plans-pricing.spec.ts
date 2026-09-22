@@ -10,9 +10,7 @@ import { MealProvider } from '../providers/meal-provider.entity';
 import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import { PaymentsService } from '../payments/payments.service';
 import { Payment } from '../payments/payment.entity';
-import { Subscription } from '../subscriptions/subscription.entity';
 import { ProvidersService } from '../providers/providers.service';
-import { ConfigService } from '@nestjs/config';
 
 describe('PrimePlate — Original Price + Selling Price / Discount System Specification', () => {
   jest.setTimeout(30000);

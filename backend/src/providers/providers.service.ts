@@ -137,7 +137,7 @@ export class ProvidersService {
           order: { sellingPrice: 'ASC' },
         });
       }
-    } catch (_) {
+    } catch {
       mealPlans = [];
     }
 

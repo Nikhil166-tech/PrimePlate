@@ -15,6 +15,7 @@ import { renderDashboard } from './pages/dashboard';
 import { renderOwnerPortal } from './pages/owner';
 import { renderAdminPortal } from './pages/admin';
 import { renderAdminEarnings } from './pages/admin-earnings';
+import { renderAdminSettings } from './pages/admin-settings';
 import { renderForgotPassword } from './pages/forgot-password';
 import { renderResetPassword } from './pages/reset-password';
 import { renderTransactions } from './pages/transactions';
@@ -80,6 +81,9 @@ registerRoute('/admin/earnings/:providerId', () => {
   const providerId = parts[2];
   requireRole(['ADMIN'], () => renderAdminEarnings(providerId));
 });
+registerRoute('/admin/settings', () =>
+  requireRole(['ADMIN'], renderAdminSettings),
+);
 registerRoute('/providers/:id', () => {
   const parts = getPathSegments();
   const id = parts[1];

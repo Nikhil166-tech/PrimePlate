@@ -2,7 +2,7 @@ import { EnableRlsOnMealPlans1786450000000 } from '../migrations/1786450000000-E
 import { MealPlansService } from './meal-plans.service';
 import { MealPlan } from './meal-plan.entity';
 import { MealProvider } from '../providers/meal-provider.entity';
-import { ForbiddenException, NotFoundException } from '@nestjs/common';
+import { ForbiddenException } from '@nestjs/common';
 
 describe('PrimePlate — meal_plans Row Level Security (RLS) & Migration Verification', () => {
   describe('Migration: EnableRlsOnMealPlans1786450000000', () => {
@@ -115,12 +115,6 @@ describe('PrimePlate — meal_plans Row Level Security (RLS) & Migration Verific
       id: 'provider-kitchen-1',
       name: 'North Indian Mess Kitchen',
       user: { id: 'owner-user-1', email: 'owner1@test.com' } as any,
-    };
-
-    const mockProviderB: Partial<MealProvider> = {
-      id: 'provider-kitchen-2',
-      name: 'South Indian Mess Kitchen',
-      user: { id: 'owner-user-2', email: 'owner2@test.com' } as any,
     };
 
     const mockPlan1: Partial<MealPlan> = {

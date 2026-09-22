@@ -9,7 +9,10 @@ import { UploadsService } from '../uploads/uploads.service';
 import { MealRecoveryService } from './meal-recovery.service';
 import { MealRecovery } from './meal-recovery.entity';
 import { MealUsage } from '../meal-usage/meal-usage.entity';
-import { Subscription, SubscriptionStatus } from '../subscriptions/subscription.entity';
+import {
+  Subscription,
+  SubscriptionStatus,
+} from '../subscriptions/subscription.entity';
 import { MealType } from '../meal-plans/meal-plan.entity';
 
 describe('Meal Recovery Toggle Specification (Provider Portal & Service)', () => {
@@ -46,17 +49,27 @@ describe('Meal Recovery Toggle Specification (Provider Portal & Service)', () =>
     providerRepo = {
       findOne: jest.fn(async ({ where }) => {
         if (Array.isArray(where)) {
-          return providersDb.find((p) =>
-            where.some((w) =>
-              (!w.id || p.id === w.id) &&
-              (!w.userId || p.userId === w.userId || p.user?.id === w.userId)
-            )
-          ) || null;
+          return (
+            providersDb.find((p) =>
+              where.some(
+                (w) =>
+                  (!w.id || p.id === w.id) &&
+                  (!w.userId ||
+                    p.userId === w.userId ||
+                    p.user?.id === w.userId),
+              ),
+            ) || null
+          );
         }
-        return providersDb.find((p) =>
-          (!where?.id || p.id === where.id) &&
-          (!where?.userId || p.userId === where.userId || p.user?.id === where.userId)
-        ) || null;
+        return (
+          providersDb.find(
+            (p) =>
+              (!where?.id || p.id === where.id) &&
+              (!where?.userId ||
+                p.userId === where.userId ||
+                p.user?.id === where.userId),
+          ) || null
+        );
       }),
       save: jest.fn(async (entity) => {
         const idx = providersDb.findIndex((p) => p.id === entity.id);
@@ -78,10 +91,16 @@ describe('Meal Recovery Toggle Specification (Provider Portal & Service)', () =>
 
     recoveryRepo = {
       findOne: jest.fn(async ({ where }) => {
-        return recoveriesDb.find((r) => r.sourceSubscriptionId === where.sourceSubscriptionId) || null;
+        return (
+          recoveriesDb.find(
+            (r) => r.sourceSubscriptionId === where.sourceSubscriptionId,
+          ) || null
+        );
       }),
       find: jest.fn(async ({ where }) => {
-        return recoveriesDb.filter((r) => !where?.providerId || r.providerId === where.providerId);
+        return recoveriesDb.filter(
+          (r) => !where?.providerId || r.providerId === where.providerId,
+        );
       }),
       create: jest.fn((dto) => ({
         id: 'rec-' + Math.random().toString(36).substring(2, 7),
@@ -107,7 +126,10 @@ describe('Meal Recovery Toggle Specification (Provider Portal & Service)', () =>
         ProvidersService,
         MealRecoveryService,
         { provide: getRepositoryToken(MealProvider), useValue: providerRepo },
-        { provide: getRepositoryToken(ProviderImage), useValue: { create: jest.fn(), save: jest.fn(), count: jest.fn() } },
+        {
+          provide: getRepositoryToken(ProviderImage),
+          useValue: { create: jest.fn(), save: jest.fn(), count: jest.fn() },
+        },
         { provide: getRepositoryToken(MealRecovery), useValue: recoveryRepo },
         { provide: getRepositoryToken(MealUsage), useValue: usageRepo },
         { provide: getRepositoryToken(Subscription), useValue: subRepo },
@@ -158,7 +180,8 @@ describe('Meal Recovery Toggle Specification (Provider Portal & Service)', () =>
       subRepo.findOne.mockResolvedValue(expiredSub);
 
       // 3. Process recovery
-      const result = await mealRecoveryService.processSubscriptionRecovery('sub-exp-101');
+      const result =
+        await mealRecoveryService.processSubscriptionRecovery('sub-exp-101');
       expect(result.processed).toBe(false);
       expect(result.recovery).toBeNull();
       expect(recoveryRepo.save).not.toHaveBeenCalled();
@@ -225,7 +248,8 @@ describe('Meal Recovery Toggle Specification (Provider Portal & Service)', () =>
       };
       subRepo.findOne.mockResolvedValue(futureSub);
 
-      const result = await mealRecoveryService.processSubscriptionRecovery('sub-future-202');
+      const result =
+        await mealRecoveryService.processSubscriptionRecovery('sub-future-202');
       expect(result.processed).toBe(true);
       expect(result.recovery).toBeDefined();
       expect(recoveryRepo.save).toHaveBeenCalled();
@@ -249,12 +273,17 @@ describe('Meal Recovery Toggle Specification (Provider Portal & Service)', () =>
       subRepo.findOne.mockResolvedValue(subWhileOff);
 
       // Process attempted while OFF
-      const offResult = await mealRecoveryService.processSubscriptionRecovery('sub-off-303');
+      const offResult =
+        await mealRecoveryService.processSubscriptionRecovery('sub-off-303');
       expect(offResult.processed).toBe(false);
       expect(recoveriesDb.length).toBe(0);
 
       // 2. Provider turns ON
-      await providersService.updateMealRecoveryEnabled(mockProvider.userId, mockProvider.id, true);
+      await providersService.updateMealRecoveryEnabled(
+        mockProvider.userId,
+        mockProvider.id,
+        true,
+      );
 
       // No background job or read endpoint retroactively generated recovery for that past sub
       expect(recoveriesDb.length).toBe(0);
@@ -278,7 +307,8 @@ describe('Meal Recovery Toggle Specification (Provider Portal & Service)', () =>
       };
       subRepo.findOne.mockResolvedValue(lunchSub);
 
-      const result = await mealRecoveryService.processSubscriptionRecovery('sub-lunch-404');
+      const result =
+        await mealRecoveryService.processSubscriptionRecovery('sub-lunch-404');
       expect(result.processed).toBe(false);
       expect(result.recovery).toBeNull();
       expect(recoveryRepo.save).not.toHaveBeenCalled();
@@ -300,7 +330,8 @@ describe('Meal Recovery Toggle Specification (Provider Portal & Service)', () =>
       };
       subRepo.findOne.mockResolvedValue(dinnerSub);
 
-      const result = await mealRecoveryService.processSubscriptionRecovery('sub-dinner-505');
+      const result =
+        await mealRecoveryService.processSubscriptionRecovery('sub-dinner-505');
       expect(result.processed).toBe(false);
       expect(result.recovery).toBeNull();
       expect(recoveryRepo.save).not.toHaveBeenCalled();

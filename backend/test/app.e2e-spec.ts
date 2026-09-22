@@ -17,10 +17,22 @@ describe('AppController (e2e)', () => {
   });
 
   it('/ (GET)', () => {
+    return request(app.getHttpServer()).get('/').expect(200).expect({
+      name: 'PrimePlate Backend API',
+      status: 'active',
+      version: '1.0.0',
+    });
+  });
+
+  it('/health (GET)', () => {
     return request(app.getHttpServer())
-      .get('/')
+      .get('/health')
       .expect(200)
-      .expect('Hello World!');
+      .expect((res) => {
+        expect(res.body.status).toBe('ok');
+        expect(res.body.database).toBe('connected');
+        expect(res.body.timestamp).toBeDefined();
+      });
   });
 
   afterEach(async () => {

@@ -116,10 +116,9 @@ export class AuthService {
       throw new BadRequestException('Refresh token is required');
     }
 
-    let payload: JwtPayload;
     try {
-      payload = this.jwtService.verify(rawRefreshToken);
-    } catch (_) {
+      this.jwtService.verify(rawRefreshToken);
+    } catch {
       throw new UnauthorizedException(
         'Invalid or expired refresh token signature',
       );

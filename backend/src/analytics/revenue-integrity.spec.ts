@@ -1,6 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { Repository, DataSource } from 'typeorm';
 import { AnalyticsService } from './analytics.service';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { Payment } from '../payments/payment.entity';
@@ -15,10 +14,6 @@ import { MealPlan } from '../meal-plans/meal-plan.entity';
 describe('Revenue Integrity Specification & Price-Change Isolation', () => {
   let analyticsService: AnalyticsService;
   let subscriptionsService: SubscriptionsService;
-  let paymentRepo: Repository<Payment>;
-  let subRepo: Repository<Subscription>;
-  let providerRepo: Repository<MealProvider>;
-  let planRepo: Repository<MealPlan>;
 
   const mockUserStudent1: any = {
     id: 'student-1',
@@ -182,10 +177,6 @@ describe('Revenue Integrity Specification & Price-Change Isolation', () => {
     analyticsService = module.get<AnalyticsService>(AnalyticsService);
     subscriptionsService =
       module.get<SubscriptionsService>(SubscriptionsService);
-    paymentRepo = module.get(getRepositoryToken(Payment));
-    subRepo = module.get(getRepositoryToken(Subscription));
-    providerRepo = module.get(getRepositoryToken(MealProvider));
-    planRepo = module.get(getRepositoryToken(MealPlan));
   });
 
   it('1. Initial historical revenue equals sum of verified paid payment amounts (₹3,000)', async () => {

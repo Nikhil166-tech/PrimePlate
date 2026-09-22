@@ -220,6 +220,53 @@ export const updateProviderRecoveryPercentage = (providerId: string, percentage:
 export const updateProviderMealRecoveryEnabled = (providerId: string, enabled: boolean) =>
   api.patch(`/providers/${encodeURIComponent(providerId)}/recovery-toggle`, { enabled });
 
+// Platform Fee Settings APIs
+export interface PublicFeeSettings {
+  enabled: boolean;
+  type: string;
+  amount: number;
+  label: string;
+}
+
+export interface AdminFeeSettingsResponse {
+  settings: {
+    enabled: boolean;
+    amount: number;
+    type: string;
+    label: string;
+  };
+  analytics: {
+    platformFeesCollected?: number;
+    thisMonthPlatformFees?: number;
+    subscriptionsWithFee?: number;
+    averagePlatformFee?: number;
+    totalCollected?: number;
+    thisMonthCollected?: number;
+    transactionsWithFeeCount?: number;
+    averageFee?: number;
+  };
+  audits: Array<{
+    id: string;
+    adminEmail: string;
+    settingKey: string;
+    previousValue: string;
+    newValue: string;
+    createdAt: string;
+  }>;
+}
+
+export const getPublicFeeSettings = (): Promise<PublicFeeSettings> =>
+  api.get('/settings/public/fees');
+
+export const getAdminFeeSettings = (): Promise<AdminFeeSettingsResponse> =>
+  api.get('/settings/fees');
+
+export const updateAdminFeeSettings = (data: {
+  enabled?: boolean;
+  amount?: number;
+  label?: string;
+}) => api.put('/settings/fees', data);
+
 export default api;
 
 

@@ -31,6 +31,9 @@ import { MealUsageAudit } from './meal-usage/meal-usage-audit.entity';
 import { MealUsageModule } from './meal-usage/meal-usage.module';
 import { MealRecovery } from './meal-recovery/meal-recovery.entity';
 import { MealRecoveryModule } from './meal-recovery/meal-recovery.module';
+import { SystemSetting } from './settings/system-setting.entity';
+import { SystemSettingAudit } from './settings/system-setting-audit.entity';
+import { SettingsModule } from './settings/settings.module';
 import { AppController } from './app.controller';
 
 @Module({
@@ -57,7 +60,7 @@ import { AppController } from './app.controller';
             synchronize: false, // Strictly disabled in production
             migrationsRun: true, // Automatically execute pending migrations on startup
             entities: [__dirname + '/**/*.entity{.ts,.js}'],
-            migrations: [__dirname + '/migrations/*{.ts,.js}'],
+            migrations: [__dirname + '/migrations/[0-9]*-*{.ts,.js}'],
             ssl: useSsl ? { rejectUnauthorized: false } : false,
           };
         }
@@ -68,7 +71,7 @@ import { AppController } from './app.controller';
           database: 'dev.sqlite',
           synchronize: !isProd,
           entities: [__dirname + '/**/*.entity{.ts,.js}'],
-          migrations: [__dirname + '/migrations/*{.ts,.js}'],
+          migrations: [__dirname + '/migrations/[0-9]*-*{.ts,.js}'],
         };
       },
     }),
@@ -88,6 +91,8 @@ import { AppController } from './app.controller';
       MealUsage,
       MealUsageAudit,
       MealRecovery,
+      SystemSetting,
+      SystemSettingAudit,
     ]),
     AuthModule,
     UsersModule,
@@ -103,6 +108,7 @@ import { AppController } from './app.controller';
     WeeklyMenusModule,
     MealUsageModule,
     MealRecoveryModule,
+    SettingsModule,
   ],
   controllers: [AppController],
   providers: [SeedService],

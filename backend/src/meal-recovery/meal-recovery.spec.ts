@@ -340,17 +340,7 @@ describe('MealRecoveryService', () => {
 
   // ======= PROVIDER ISOLATION =======
   it('12. Provider A recovery cannot be consumed by Provider B', async () => {
-    const providerA = 'prov-a';
     const providerB = 'prov-b';
-    const recA = {
-      id: 'rec-a',
-      studentId: STUDENT_ID,
-      providerId: providerA,
-      remainingDays: 8,
-      usedDays: 0,
-      status: MealRecoveryStatus.AVAILABLE,
-      createdAt: new Date(),
-    };
     const mockManager = {
       find: jest.fn().mockResolvedValue([]), // no records for providerB
       save: jest.fn(),

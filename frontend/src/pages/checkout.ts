@@ -1,4 +1,5 @@
-import api, { getMyRecoveryBalance } from '../api';
+import api, { getMyRecoveryBalance, getPublicFeeSettings } from '../api';
+import type { PublicFeeSettings } from '../api';
 import { navigate } from '../router';
 import { showToast } from '../components/toast';
 import { renderNavbar, attachNavbarEvents } from '../components/navbar';
@@ -60,7 +61,22 @@ export async function renderCheckout(planId: string) {
   } | null = null;
   let actualPlanId = planId;
   let planFetchError: string | null = null;
-  let providerRecoveryDays = 0;
+    let providerRecoveryDays = 0;
+  let feeSettings: PublicFeeSettings = {
+    enabled: false,
+    type: 'FLAT',
+    amount: 5,
+    label: 'PrimePlate Platform Fee',
+  };
+
+  try {
+    const feeRes: any = await getPublicFeeSettings();
+    if (feeRes && typeof feeRes.enabled === 'boolean') {
+      feeSettings = feeRes;
+    }
+  } catch (_) {
+    // Keep fallback defaults if settings fetch fails
+  }
 
   try {
     const fetched: any = await api.get(`/meal-plans/${planId}`);
@@ -144,6 +160,14 @@ export async function renderCheckout(planId: string) {
       return selectedPlan.customOneDayPrice;
     }
     return Math.max(1, Math.round(selectedPlan.basePrice * (days / 30)));
+  };
+
+  const getPlatformFee = (): number => {
+    return feeSettings.enabled && feeSettings.amount > 0 ? feeSettings.amount : 0;
+  };
+
+  const calcTotalPayable = (days: number): number => {
+    return calcPrice(days) + getPlatformFee();
   };
 
   const calcOriginalPrice = (days: number): number => {
@@ -251,9 +275,14 @@ export async function renderCheckout(planId: string) {
       ? Math.floor((saveVal / origVal) * 100)
       : 0;
     const isDiscounted = selectedPlan!.hasDiscount && discountPct > 0;
+    const feeAmt = getPlatformFee();
+    const isFeeEnabled = feeAmt > 0;
+    const totalPayable = pVal + feeAmt;
+    const feeLabel = feeSettings.label || 'PrimePlate Platform Fee';
 
+    let discountHtml = '';
     if (isDiscounted) {
-      return `
+      discountHtml = `
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
           <span style="font-size: 14px; color: var(--color-neutral-600);">Original Price:</span>
           <span id="coOriginalPriceDisplay" style="font-size: 15px; color: var(--color-neutral-400); text-decoration: line-through;">₹${origVal.toLocaleString('en-IN')}</span>
@@ -264,17 +293,35 @@ export async function renderCheckout(planId: string) {
             Save ₹${saveVal.toLocaleString('en-IN')} (${discountPct}% OFF)
           </span>
         </div>
+      `;
+    }
+
+    if (isFeeEnabled) {
+      return `
+        ${discountHtml}
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+          <span style="font-size: 14px; color: var(--color-neutral-700);">Meal Plan Price:</span>
+          <span style="font-size: 15px; font-weight: 600; color: var(--color-neutral-900);">₹${pVal.toLocaleString('en-IN')}</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <span style="font-size: 14px; color: var(--color-neutral-700);">${escapeHtml(feeLabel)}:</span>
+            <span style="font-size: 10px; background: #e0f2fe; color: #0284c7; font-weight: 700; padding: 1px 6px; border-radius: 4px;">Flat</span>
+          </div>
+          <span style="font-size: 15px; font-weight: 600; color: var(--color-neutral-900);">+₹${feeAmt.toLocaleString('en-IN')}</span>
+        </div>
         <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--color-neutral-200); padding-top: 12px; margin-top: 8px;">
           <div>
-            <span style="font-weight: 800; font-size: 16px; color: var(--color-neutral-900); display: block;">You Pay:</span>
-            <span style="font-size: 12px; color: var(--color-neutral-500);">Authoritative price from kitchen</span>
+            <span style="font-weight: 800; font-size: 16px; color: var(--color-neutral-900); display: block;">Total Payable:</span>
+            <span style="font-size: 12px; color: var(--color-neutral-500);">Inclusive of all platform fees</span>
           </div>
-          <span id="planPriceDisplay" class="price-text" style="font-size: 26px; font-weight: 800; color: var(--color-primary-600);">₹${pVal.toLocaleString('en-IN')}</span>
+          <span id="planPriceDisplay" class="price-text" style="font-size: 26px; font-weight: 800; color: var(--color-primary-600);">₹${totalPayable.toLocaleString('en-IN')}</span>
         </div>
       `;
     } else {
       return `
-        <div style="display: flex; justify-content: space-between; align-items: center;">
+        ${discountHtml}
+        <div style="display: flex; justify-content: space-between; align-items: center; ${isDiscounted ? 'border-top: 1px solid var(--color-neutral-200); padding-top: 12px; margin-top: 8px;' : ''}">
           <div>
             <span style="font-weight: 800; font-size: 16px; color: var(--color-neutral-900); display: block;">You Pay:</span>
             <span style="font-size: 12px; color: var(--color-neutral-500);">Authoritative price from kitchen</span>
@@ -340,7 +387,7 @@ export async function renderCheckout(planId: string) {
 
           <button id="payBtn" class="btn-primary-action" style="width: 100%; justify-content: center; padding: 14px; font-size: 16px; box-shadow: 0 4px 16px rgba(234, 88, 12, 0.3);">
             <i class="fa-solid fa-lock"></i>
-            <span id="payBtnText">Pay with Razorpay (₹${calcPrice(selectedDays).toLocaleString('en-IN')})</span>
+            <span id="payBtnText">Pay with Razorpay (₹${calcTotalPayable(selectedDays).toLocaleString('en-IN')})</span>
           </button>
         </div>
       </div>
@@ -379,7 +426,7 @@ export async function renderCheckout(planId: string) {
       }
       const payBtnText = document.getElementById('payBtnText');
       if (payBtnText) {
-        payBtnText.textContent = `Pay with Razorpay (₹${calcPrice(selectedDays).toLocaleString('en-IN')})`;
+        payBtnText.textContent = `Pay with Razorpay (₹${calcTotalPayable(selectedDays).toLocaleString('en-IN')})`;
       }
     });
   });
@@ -451,7 +498,7 @@ export async function renderCheckout(planId: string) {
     if (notice) notice.remove();
 
     if (payBtn) {
-      payBtn.innerHTML = `<i class="fa-solid fa-lock"></i> <span id="payBtnText">Pay with Razorpay (₹${calcPrice(selectedDays).toLocaleString('en-IN')})</span>`;
+      payBtn.innerHTML = `<i class="fa-solid fa-lock"></i> <span id="payBtnText">Pay with Razorpay (₹${calcTotalPayable(selectedDays).toLocaleString('en-IN')})</span>`;
       payBtn.removeAttribute('disabled');
       payBtn.style.backgroundColor = '';
       payBtn.onclick = null;

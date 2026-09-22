@@ -3,7 +3,6 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import {
   BadRequestException,
   ForbiddenException,
-  NotFoundException,
   ConflictException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';

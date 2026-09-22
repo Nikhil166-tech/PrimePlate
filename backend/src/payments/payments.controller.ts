@@ -8,6 +8,7 @@ import {
   Req,
   Headers,
   BadRequestException,
+  Logger,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { PaymentsService } from './payments.service';
@@ -23,6 +24,8 @@ import { Public } from '../auth/public.decorator';
 @ApiTags('Payments')
 @Controller('payments')
 export class PaymentsController {
+  private readonly logger = new Logger(PaymentsController.name);
+
   constructor(private readonly paymentsService: PaymentsService) {}
 
   @Post('create-order')
@@ -107,7 +110,7 @@ export class PaymentsController {
     const orderId = payloadEntity?.order_id || payloadEntity?.id || 'unknown';
     const paymentId = payloadEntity?.id || 'unknown';
 
-    console.log(
+    this.logger.log(
       `RAZORPAY_WEBHOOK_CONTROLLER_ENTERED: eventId=${eventId}, eventType=${eventType}, orderId=${orderId}, paymentId=${paymentId}`,
     );
 

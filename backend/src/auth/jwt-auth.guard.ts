@@ -1,10 +1,12 @@
-import { Injectable, ExecutionContext } from '@nestjs/common';
+import { Injectable, ExecutionContext, Logger } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { Reflector } from '@nestjs/core';
 import { IS_PUBLIC_KEY } from './public.decorator';
 
 @Injectable()
 export class JwtAuthGuard extends AuthGuard('jwt') {
+  private readonly logger = new Logger(JwtAuthGuard.name);
+
   constructor(private reflector: Reflector) {
     super();
   }
@@ -17,7 +19,7 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
 
     if (isPublic) {
       const handlerName = context.getHandler()?.name || 'unknown';
-      console.log(`RAZORPAY_WEBHOOK_AUTH_BYPASS: handler=${handlerName}`);
+      this.logger.log(`RAZORPAY_WEBHOOK_AUTH_BYPASS: handler=${handlerName}`);
       return true;
     }
 

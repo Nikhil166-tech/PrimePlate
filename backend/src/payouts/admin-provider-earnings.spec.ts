@@ -15,13 +15,11 @@ import { Reflector } from '@nestjs/core';
 import {
   NotFoundException,
   BadRequestException,
-  ForbiddenException,
   ExecutionContext,
 } from '@nestjs/common';
 
 describe('Admin Provider Earnings & Manual Settlement Specification', () => {
   let controller: AdminProviderEarningsController;
-  let service: PayoutsService;
   let reflector: Reflector;
 
   let mockEarnings: any[] = [];
@@ -223,7 +221,6 @@ describe('Admin Provider Earnings & Manual Settlement Specification', () => {
     controller = module.get<AdminProviderEarningsController>(
       AdminProviderEarningsController,
     );
-    service = module.get<PayoutsService>(PayoutsService);
     reflector = module.get<Reflector>(Reflector);
   });
 

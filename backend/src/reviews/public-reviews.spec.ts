@@ -6,7 +6,6 @@ import { User } from '../users/user.entity';
 import { MealProvider } from '../providers/meal-provider.entity';
 import { Subscription } from '../subscriptions/subscription.entity';
 import { Role } from '../common/roles.enum';
-import { ForbiddenException, NotFoundException } from '@nestjs/common';
 
 describe('Public Reviews Access & Modification Authorization', () => {
   let service: ReviewsService;
@@ -17,7 +16,6 @@ describe('Public Reviews Access & Modification Authorization', () => {
 
   const providerOwnerAId = 'provider-user-a';
   const providerOwnerBId = 'provider-user-b';
-  const providerKitchenAId = 'kitchen-a';
   const providerKitchenBId = 'kitchen-b';
   const studentAId = 'student-a';
   const studentBId = 'student-b';

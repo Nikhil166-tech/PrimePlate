@@ -7,11 +7,7 @@ import { Subscription } from '../subscriptions/subscription.entity';
 import { UsersService } from '../users/users.service';
 import { UploadsService } from '../uploads/uploads.service';
 import { Role } from '../common/roles.enum';
-import {
-  ForbiddenException,
-  NotFoundException,
-  BadRequestException,
-} from '@nestjs/common';
+import { ForbiddenException, BadRequestException } from '@nestjs/common';
 
 describe('ProvidersService — Description, Amenities & Hostel Images Specification', () => {
   let service: ProvidersService;
@@ -127,7 +123,7 @@ describe('ProvidersService — Description, Amenities & Hostel Images Specificat
     };
 
     uploadsService = {
-      upload: jest.fn(async (file) => ({
+      upload: jest.fn(async (_file) => ({
         secure_url: 'https://res.cloudinary.com/demo/image/upload/sample.jpg',
       })),
     };

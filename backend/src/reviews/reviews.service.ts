@@ -11,7 +11,6 @@ import { Review } from './review.entity';
 import { User } from '../users/user.entity';
 import { MealProvider } from '../providers/meal-provider.entity';
 import { Subscription } from '../subscriptions/subscription.entity';
-import { Role } from '../common/roles.enum';
 
 @Injectable()
 export class ReviewsService {
@@ -26,7 +25,7 @@ export class ReviewsService {
 
   async findByProvider(
     providerId: string,
-    currentUser?: { userId: string; role: string },
+    _currentUser?: { userId: string; role: string },
   ): Promise<any[]> {
     if (!providerId || typeof providerId !== 'string') {
       throw new BadRequestException('providerId is required');

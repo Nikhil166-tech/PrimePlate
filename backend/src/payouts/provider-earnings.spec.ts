@@ -30,11 +30,6 @@ describe('Provider Earnings & Payout Ledger Specification', () => {
     name: 'PrimeMate One',
     role: 'STUDENT',
   };
-  const mockStudent2: any = {
-    id: 'student-2',
-    name: 'PrimeMate Two',
-    role: 'STUDENT',
-  };
 
   const mockUserProviderA: any = { id: 'user-prov-A', role: 'PROVIDER' };
   const mockUserProviderB: any = { id: 'user-prov-B', role: 'PROVIDER' };

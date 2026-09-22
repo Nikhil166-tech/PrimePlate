@@ -1,11 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import {
-  BadRequestException,
-  ForbiddenException,
-  UnauthorizedException,
-  NotFoundException,
-} from '@nestjs/common';
+import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as crypto from 'crypto';
 import { PaymentsService } from './payments.service';
@@ -18,10 +13,7 @@ import {
   Subscription,
   SubscriptionStatus,
 } from '../subscriptions/subscription.entity';
-import {
-  ProviderEarning,
-  ProviderEarningStatus,
-} from '../payouts/provider-earning.entity';
+import { ProviderEarning } from '../payouts/provider-earning.entity';
 import { SupportTicket } from '../support/support-ticket.entity';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { MealRecoveryService } from '../meal-recovery/meal-recovery.service';
@@ -30,11 +22,6 @@ describe('PrimePlate Payment Security & Recovery Specification', () => {
   jest.setTimeout(20000);
 
   let paymentsService: PaymentsService;
-  let paymentRepo: any;
-  let webhookEventRepo: any;
-  let userRepo: any;
-  let planRepo: any;
-  let subscriptionsService: any;
   let mealRecoveryService: any;
 
   const keySecret = 'test_key_secret_12345';
@@ -120,7 +107,7 @@ describe('PrimePlate Payment Security & Recovery Specification', () => {
         }
         return null;
       }),
-      count: jest.fn().mockImplementation((entity, opts) => {
+      count: jest.fn().mockImplementation((entity) => {
         if (entity === Subscription) {
           return mockSubscriptionsStore.filter(
             (s) => s.status === SubscriptionStatus.ACTIVE,
@@ -306,12 +293,6 @@ describe('PrimePlate Payment Security & Recovery Specification', () => {
     }).compile();
 
     paymentsService = module.get<PaymentsService>(PaymentsService);
-    paymentRepo = module.get(getRepositoryToken(Payment));
-    webhookEventRepo = module.get(getRepositoryToken(PaymentWebhookEvent));
-    userRepo = module.get(getRepositoryToken(User));
-    planRepo = module.get(getRepositoryToken(MealPlan));
-    subscriptionsService =
-      module.get<SubscriptionsService>(SubscriptionsService);
   });
 
   describe('0. Order Creation Pre-Persistence (createOrder)', () => {

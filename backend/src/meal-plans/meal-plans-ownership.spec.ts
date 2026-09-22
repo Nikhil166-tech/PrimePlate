@@ -3,7 +3,7 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { MealPlansService } from './meal-plans.service';
 import { MealPlan } from './meal-plan.entity';
 import { MealProvider } from '../providers/meal-provider.entity';
-import { ForbiddenException, NotFoundException } from '@nestjs/common';
+import { ForbiddenException } from '@nestjs/common';
 
 describe('MealPlansService Fail-Closed Provider Ownership Validation', () => {
   let service: MealPlansService;

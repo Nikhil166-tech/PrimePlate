@@ -4453,7 +4453,7 @@ input:checked+.toggle-slider:before {
 /* 1. Universal Mobile Form Controls & Touch Targets */
 @media (max-width: 768px) {
 
-  button,
+  button:not(.rdp-day_button):not(.rdp-button_previous):not(.rdp-button_next),
   .btn-primary-action,
   .btn-outline-action {
     min-height: 42px;

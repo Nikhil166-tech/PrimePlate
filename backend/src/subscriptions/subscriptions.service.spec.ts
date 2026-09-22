@@ -7,7 +7,6 @@ import { User } from '../users/user.entity';
 import { MealPlan } from '../meal-plans/meal-plan.entity';
 import { Payment } from '../payments/payment.entity';
 import { ProviderEarning } from '../payouts/provider-earning.entity';
-import { MealProvider } from '../providers/meal-provider.entity';
 
 describe('SubscriptionsService — Paid Subscription Enforcement (PrimeMate)', () => {
   let service: SubscriptionsService;
@@ -19,7 +18,6 @@ describe('SubscriptionsService — Paid Subscription Enforcement (PrimeMate)', (
   const studentAId = 'student-uuid-a';
   const studentBId = 'student-uuid-b';
   const providerIdA = 'provider-uuid-a';
-  const providerIdB = 'provider-uuid-b';
 
   beforeEach(async () => {
     mockManager = {

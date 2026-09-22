@@ -4,6 +4,7 @@ import {
   Post,
   Put,
   Param,
+  Query,
   Body,
   UseGuards,
   Req,
@@ -43,8 +44,11 @@ export class MealPlansController {
   }
 
   @Get('provider/:providerId')
-  async findByProvider(@Param('providerId') providerId: string) {
-    return this.mealPlansService.findByProvider(providerId);
+  async findByProvider(
+    @Param('providerId') providerId: string,
+    @Query('all') all?: string,
+  ) {
+    return this.mealPlansService.findByProvider(providerId, all === 'true');
   }
 
   @Get(':id')

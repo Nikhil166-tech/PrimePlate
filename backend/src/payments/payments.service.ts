@@ -13,7 +13,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In } from 'typeorm';
 import { Payment } from './payment.entity';
 import { PaymentWebhookEvent } from './webhook-event.entity';
-import { MealPlan } from '../meal-plans/meal-plan.entity';
+import { MealPlan, MealType } from '../meal-plans/meal-plan.entity';
 import { MealProvider } from '../providers/meal-provider.entity';
 import { SupportTicket } from '../support/support-ticket.entity';
 import {
@@ -80,10 +80,23 @@ function parseDurationDays(durationInput: string | number | undefined): number {
   );
 }
 
-function calculateAuthoritativeAmount(
+export function calculateAuthoritativeAmount(
   monthlyPrice: number,
   durationDays: number,
+  customOneDayPrice?: number | null,
 ): number {
+  if (durationDays === 1) {
+    if (
+      customOneDayPrice !== undefined &&
+      customOneDayPrice !== null &&
+      Number(customOneDayPrice) > 0
+    ) {
+      return Number(customOneDayPrice);
+    }
+    throw new BadRequestException(
+      '1-day pass is not available for this meal plan until a 1-day price is configured',
+    );
+  }
   if (isNaN(monthlyPrice) || !isFinite(monthlyPrice) || monthlyPrice <= 0) {
     throw new BadRequestException('Invalid provider monthly price');
   }
@@ -152,12 +165,17 @@ export class PaymentsService {
       }
     }
 
+    if (plan.isActive === false) {
+      throw new BadRequestException('This meal plan is currently disabled');
+    }
+
     const baseMonthlyPrice = Number(
       plan.sellingPrice ?? plan.pricePerMonth ?? provider?.monthlyPrice ?? 0,
     );
     const authoritativeAmount = calculateAuthoritativeAmount(
       baseMonthlyPrice,
       durationDays,
+      plan.customOneDayPrice,
     );
     const amountInPaise = Math.round(authoritativeAmount * 100);
     if (amountInPaise < 100) {
@@ -501,19 +519,37 @@ export class PaymentsService {
         },
       });
 
-      // Capacity renewal exception check: if student already has an active subscription with this provider, renewal does not consume an additional seat
-      const studentExistingActiveForProvider = await manager.findOne(
-        Subscription,
-        {
+      const targetMealType = mealPlan.mealType || MealType.FULL_DAY;
+
+      let studentActiveSubsForProvider: Subscription[] = [];
+      if (typeof manager.find === 'function') {
+        studentActiveSubsForProvider = await manager.find(Subscription, {
           where: {
             student: { id: student.id },
             mealPlan: { provider: { id: provider.id } },
             status: SubscriptionStatus.ACTIVE,
           },
-        },
+          relations: { mealPlan: { provider: true } },
+        });
+      } else if (typeof manager.findOne === 'function') {
+        const singleSub = await manager.findOne(Subscription, {
+          where: {
+            student: { id: student.id },
+            mealPlan: { provider: { id: provider.id } },
+            status: SubscriptionStatus.ACTIVE,
+          },
+          relations: { mealPlan: { provider: true } },
+        });
+        if (singleSub) {
+          studentActiveSubsForProvider = [singleSub];
+        }
+      }
+
+      const studentExistingActiveForMealType = studentActiveSubsForProvider.find(
+        (s) => (s.mealPlan?.mealType || MealType.FULL_DAY) === targetMealType,
       );
 
-      const effectiveActiveSeats = studentExistingActiveForProvider
+      const effectiveActiveSeats = studentExistingActiveForMealType
         ? Math.max(0, activeCount - 1)
         : activeCount;
 
@@ -533,6 +569,10 @@ export class PaymentsService {
         );
       }
 
+      if (mealPlan.isActive === false) {
+        throw new BadRequestException('This meal plan is currently disabled');
+      }
+
       const baseMonthlyPrice = Number(
         mealPlan.sellingPrice ??
           mealPlan.pricePerMonth ??
@@ -542,6 +582,7 @@ export class PaymentsService {
       const authoritativeAmount = calculateAuthoritativeAmount(
         baseMonthlyPrice,
         durationDays,
+        mealPlan.customOneDayPrice,
       );
 
       // Amount Integrity Validation
@@ -607,16 +648,10 @@ export class PaymentsService {
         };
       }
 
-      // Check if an active Subscription already exists for this student in this PG/provider
-      const existingActiveSub = await manager.findOne(Subscription, {
-        where: {
-          student: { id: student.id },
-          mealPlan: { provider: { id: provider.id } },
-          status: SubscriptionStatus.ACTIVE,
-        },
-        relations: { mealPlan: { provider: true } },
-        order: { createdAt: 'DESC' },
-      });
+      // Check if an active Subscription already exists for this student in this PG/provider FOR THIS MEAL TYPE
+      const existingActiveSub = studentActiveSubsForProvider.find(
+        (s) => (s.mealPlan?.mealType || MealType.FULL_DAY) === targetMealType,
+      );
 
       let savedSubscription: Subscription;
       const todayStr = new Intl.DateTimeFormat('en-CA', {
@@ -631,7 +666,7 @@ export class PaymentsService {
         existingActiveSub.endDate &&
         existingActiveSub.endDate >= todayStr
       ) {
-        // Renewal logic: Extend existing active subscription in this PG by durationDays
+        // Renewal logic: Extend existing active subscription in this PG for this meal type by durationDays
         const baseEndStr = existingActiveSub.endDate;
         const baseEndObj = new Date(baseEndStr + 'T00:00:00Z');
         baseEndObj.setUTCDate(baseEndObj.getUTCDate() + durationDays);
@@ -672,8 +707,8 @@ export class PaymentsService {
       }
 
       // 5b. Apply provider-specific meal recovery days (inside same transaction — atomic).
-      // If consumption succeeds but subscription fails, the whole transaction rolls back.
-      if (this.mealRecoveryService) {
+      // Meal Recovery is ONLY available for FULL_DAY subscriptions.
+      if (this.mealRecoveryService && targetMealType === MealType.FULL_DAY) {
         const recoveryDaysConsumed =
           await this.mealRecoveryService.consumeRecovery(
             student.id,

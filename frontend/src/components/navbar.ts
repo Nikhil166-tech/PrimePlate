@@ -32,9 +32,8 @@ export function renderNavbar(): string {
     <a href="#footer" class="nav-item-btn nav-contact-btn">
       <i class="fa-solid fa-headset"></i> Contact Us
     </a>
-    ${
-      token && isStudent
-        ? `<button type="button" class="nav-item-btn nav-scan-qr-btn" style="background: none; border: none; cursor: pointer; color: inherit; font: inherit;">
+    ${token && isStudent
+      ? `<button type="button" class="nav-item-btn nav-scan-qr-btn" style="background: none; border: none; cursor: pointer; color: inherit; font: inherit;">
             <i class="fa-solid fa-camera"></i> Scan Meal QR
           </button>
           <a href="/student/dashboard" class="nav-item-btn ${currentPath === '/dashboard' || currentPath === '/student/dashboard' ? 'active' : ''}">
@@ -43,24 +42,22 @@ export function renderNavbar(): string {
           <a href="/student/transactions" class="nav-item-btn ${currentPath.startsWith('/student/transactions') ? 'active' : ''}">
             <i class="fa-solid fa-receipt"></i> Transactions
           </a>`
-        : ''
+      : ''
     }
-    ${
-      token && isProvider
-        ? `<a href="/owner" class="nav-item-btn ${currentPath === '/owner' ? 'active' : ''}">
+    ${token && isProvider
+      ? `<a href="/owner" class="nav-item-btn ${currentPath === '/owner' ? 'active' : ''}">
             <i class="fa-solid fa-building-user"></i> Provider Portal
           </a>`
-        : ''
+      : ''
     }
-    ${
-      token && isAdmin
-        ? `<a href="/admin" class="nav-item-btn ${currentPath === '/admin' ? 'active' : ''}">
+    ${token && isAdmin
+      ? `<a href="/admin" class="nav-item-btn ${currentPath === '/admin' ? 'active' : ''}">
             <i class="fa-solid fa-user-shield"></i> Admin Portal
           </a>
           <a href="/admin/earnings" class="nav-item-btn ${currentPath.startsWith('/admin/earnings') ? 'active' : ''}">
             <i class="fa-solid fa-wallet"></i> Provider Earnings
           </a>`
-        : ''
+      : ''
     }
   `;
 
@@ -90,15 +87,14 @@ export function renderNavbar(): string {
         </div>
 
         <!-- Mobile Action: Hamburger if Logged In, Sign In Button if Logged Out -->
-        ${
-          token
-            ? `<button id="mobileNavToggleBtn" class="mobile-nav-toggle" aria-label="Toggle navigation">
+        ${token
+      ? `<button id="mobileNavToggleBtn" class="mobile-nav-toggle" aria-label="Toggle navigation">
                  <i class="fa-solid fa-bars" id="mobileNavToggleIcon"></i>
                </button>`
-            : `<a href="/login" class="mobile-auth-btn btn-primary-action" style="padding: 7px 14px; font-size: 13px; font-weight: 700; border-radius: 10px; text-decoration: none;">
+      : `<a href="/login" class="mobile-auth-btn btn-primary-action" style="padding: 7px 14px; font-size: 13px; font-weight: 700; border-radius: 10px; text-decoration: none;">
                  <i class="fa-solid fa-user"></i> Sign In
                </a>`
-        }
+    }
       </div>
 
       <!-- Mobile Dropdown Drawer -->

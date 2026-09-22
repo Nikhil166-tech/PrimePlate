@@ -195,4 +195,19 @@ export class ProvidersController {
       percentage,
     );
   }
+
+  @Patch(':id/recovery-toggle')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.PROVIDER)
+  async updateMealRecoveryEnabled(
+    @Req() req: AuthenticatedRequest,
+    @Param('id') id: string,
+    @Body('enabled') enabled: boolean,
+  ) {
+    return this.providersService.updateMealRecoveryEnabled(
+      req.user.userId,
+      id,
+      enabled,
+    );
+  }
 }

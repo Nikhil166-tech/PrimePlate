@@ -23,6 +23,7 @@ interface SubscriptionRecord {
     id?: string;
     title?: string;
     durationDays?: number;
+    mealType?: string;
     pricePerMonth?: number | string | null;
     provider?: {
       id?: string;
@@ -30,6 +31,7 @@ interface SubscriptionRecord {
       city?: string;
       address?: string;
       contactPhone?: string;
+      mealRecoveryEnabled?: boolean;
     };
   };
   provider?: {
@@ -38,6 +40,7 @@ interface SubscriptionRecord {
     city?: string;
     address?: string;
     contactPhone?: string;
+    mealRecoveryEnabled?: boolean;
   };
   status?: string;
   startDate?: string;
@@ -213,6 +216,10 @@ export async function renderDashboard() {
 
               <div style="border-top: 1px solid var(--color-neutral-200); padding-top: 12px; display: flex; flex-direction: column; gap: 8px;">
                 <div style="display: flex; justify-content: space-between;">
+                  <span style="color: var(--color-neutral-500);">Meal Option:</span>
+                  <span style="font-weight: 700; color: var(--color-primary-700);">${selectedSubForDetails.mealType === 'LUNCH_ONLY' ? 'Lunch Only (Lunch)' : selectedSubForDetails.mealType === 'DINNER_ONLY' ? 'Dinner Only (Dinner)' : 'Full Day (All Meals)'}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between;">
                   <span style="color: var(--color-neutral-500);">Payment Date:</span>
                   <span style="font-weight: 600; color: var(--color-neutral-800);">${escapeHtml(selectedSubForDetails.paymentDateFormatted)}</span>
                 </div>
@@ -381,32 +388,42 @@ export async function renderDashboard() {
 
       subsGrid.innerHTML = activeSubs
         .map((s) => {
-          const recoveryBadgeHtml = s.recoveryDaysApplied > 0
-            ? `
-              <div style="background: linear-gradient(135deg, #f0fdf4, #ecfdf5); border: 1px solid #bbf7d0; border-radius: 12px; padding: 12px 14px; margin-bottom: 12px;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-                  <span style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: #166534;">
-                    <i class="fa-solid fa-gift"></i> Meal Recovery Applied
-                  </span>
-                  <span style="font-size: 11px; font-weight: 800; color: #15803d; background: #dcfce7; padding: 2px 8px; border-radius: 999px;">
-                    +${s.recoveryDaysApplied} Days
-                  </span>
+          const isFullDay = (s.mealType || 'FULL_DAY') === 'FULL_DAY';
+          const isRecoveryEnabled = (s as any).mealRecoveryEnabled !== false;
+          const mealTypeLabel = s.mealType === 'LUNCH_ONLY'
+            ? 'Lunch Only (Lunch)'
+            : s.mealType === 'DINNER_ONLY'
+              ? 'Dinner Only (Dinner)'
+              : 'Full Day (All Meals)';
+
+          const recoveryBadgeHtml = isFullDay && isRecoveryEnabled
+            ? (s.recoveryDaysApplied > 0
+              ? `
+                <div style="background: linear-gradient(135deg, #f0fdf4, #ecfdf5); border: 1px solid #bbf7d0; border-radius: 12px; padding: 12px 14px; margin-bottom: 12px;">
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                    <span style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: #166534;">
+                      <i class="fa-solid fa-gift"></i> Meal Recovery Applied
+                    </span>
+                    <span style="font-size: 11px; font-weight: 800; color: #15803d; background: #dcfce7; padding: 2px 8px; border-radius: 999px;">
+                      +${s.recoveryDaysApplied} Days
+                    </span>
+                  </div>
+                  <div style="font-size: 13px; font-weight: 700; color: #15803d;">
+                    ${s.durationDays}-day plan + ${s.recoveryDaysApplied} recovery days = ${s.durationDays + s.recoveryDaysApplied} meal days
+                  </div>
+                  <div style="display: flex; justify-content: space-between; font-size: 11px; color: #166534; margin-top: 6px; padding-top: 4px; border-top: 1px dashed #bbf7d0;">
+                    <span>Recovery used: <strong>${s.recoveryDaysApplied} days</strong></span>
+                    <span>Remaining: <strong>0 days</strong></span>
+                  </div>
                 </div>
-                <div style="font-size: 13px; font-weight: 700; color: #15803d;">
-                  ${s.durationDays}-day plan + ${s.recoveryDaysApplied} recovery days = ${s.durationDays + s.recoveryDaysApplied} meal days
+              `
+              : `
+                <div style="font-size: 11px; color: var(--color-neutral-600); background: var(--color-neutral-50); border: 1px dashed var(--color-neutral-200); border-radius: 10px; padding: 8px 12px; margin-bottom: 12px; display: flex; align-items: center; gap: 6px;">
+                  <i class="fa-solid fa-clock-rotate-left" style="color: var(--color-primary-600);"></i>
+                  <span><strong>Meal Recovery:</strong> Your eligible missed meal days will be calculated after your subscription period ends.</span>
                 </div>
-                <div style="display: flex; justify-content: space-between; font-size: 11px; color: #166534; margin-top: 6px; padding-top: 4px; border-top: 1px dashed #bbf7d0;">
-                  <span>Recovery used: <strong>${s.recoveryDaysApplied} days</strong></span>
-                  <span>Remaining: <strong>0 days</strong></span>
-                </div>
-              </div>
-            `
-            : `
-              <div style="font-size: 11px; color: var(--color-neutral-600); background: var(--color-neutral-50); border: 1px dashed var(--color-neutral-200); border-radius: 10px; padding: 8px 12px; margin-bottom: 12px; display: flex; align-items: center; gap: 6px;">
-                <i class="fa-solid fa-clock-rotate-left" style="color: var(--color-primary-600);"></i>
-                <span><strong>Meal Recovery:</strong> Your eligible missed meal days will be calculated after your subscription period ends.</span>
-              </div>
-            `;
+              `)
+            : '';
 
           return `
           <div style="background: #fff; border: 1px solid var(--color-neutral-200); border-radius: 24px; overflow: hidden; box-shadow: 0 4px 16px rgba(0,0,0,0.04);">
@@ -432,6 +449,10 @@ export async function renderDashboard() {
                 <div style="display: flex; justify-content: space-between;">
                   <span style="opacity: 0.8;">Plan</span>
                   <span style="font-weight: 600;">${escapeHtml(s.planType)}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between;">
+                  <span style="opacity: 0.8;">Meal Option</span>
+                  <span style="font-weight: 700; color: #fed7aa;">${escapeHtml(mealTypeLabel)}</span>
                 </div>
                 <div style="display: flex; justify-content: space-between;">
                   <span style="opacity: 0.8;">Status</span>
@@ -665,7 +686,12 @@ export async function renderDashboard() {
               <div style="background: var(--color-neutral-50); border: 1px solid var(--color-neutral-200); border-radius: 12px; padding: 14px; margin-bottom: 16px;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
                   <span style="font-size: 12px; color: var(--color-neutral-500); font-weight: 600;">Plan</span>
-                  <span style="font-size: 14px; font-weight: 700; color: var(--color-neutral-900);">${escapeHtml(s.planType)}</span>
+                  <div style="display: flex; align-items: center; gap: 6px;">
+                    <span style="font-size: 14px; font-weight: 700; color: var(--color-neutral-900);">${escapeHtml(s.planType)}</span>
+                    <span style="font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 999px; ${s.mealType === 'LUNCH_ONLY' ? 'background: #e0f2fe; color: #0369a1;' : s.mealType === 'DINNER_ONLY' ? 'background: #f3e8ff; color: #6b21a8;' : 'background: #ffedd5; color: #c2410c;'}">
+                      ${s.mealType === 'LUNCH_ONLY' ? 'Lunch' : s.mealType === 'DINNER_ONLY' ? 'Dinner' : 'Full Day'}
+                    </span>
+                  </div>
                 </div>
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
                   <span style="font-size: 12px; color: var(--color-neutral-500); font-weight: 600;">Amount Paid</span>
@@ -807,6 +833,8 @@ export async function renderDashboard() {
         safeRef,
         planId: plan.id || '',
         providerId: provider.id || '',
+        mealType: plan.mealType || (s as any).mealType || 'FULL_DAY',
+        mealRecoveryEnabled: (provider as any).mealRecoveryEnabled !== false,
         recoveryDaysApplied: Number(s.recoveryDaysApplied || 0),
         durationDays: Number(plan.durationDays || 30),
       };

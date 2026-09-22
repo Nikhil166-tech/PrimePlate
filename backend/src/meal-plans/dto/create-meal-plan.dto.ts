@@ -5,7 +5,9 @@ import {
   IsOptional,
   IsBoolean,
   IsPositive,
+  IsEnum,
 } from 'class-validator';
+import { MealType } from '../meal-plan.entity';
 
 export class CreateMealPlanDto {
   @IsString()
@@ -15,6 +17,10 @@ export class CreateMealPlanDto {
   @IsString()
   @IsNotEmpty()
   providerId: string;
+
+  @IsOptional()
+  @IsEnum(MealType)
+  mealType?: MealType;
 
   @IsOptional()
   @IsString()
@@ -34,6 +40,11 @@ export class CreateMealPlanDto {
   @IsNumber()
   @IsPositive()
   pricePerMonth?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @IsPositive()
+  customOneDayPrice?: number;
 
   @IsOptional()
   @IsBoolean()

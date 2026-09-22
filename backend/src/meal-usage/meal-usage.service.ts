@@ -5,7 +5,7 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, DataSource } from 'typeorm';
+import { Repository, DataSource, In } from 'typeorm';
 import * as crypto from 'crypto';
 import * as QRCode from 'qrcode';
 import {
@@ -79,7 +79,7 @@ export class MealUsageService {
   }
 
   /**
-   * Resolves a provider owned by the given provider user, ensuring a permanent QR token exists.
+   * Provider fetches or generates their permanent QR code token and printable data URL.
    */
   async getOrCreateProviderQr(
     userId: string,
@@ -89,42 +89,32 @@ export class MealUsageService {
     providerName: string;
     qrToken: string;
     qrCodeDataUrl: string;
+    qrDataUrl: string;
   }> {
-    let provider: MealProvider | null = null;
+    const where: any = providerId
+      ? [{ id: providerId, userId }, { id: providerId, user: { id: userId } }]
+      : [{ userId }, { user: { id: userId } }];
 
-    if (providerId) {
-      provider = await this.providerRepo.findOne({
-        where: { id: providerId },
-        relations: { user: true },
-      });
-      if (!provider) {
-        throw new NotFoundException('Meal provider not found');
-      }
-      if (provider.userId !== userId && provider.user?.id !== userId) {
-        throw new ForbiddenException(
-          'Cannot access QR code belonging to another provider',
-        );
-      }
-    } else {
-      // Find the first provider owned by this user
-      provider = await this.providerRepo.findOne({
-        where: [{ userId }, { user: { id: userId } }],
-        relations: { user: true },
-      });
-      if (!provider) {
-        throw new NotFoundException(
-          'No provider kitchen found for your account',
-        );
-      }
+    const provider = await this.providerRepo.findOne({
+      where,
+      relations: { user: true },
+    });
+
+    if (!provider) {
+      throw new NotFoundException(
+        'Provider kitchen not found or access denied',
+      );
     }
 
-    // Ensure permanent QR token exists; backfill if missing
+    if (provider.user?.id !== userId && provider.userId !== userId) {
+      throw new ForbiddenException('You do not own this provider kitchen');
+    }
+
     if (!provider.qrToken) {
       provider.qrToken = this.generateOpaqueQrToken();
       await this.providerRepo.save(provider);
     }
 
-    // Generate crisp QR Data URL representation for printing & downloading
     const qrCodeDataUrl = await QRCode.toDataURL(provider.qrToken, {
       width: 400,
       margin: 2,
@@ -140,16 +130,18 @@ export class MealUsageService {
       providerName: provider.name,
       qrToken: provider.qrToken,
       qrCodeDataUrl,
+      qrDataUrl: qrCodeDataUrl,
     };
   }
 
   /**
    * Student scans provider QR. Validates student, QR token, provider, active subscription,
-   * date window, and ensures exactly one check-in per calendar day.
+   * date window, and ensures exactly one check-in per calendar day per subscription.
    */
   async checkIn(
     studentId: string,
     qrToken: string,
+    subscriptionId?: string,
   ): Promise<{
     code: 'CHECKED_IN' | 'ALREADY_CHECKED_IN';
     status: string;
@@ -185,46 +177,109 @@ export class MealUsageService {
 
     const todayIst = this.getAuthoritativeIstDate();
 
-    // 3. Check if student has an active subscription matching this provider for today
-    const matchingProviderSub = studentSubs.find(
-      (sub) => sub.mealPlan?.provider?.id === provider.id,
-    );
+    // 3. Resolve active subscription for this provider
+    let targetSub: Subscription;
 
-    if (!matchingProviderSub) {
-      // Check if student has active subscriptions with OTHER providers
-      const hasOtherActiveSub = studentSubs.some((sub) => {
+    if (subscriptionId) {
+      const found = studentSubs.find((s) => s.id === subscriptionId);
+      if (!found || found.mealPlan?.provider?.id !== provider.id) {
+        throw new BadRequestException(
+          'This subscription does not belong to this provider.',
+        );
+      }
+      if (found.status !== SubscriptionStatus.ACTIVE) {
+        throw new BadRequestException("Your subscription isn't active today.");
+      }
+      const start = found.startDate;
+      const end = found.endDate || found.startDate;
+      if (todayIst < start || todayIst > end) {
+        throw new BadRequestException("Your subscription isn't active today.");
+      }
+      targetSub = found;
+    } else {
+      const providerSubs = studentSubs.filter(
+        (sub) => sub.mealPlan?.provider?.id === provider.id,
+      );
+
+      if (providerSubs.length === 0) {
+        // Check if student has active subscriptions with OTHER providers
+        const hasOtherActiveSub = studentSubs.some((sub) => {
+          if (sub.status !== SubscriptionStatus.ACTIVE) return false;
+          const start = sub.startDate;
+          const end = sub.endDate || sub.startDate;
+          return todayIst >= start && todayIst <= end;
+        });
+
+        if (hasOtherActiveSub) {
+          throw new BadRequestException(
+            "This meal QR isn't linked to your active subscription.",
+          );
+        } else {
+          throw new BadRequestException(
+            "You don't have an active subscription with this provider.",
+          );
+        }
+      }
+
+      // Filter provider subscriptions that are active today
+      const validTodaySubs = providerSubs.filter((sub) => {
         if (sub.status !== SubscriptionStatus.ACTIVE) return false;
         const start = sub.startDate;
         const end = sub.endDate || sub.startDate;
         return todayIst >= start && todayIst <= end;
       });
 
-      if (hasOtherActiveSub) {
-        throw new BadRequestException(
-          "This meal QR isn't linked to your active subscription.",
-        );
-      } else {
-        throw new BadRequestException(
-          "You don't have an active subscription with this provider.",
-        );
+      if (validTodaySubs.length === 0) {
+        // Provider subscription exists, but is not active today (expired, not started, or inactive status)
+        throw new BadRequestException("Your subscription isn't active today.");
       }
-    }
 
-    // Validate subscription status & dates
-    if (matchingProviderSub.status !== SubscriptionStatus.ACTIVE) {
-      throw new BadRequestException("Your subscription isn't active today.");
-    }
+      if (validTodaySubs.length === 1) {
+        targetSub = validTodaySubs[0];
+      } else {
+        // Multiple active subscriptions with this same provider (e.g. Lunch Only + Dinner Only)
+        // Check existing check-ins today for all active subscriptions with this provider
+        const existingUsages = await this.usageRepo.find({
+          where: {
+            subscriptionId: In(validTodaySubs.map((s) => s.id)),
+            mealDate: todayIst,
+          },
+        });
+        const checkedInSubIds = new Set(
+          existingUsages.map((u) => u.subscriptionId),
+        );
 
-    const start = matchingProviderSub.startDate;
-    const end = matchingProviderSub.endDate || matchingProviderSub.startDate;
-    if (todayIst < start || todayIst > end) {
-      throw new BadRequestException("Your subscription isn't active today.");
+        // Pick the first subscription that has NOT checked in today
+        const unconsumedSub = validTodaySubs.find(
+          (s) => !checkedInSubIds.has(s.id),
+        );
+
+        if (unconsumedSub) {
+          targetSub = unconsumedSub;
+        } else {
+          // All active subscriptions have already been checked in today
+          const lastUsage = existingUsages[0];
+          const timeStr = this.formatIstTime(
+            lastUsage?.scannedAt || lastUsage?.createdAt || new Date(),
+          );
+          return {
+            code: 'ALREADY_CHECKED_IN',
+            status: lastUsage?.status || MealUsageStatus.USED,
+            message:
+              "You're already checked in! Your meal for today has already been recorded.",
+            checkedInAt: timeStr,
+            mealDate: todayIst,
+            providerName: provider.name,
+            planTitle: validTodaySubs[0].mealPlan?.title,
+          };
+        }
+      }
     }
 
     // 4. Check for existing check-in today for this subscription (Application Level Check)
     const existingUsageToday = await this.usageRepo.findOne({
       where: {
-        subscriptionId: matchingProviderSub.id,
+        subscriptionId: targetSub.id,
         mealDate: todayIst,
       },
     });
@@ -241,7 +296,7 @@ export class MealUsageService {
         checkedInAt: timeStr,
         mealDate: todayIst,
         providerName: provider.name,
-        planTitle: matchingProviderSub.mealPlan?.title,
+        planTitle: targetSub.mealPlan?.title,
       };
     }
 
@@ -249,7 +304,7 @@ export class MealUsageService {
     try {
       const newUsage = this.usageRepo.create({
         studentId,
-        subscriptionId: matchingProviderSub.id,
+        subscriptionId: targetSub.id,
         providerId: provider.id,
         mealDate: todayIst,
         status: MealUsageStatus.USED,
@@ -267,7 +322,7 @@ export class MealUsageService {
         checkedInAt: timeStr,
         mealDate: todayIst,
         providerName: provider.name,
-        planTitle: matchingProviderSub.mealPlan?.title,
+        planTitle: targetSub.mealPlan?.title,
       };
     } catch (err: any) {
       // Catch PostgreSQL / SQLite unique constraint violation on (subscriptionId, mealDate)
@@ -282,7 +337,7 @@ export class MealUsageService {
         // Concurrency / duplicate scan race condition safely converted to ALREADY_CHECKED_IN
         const usageAfterRace = await this.usageRepo.findOne({
           where: {
-            subscriptionId: matchingProviderSub.id,
+            subscriptionId: targetSub.id,
             mealDate: todayIst,
           },
         });
@@ -298,7 +353,7 @@ export class MealUsageService {
           checkedInAt: timeStr,
           mealDate: todayIst,
           providerName: provider.name,
-          planTitle: matchingProviderSub.mealPlan?.title,
+          planTitle: targetSub.mealPlan?.title,
         };
       }
 

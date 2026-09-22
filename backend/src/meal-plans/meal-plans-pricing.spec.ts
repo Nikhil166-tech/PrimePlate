@@ -276,6 +276,7 @@ describe('PrimePlate — Original Price + Selling Price / Discount System Specif
       title: 'Duration Plan',
       originalPrice: 2700,
       sellingPrice: 2500,
+      customOneDayPrice: 83,
       providerId: mockProviderA.id,
     });
 

@@ -330,6 +330,10 @@ export class ProvidersService {
       provider.contactPhone = dto.contactPhone;
     if (dto.latitude !== undefined) provider.latitude = dto.latitude;
 
+    if (dto.mealRecoveryEnabled !== undefined) {
+      provider.mealRecoveryEnabled = Boolean(dto.mealRecoveryEnabled);
+    }
+
     if (dto.monthlyPrice !== undefined) {
       const parsedPrice = Number(dto.monthlyPrice);
       if (isNaN(parsedPrice) || parsedPrice <= 0) {
@@ -641,6 +645,35 @@ export class ProvidersService {
       id: saved.id,
       name: saved.name,
       recoveryPercentage: saved.recoveryPercentage,
+    };
+  }
+
+  /**
+   * Toggle provider's meal recovery enabled state.
+   * Validates ownership.
+   */
+  async updateMealRecoveryEnabled(
+    userId: string,
+    providerId: string,
+    enabled: boolean,
+  ): Promise<{ id: string; name: string; mealRecoveryEnabled: boolean }> {
+    const provider = await this.providerRepo.findOne({
+      where: { id: providerId },
+      relations: { user: true },
+    });
+    if (!provider) throw new NotFoundException('Provider not found');
+    if (provider.user?.id !== userId && provider.userId !== userId) {
+      throw new ForbiddenException(
+        'Cannot change meal recovery settings for another provider',
+      );
+    }
+
+    provider.mealRecoveryEnabled = Boolean(enabled);
+    const saved = await this.providerRepo.save(provider);
+    return {
+      id: saved.id,
+      name: saved.name,
+      mealRecoveryEnabled: saved.mealRecoveryEnabled,
     };
   }
 }

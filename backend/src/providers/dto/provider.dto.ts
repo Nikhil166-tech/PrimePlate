@@ -9,6 +9,7 @@ import {
   MaxLength,
   IsArray,
   ArrayMaxSize,
+  IsBoolean,
 } from 'class-validator';
 import { Category } from '../../common/enums/category.enum';
 
@@ -76,4 +77,8 @@ export class ProviderDto {
   @IsOptional()
   @IsNumber()
   recoveryPercentage?: number;
+
+  @IsOptional()
+  @IsBoolean()
+  mealRecoveryEnabled?: boolean;
 }

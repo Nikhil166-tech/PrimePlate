@@ -112,6 +112,10 @@ export class MealProvider {
   @Column({ type: 'int', default: 80 })
   recoveryPercentage: number;
 
+  /** Provider-level toggle for meal recovery. Default: true. */
+  @Column({ type: 'boolean', default: true })
+  mealRecoveryEnabled: boolean;
+
   @CreateDateColumn()
   createdAt: Date;
 

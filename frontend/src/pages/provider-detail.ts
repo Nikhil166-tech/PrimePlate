@@ -139,16 +139,36 @@ export async function renderProviderDetail(providerId: string) {
         .join('')
       : `<span style="font-size: 13px; color: var(--color-neutral-400); font-style: italic;">No amenities added yet.</span>`;
 
-    const primaryPlan = mealPlans[0];
-    const baseSellingPrice = (primaryPlan && (primaryPlan.sellingPrice || primaryPlan.pricePerMonth) && !isNaN(Number(primaryPlan.sellingPrice || primaryPlan.pricePerMonth)))
-      ? Number(primaryPlan.sellingPrice || primaryPlan.pricePerMonth)
-      : (provider.monthlyPrice && !isNaN(Number(provider.monthlyPrice)) ? Number(provider.monthlyPrice) : null);
+    const activeMealPlans = mealPlans.filter((p: any) => p.isActive !== false);
+    const typePriority: Record<string, number> = { FULL_DAY: 1, LUNCH_ONLY: 2, DINNER_ONLY: 3 };
+    activeMealPlans.sort((a: any, b: any) => (typePriority[a.mealType || 'FULL_DAY'] || 99) - (typePriority[b.mealType || 'FULL_DAY'] || 99));
 
-    const baseOriginalPrice = (primaryPlan && (primaryPlan.originalPrice || primaryPlan.pricePerMonth) && !isNaN(Number(primaryPlan.originalPrice || primaryPlan.pricePerMonth)))
-      ? Number(primaryPlan.originalPrice || primaryPlan.pricePerMonth)
-      : (baseSellingPrice ?? null);
+    // Ensure strictly one plan per active mealType so duplicates never appear
+    const distinctActivePlans: any[] = [];
+    const seenMealTypes = new Set<string>();
+    for (const p of activeMealPlans) {
+      const mType = p.mealType || 'FULL_DAY';
+      if (!seenMealTypes.has(mType)) {
+        seenMealTypes.add(mType);
+        distinctActivePlans.push(p);
+      }
+    }
 
-    const hasBaseDiscount = baseSellingPrice !== null && baseOriginalPrice !== null && baseOriginalPrice > baseSellingPrice;
+    const availablePlans: any[] = distinctActivePlans.length > 0
+      ? distinctActivePlans
+      : (provider.monthlyPrice && !isNaN(Number(provider.monthlyPrice))
+        ? [{
+          id: provider.id,
+          title: 'Full Day Plan',
+          mealType: 'FULL_DAY',
+          sellingPrice: Number(provider.monthlyPrice),
+          originalPrice: Number(provider.monthlyPrice),
+          customOneDayPrice: Math.round(Number(provider.monthlyPrice) / 30) || 99,
+          isActive: true,
+        }]
+        : []);
+
+    const baseSellingPrice = availablePlans[0]?.sellingPrice ?? (provider.monthlyPrice ? Number(provider.monthlyPrice) : null);
 
     const durationOptions = [
       {
@@ -177,45 +197,120 @@ export async function renderProviderDetail(providerId: string) {
       },
     ];
 
-    const plansHtml = baseSellingPrice !== null
-      ? durationOptions
-        .map((opt) => {
-          const calculatedSelling = Math.max(1, Math.round(baseSellingPrice * (opt.days / 30)));
-          const calculatedOriginal = baseOriginalPrice !== null ? Math.max(1, Math.round(baseOriginalPrice * (opt.days / 30))) : calculatedSelling;
-          const durationSave = calculatedOriginal - calculatedSelling;
-          const durationDiscountPct = (hasBaseDiscount && calculatedOriginal > 0 && durationSave > 0)
-            ? Math.floor((durationSave / calculatedOriginal) * 100)
-            : 0;
-          const isDiscounted = hasBaseDiscount && durationDiscountPct > 0;
+    const renderDurationCards = (plan: any, isMobile: boolean) => {
+      const pSelling = Number(plan?.sellingPrice ?? plan?.pricePerMonth ?? 0);
+      const pOrig = Number(plan?.originalPrice ?? plan?.pricePerMonth ?? pSelling);
+      const p1Day = plan?.customOneDayPrice ? Number(plan.customOneDayPrice) : Math.max(1, Math.round(pSelling / 30));
+      const hasPlanDiscount = pOrig > pSelling;
 
-          return `
-            <label class="duration-plan-card" style="display: block; border: 2px solid ${opt.isDefault ? '#f97316' : '#e5e7eb'}; background: ${opt.isDefault ? '#fff8f0' : '#ffffff'}; border-radius: 14px; padding: 12px 14px; margin-bottom: 10px; cursor: pointer; min-width: 0; box-sizing: border-box; transition: all 0.2s ease-in-out;">
-              <div style="display: flex; align-items: center; gap: 12px; width: 100%; min-width: 0;">
-                <input type="radio" name="durationPlanSelect" value="${opt.days}" ${opt.isDefault ? 'checked' : ''} style="width: 18px; height: 18px; accent-color: #ea580c; cursor: pointer; flex-shrink: 0;" />
-                <div style="flex: 1; min-width: 0; display: grid; grid-template-columns: 1fr auto; row-gap: 4px; column-gap: 10px; align-items: center;">
-                  <strong style="font-size: 14px; font-weight: 700; color: #111827; line-height: 1.3; min-width: 0;">${escapeHtml(opt.title)}</strong>
-                  <div style="display: flex; align-items: baseline; justify-content: flex-end; gap: 6px; white-space: nowrap; flex-shrink: 0;">
-                    ${isDiscounted ? `<span style="font-size: 12px; color: #9ca3af; text-decoration: line-through;">₹${calculatedOriginal.toLocaleString('en-IN')}</span>` : ''}
-                    <span style="font-weight: 800; color: #ea580c; font-size: 16px;">₹${calculatedSelling.toLocaleString('en-IN')}</span>
-                  </div>
-                  <p style="font-size: 12px; color: #6b7280; margin: 0; line-height: 1.3; min-width: 0;">${escapeHtml(opt.description)}</p>
-                  ${isDiscounted ? `
-                    <div style="display: flex; align-items: center; justify-content: flex-end; gap: 5px; white-space: nowrap; flex-shrink: 0;">
-                      <span style="background: #dcfce7; color: #16a34a; font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 999px;">${durationDiscountPct}% OFF</span>
-                      <span style="font-size: 11px; font-weight: 700; color: #059669;">Save ₹${durationSave.toLocaleString('en-IN')}</span>
-                    </div>
-                  ` : '<div></div>'}
+      return durationOptions.map((opt) => {
+        let calculatedSelling = 0;
+        let calculatedOriginal = 0;
+
+        if (opt.days === 1) {
+          calculatedSelling = p1Day;
+          calculatedOriginal = hasPlanDiscount ? Math.max(p1Day, Math.round(pOrig / 30)) : p1Day;
+        } else {
+          calculatedSelling = Math.max(1, Math.round(pSelling * (opt.days / 30)));
+          calculatedOriginal = hasPlanDiscount ? Math.max(1, Math.round(pOrig * (opt.days / 30))) : calculatedSelling;
+        }
+
+        const durationSave = calculatedOriginal - calculatedSelling;
+        const durationDiscountPct = (hasPlanDiscount && calculatedOriginal > 0 && durationSave > 0)
+          ? Math.floor((durationSave / calculatedOriginal) * 100)
+          : 0;
+        const isDiscounted = hasPlanDiscount && durationDiscountPct > 0;
+
+        const radioName = isMobile ? 'mobileDurationPlanSelect' : 'durationPlanSelect';
+        const cardClass = isMobile ? 'mobile-duration-plan-card' : 'duration-plan-card';
+
+        return `
+          <label class="${cardClass}" style="display: block; border: 2px solid ${opt.isDefault ? '#f97316' : '#e5e7eb'}; background: ${opt.isDefault ? '#fff8f0' : '#ffffff'}; border-radius: 14px; padding: 12px 14px; margin-bottom: 10px; cursor: pointer; min-width: 0; box-sizing: border-box; transition: all 0.2s ease-in-out;">
+            <div style="display: flex; align-items: center; gap: 12px; width: 100%; min-width: 0;">
+              <input type="radio" name="${radioName}" value="${opt.days}" ${opt.isDefault ? 'checked' : ''} style="width: 18px; height: 18px; accent-color: #ea580c; cursor: pointer; flex-shrink: 0;" />
+              <div style="flex: 1; min-width: 0; display: grid; grid-template-columns: 1fr auto; row-gap: 4px; column-gap: 10px; align-items: center;">
+                <strong style="font-size: 14px; font-weight: 700; color: #111827; line-height: 1.3; min-width: 0;">${escapeHtml(opt.title)}</strong>
+                <div style="display: flex; align-items: baseline; justify-content: flex-end; gap: 6px; white-space: nowrap; flex-shrink: 0;">
+                  ${isDiscounted ? `<span style="font-size: 12px; color: #9ca3af; text-decoration: line-through;">₹${calculatedOriginal.toLocaleString('en-IN')}</span>` : ''}
+                  <span style="font-weight: 800; color: #ea580c; font-size: 16px;">₹${calculatedSelling.toLocaleString('en-IN')}</span>
                 </div>
+                <p style="font-size: 12px; color: #6b7280; margin: 0; line-height: 1.3; min-width: 0;">${escapeHtml(opt.description)}</p>
+                ${isDiscounted ? `
+                  <div style="display: flex; align-items: center; justify-content: flex-end; gap: 5px; white-space: nowrap; flex-shrink: 0;">
+                    <span style="background: #dcfce7; color: #16a34a; font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 999px;">${durationDiscountPct}% OFF</span>
+                    <span style="font-size: 11px; font-weight: 700; color: #059669;">Save ₹${durationSave.toLocaleString('en-IN')}</span>
+                  </div>
+                ` : '<div></div>'}
               </div>
+            </div>
+          </label>
+        `;
+      }).join('');
+    };
+
+    const renderMealOptionSelector = (isMobile: boolean) => {
+      if (availablePlans.length === 0) {
+        return `
+          <div style="border: 1px dashed var(--color-neutral-300); border-radius: 12px; padding: 16px; margin-bottom: 16px; text-align: center; color: var(--color-neutral-500);">
+            <i class="fa-solid fa-info-circle"></i> No meal plans currently available for this provider.
+          </div>
+        `;
+      }
+
+      let optionSelectorHtml = '';
+      if (availablePlans.length > 1) {
+        // Multiple meal options enabled (e.g. Regular Full Day + Lunch Only and/or Dinner Only)
+        optionSelectorHtml = `
+          <div style="margin-bottom: 14px;">
+            <label style="font-size: 11px; font-weight: 700; color: var(--color-neutral-500); text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 6px;">
+              Choose Meal Option
             </label>
-          `;
-        })
-        .join('')
-      : `
-        <div style="border: 1px dashed var(--color-neutral-300); border-radius: 12px; padding: 16px; margin-bottom: 16px; text-align: center; color: var(--color-neutral-500);">
-          <i class="fa-solid fa-info-circle"></i> No meal plans currently available for this provider.
+            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+              ${availablePlans.map((p, idx) => {
+                const mType = p.mealType || 'FULL_DAY';
+                const label = mType === 'LUNCH_ONLY' ? 'Lunch Only' : mType === 'DINNER_ONLY' ? 'Dinner Only' : 'Full Day';
+                const icon = mType === 'LUNCH_ONLY' ? 'fa-bowl-food' : mType === 'DINNER_ONLY' ? 'fa-moon' : 'fa-sun';
+                const isSelected = idx === 0;
+                return `
+                  <button type="button" class="${isMobile ? 'mobile-meal-type-btn' : 'desktop-meal-type-btn'} btn-outline-action" data-plan-id="${escapeHtml(p.id)}" style="flex: 1 1 calc(33.333% - 6px); min-width: 95px; padding: 8px 10px; font-size: 12px; font-weight: 700; border-radius: 10px; display: flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; transition: all 0.2s ease; ${isSelected ? 'background: #ea580c; color: #fff; border-color: #ea580c;' : 'background: #fff; color: var(--color-neutral-700); border-color: var(--color-neutral-300);'}">
+                    <i class="fa-solid ${icon}"></i> ${label}
+                  </button>
+                `;
+              }).join('')}
+            </div>
+          </div>
+        `;
+      } else {
+        // Option B: Only one regular plan is active (Lunch & Dinner disabled)
+        const singlePlan = availablePlans[0];
+        const mType = singlePlan.mealType || 'FULL_DAY';
+        const label = mType === 'LUNCH_ONLY' ? 'Lunch Only Plan' : mType === 'DINNER_ONLY' ? 'Dinner Only Plan' : 'Regular Plan (Full Day)';
+        const desc = mType === 'LUNCH_ONLY' ? 'Daily fresh lunch meal pass' : mType === 'DINNER_ONLY' ? 'Daily fresh dinner meal pass' : 'All meals included: Breakfast, Lunch & Dinner';
+        const icon = mType === 'LUNCH_ONLY' ? 'fa-bowl-food' : mType === 'DINNER_ONLY' ? 'fa-moon' : 'fa-sun';
+
+        optionSelectorHtml = `
+          <div style="margin-bottom: 14px; background: #fff8f0; border: 1px solid #fed7aa; border-radius: 12px; padding: 10px 14px; display: flex; align-items: center; gap: 10px;">
+            <i class="fa-solid ${icon}" style="color: #ea580c; font-size: 16px;"></i>
+            <div>
+              <strong style="font-size: 13px; color: #9a3412; display: block;">${escapeHtml(label)}</strong>
+              <span style="font-size: 11px; color: #c2410c;">${escapeHtml(desc)}</span>
+            </div>
+          </div>
+        `;
+      }
+
+      const initialPlan = availablePlans[0];
+      const containerId = isMobile ? 'mobileDurationCardsContainer' : 'desktopDurationCardsContainer';
+
+      return `
+        ${optionSelectorHtml}
+        <div id="${containerId}">
+          ${renderDurationCards(initialPlan, isMobile)}
         </div>
       `;
+    };
+
+    const plansHtml = renderMealOptionSelector(false);
 
     const avgRatingVal = reviews.length > 0
       ? (reviews.reduce((sum: number, r: any) => sum + Number(r.rating || 0), 0) / reviews.length).toFixed(1)
@@ -261,45 +356,7 @@ export async function renderProviderDetail(providerId: string) {
         .join('')
       : `<p style="color: var(--color-neutral-500); font-size: 14px;">No customer reviews written yet for this provider.</p>`;
 
-    const mobilePlansHtml = baseSellingPrice !== null
-      ? durationOptions
-        .map((opt) => {
-          const calculatedSelling = Math.max(1, Math.round(baseSellingPrice * (opt.days / 30)));
-          const calculatedOriginal = baseOriginalPrice !== null ? Math.max(1, Math.round(baseOriginalPrice * (opt.days / 30))) : calculatedSelling;
-          const durationSave = calculatedOriginal - calculatedSelling;
-          const durationDiscountPct = (hasBaseDiscount && calculatedOriginal > 0 && durationSave > 0)
-            ? Math.floor((durationSave / calculatedOriginal) * 100)
-            : 0;
-          const isDiscounted = hasBaseDiscount && durationDiscountPct > 0;
-
-          return `
-            <label class="mobile-duration-plan-card" style="display: block; border: 2px solid ${opt.isDefault ? '#f97316' : '#e5e7eb'}; background: ${opt.isDefault ? '#fff8f0' : '#ffffff'}; border-radius: 14px; padding: 12px 14px; margin-bottom: 10px; cursor: pointer; transition: all 0.2s ease-in-out; min-width: 0; max-width: 100%; box-sizing: border-box;">
-              <div style="display: flex; align-items: center; gap: 12px; width: 100%; min-width: 0;">
-                <input type="radio" name="mobileDurationPlanSelect" value="${opt.days}" ${opt.isDefault ? 'checked' : ''} style="width: 18px; height: 18px; accent-color: #ea580c; cursor: pointer; flex-shrink: 0;" />
-                <div style="flex: 1; min-width: 0; display: grid; grid-template-columns: 1fr auto; row-gap: 4px; column-gap: 10px; align-items: center;">
-                  <strong style="font-size: 14px; font-weight: 700; color: #111827; line-height: 1.3; min-width: 0;">${escapeHtml(opt.title)}</strong>
-                  <div style="display: flex; align-items: baseline; justify-content: flex-end; gap: 6px; white-space: nowrap; flex-shrink: 0;">
-                    ${isDiscounted ? `<span style="font-size: 12px; color: #9ca3af; text-decoration: line-through;">₹${calculatedOriginal.toLocaleString('en-IN')}</span>` : ''}
-                    <span style="font-weight: 800; color: #ea580c; font-size: 16px;">₹${calculatedSelling.toLocaleString('en-IN')}</span>
-                  </div>
-                  <p style="font-size: 12px; color: #6b7280; margin: 0; line-height: 1.3; min-width: 0;">${escapeHtml(opt.description)}</p>
-                  ${isDiscounted ? `
-                    <div style="display: flex; align-items: center; justify-content: flex-end; gap: 5px; white-space: nowrap; flex-shrink: 0;">
-                      <span style="background: #dcfce7; color: #16a34a; font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 999px;">${durationDiscountPct}% OFF</span>
-                      <span style="font-size: 11px; font-weight: 700; color: #059669;">Save ₹${durationSave.toLocaleString('en-IN')}</span>
-                    </div>
-                  ` : '<div></div>'}
-                </div>
-              </div>
-            </label>
-          `;
-        })
-        .join('')
-      : `
-        <div style="border: 1px dashed var(--color-neutral-300); border-radius: 12px; padding: 16px; margin-bottom: 16px; text-align: center; color: var(--color-neutral-500);">
-          <i class="fa-solid fa-info-circle"></i> No meal plans currently available for this provider.
-        </div>
-      `;
+    const mobilePlansHtml = renderMealOptionSelector(true);
 
     let reviewActionAreaHtml = '';
     if (userRole === 'STUDENT') {
@@ -445,6 +502,10 @@ export async function renderProviderDetail(providerId: string) {
         : isFullyBooked
           ? `<span style="background: #f59e0b; color: #fff; padding: 4px 12px; border-radius: 8px; font-size: 12px; font-weight: 700;">● FULLY BOOKED</span>`
           : `<span style="background: #22c55e; color: #fff; padding: 4px 12px; border-radius: 8px; font-size: 12px; font-weight: 700;">● SLOTS AVAILABLE</span>`
+      }
+                ${provider.mealRecoveryEnabled !== false
+        ? `<span style="background: rgba(22, 163, 74, 0.95); color: #fff; padding: 4px 12px; border-radius: 8px; font-size: 12px; font-weight: 700;"><i class="fa-solid fa-rotate-left"></i> ${provider.recoveryPercentage ?? 80}% Recovery</span>`
+        : `<span style="background: rgba(115, 115, 115, 0.9); color: #fff; padding: 4px 12px; border-radius: 8px; font-size: 12px; font-weight: 700;"><i class="fa-solid fa-ban"></i> No Recovery</span>`
       }
               </div>
 
@@ -903,49 +964,93 @@ export async function renderProviderDetail(providerId: string) {
       if (e.target === menuModal) closeMenuModal();
     });
 
+    let currentDesktopPlanId = availablePlans[0]?.id || providerId;
+    let currentMobilePlanId = availablePlans[0]?.id || providerId;
+
+    const bindDurationRadioListeners = (isMobile: boolean) => {
+      const radioName = isMobile ? 'mobileDurationPlanSelect' : 'durationPlanSelect';
+      const cardClass = isMobile ? '.mobile-duration-plan-card' : '.duration-plan-card';
+
+      document.querySelectorAll(`input[name="${radioName}"]`).forEach((radio) => {
+        radio.addEventListener('change', (e) => {
+          document.querySelectorAll(cardClass).forEach((c) => {
+            (c as HTMLElement).style.borderColor = '#e5e7eb';
+            (c as HTMLElement).style.background = '#ffffff';
+          });
+          const target = (e.currentTarget as HTMLInputElement).closest(cardClass) as HTMLElement;
+          if (target) {
+            target.style.borderColor = '#f97316';
+            target.style.background = '#fff8f0';
+          }
+        });
+      });
+    };
+
+    bindDurationRadioListeners(false);
+    bindDurationRadioListeners(true);
+
+    // Meal type selector button clicks (desktop)
+    document.querySelectorAll('.desktop-meal-type-btn').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        const planId = (e.currentTarget as HTMLElement).getAttribute('data-plan-id');
+        const plan = availablePlans.find((p) => p.id === planId);
+        if (!plan) return;
+        currentDesktopPlanId = plan.id;
+
+        document.querySelectorAll('.desktop-meal-type-btn').forEach((b) => {
+          (b as HTMLElement).style.background = '#ffffff';
+          (b as HTMLElement).style.color = 'var(--color-neutral-700)';
+          (b as HTMLElement).style.borderColor = 'var(--color-neutral-300)';
+        });
+        (e.currentTarget as HTMLElement).style.background = '#ea580c';
+        (e.currentTarget as HTMLElement).style.color = '#ffffff';
+        (e.currentTarget as HTMLElement).style.borderColor = '#ea580c';
+
+        const container = document.getElementById('desktopDurationCardsContainer');
+        if (container) {
+          container.innerHTML = renderDurationCards(plan, false);
+          bindDurationRadioListeners(false);
+        }
+      });
+    });
+
+    // Meal type selector button clicks (mobile)
+    document.querySelectorAll('.mobile-meal-type-btn').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        const planId = (e.currentTarget as HTMLElement).getAttribute('data-plan-id');
+        const plan = availablePlans.find((p) => p.id === planId);
+        if (!plan) return;
+        currentMobilePlanId = plan.id;
+
+        document.querySelectorAll('.mobile-meal-type-btn').forEach((b) => {
+          (b as HTMLElement).style.background = '#ffffff';
+          (b as HTMLElement).style.color = 'var(--color-neutral-700)';
+          (b as HTMLElement).style.borderColor = 'var(--color-neutral-300)';
+        });
+        (e.currentTarget as HTMLElement).style.background = '#ea580c';
+        (e.currentTarget as HTMLElement).style.color = '#ffffff';
+        (e.currentTarget as HTMLElement).style.borderColor = '#ea580c';
+
+        const container = document.getElementById('mobileDurationCardsContainer');
+        if (container) {
+          container.innerHTML = renderDurationCards(plan, true);
+          bindDurationRadioListeners(true);
+        }
+      });
+    });
+
     // Desktop Subscribe Button
     document.getElementById('sidebarSubscribeBtn')?.addEventListener('click', () => {
       const selectedRadio = document.querySelector('input[name="durationPlanSelect"]:checked') as HTMLInputElement;
       const selectedDays = selectedRadio ? Number(selectedRadio.value) : 30;
-      const targetPlanId = mealPlans[0] ? mealPlans[0].id : providerId;
-      navigate(`/checkout/${targetPlanId}?days=${selectedDays}`);
+      navigate(`/checkout/${currentDesktopPlanId}?days=${selectedDays}`);
     });
 
     // Mobile Subscribe Button
     document.getElementById('mobileSubscribeBtn')?.addEventListener('click', () => {
       const selectedRadio = document.querySelector('input[name="mobileDurationPlanSelect"]:checked') as HTMLInputElement;
       const selectedDays = selectedRadio ? Number(selectedRadio.value) : 30;
-      const targetPlanId = mealPlans[0] ? mealPlans[0].id : providerId;
-      navigate(`/checkout/${targetPlanId}?days=${selectedDays}`);
-    });
-
-    // Duration Plan Selection Active Visual Sync
-    document.querySelectorAll('input[name="durationPlanSelect"]').forEach((radio) => {
-      radio.addEventListener('change', (e) => {
-        document.querySelectorAll('.duration-plan-card').forEach((c) => {
-          (c as HTMLElement).style.borderColor = '#e5e7eb';
-          (c as HTMLElement).style.background = '#ffffff';
-        });
-        const target = (e.currentTarget as HTMLInputElement).closest('.duration-plan-card') as HTMLElement;
-        if (target) {
-          target.style.borderColor = '#f97316';
-          target.style.background = '#fff8f0';
-        }
-      });
-    });
-
-    document.querySelectorAll('input[name="mobileDurationPlanSelect"]').forEach((radio) => {
-      radio.addEventListener('change', (e) => {
-        document.querySelectorAll('.mobile-duration-plan-card').forEach((c) => {
-          (c as HTMLElement).style.borderColor = '#e5e7eb';
-          (c as HTMLElement).style.background = '#ffffff';
-        });
-        const target = (e.currentTarget as HTMLInputElement).closest('.mobile-duration-plan-card') as HTMLElement;
-        if (target) {
-          target.style.borderColor = '#f97316';
-          target.style.background = '#fff8f0';
-        }
-      });
+      navigate(`/checkout/${currentMobilePlanId}?days=${selectedDays}`);
     });
 
     // Create Review Form Listener

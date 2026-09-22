@@ -72,6 +72,7 @@ describe('PrimePlate Payment Security & Recovery Specification', () => {
     id: 'plan-uuid-1',
     title: 'Standard Meal Plan',
     pricePerMonth: 3000,
+    customOneDayPrice: 100,
     provider: mockProvider,
   };
 

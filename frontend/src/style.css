@@ -4063,6 +4063,7 @@ input:checked+.toggle-slider:before {
    Small Screen Adjustments (<= 375px & 360px)
    -------------------------------------------------------------------------- */
 @media (max-width: 375px) {
+
   .student-bottom-nav-inner,
   .provider-bottom-nav-inner {
     padding: 0 2px;
@@ -4442,5 +4443,202 @@ input:checked+.toggle-slider:before {
     max-width: 100%;
     width: 100%;
     flex: 1 1 auto;
+  }
+}
+
+/* ==========================================================================
+   PrimePlate — Mobile-First Priority & Responsive Ergonomics (All Screens)
+   ========================================================================== */
+
+/* 1. Universal Mobile Form Controls & Touch Targets */
+@media (max-width: 768px) {
+
+  button,
+  .btn-primary-action,
+  .btn-outline-action {
+    min-height: 42px;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .btn-primary-action:active,
+  .btn-outline-action:active {
+    transform: scale(0.98);
+  }
+
+  input[type="text"],
+  input[type="number"],
+  input[type="email"],
+  input[type="password"],
+  select,
+  textarea {
+    font-size: 16px !important;
+    /* Prevents auto-zoom on iOS */
+    touch-action: manipulation;
+  }
+}
+
+/* 2. Mobile Bottom-Sheet Style Modals */
+@media (max-width: 640px) {
+
+  .modal-backdrop-mobile,
+  #editPriceModal,
+  #editLocationModal,
+  #hostelModal,
+  #editProfileModal,
+  #correctionModal,
+  #subDetailsModal,
+  #subscriberDetailsModal,
+  #editReviewModal,
+  #deleteReviewModal,
+  #weeklyMenuModal {
+    padding: 8px !important;
+    align-items: flex-end !important;
+  }
+
+  .modal-dialog-mobile,
+  #editPriceModal>div,
+  #editLocationModal>div,
+  #hostelModal>div,
+  #editProfileModal>div,
+  #correctionModal>div,
+  #subDetailsModal>div,
+  #subscriberDetailsModal>div,
+  #editReviewModal>div,
+  #deleteReviewModal>div,
+  #weeklyMenuModal>div {
+    width: 100% !important;
+    max-width: 100% !important;
+    max-height: 92vh !important;
+    padding: 20px 16px !important;
+    border-radius: 24px 24px 14px 14px !important;
+    box-sizing: border-box !important;
+  }
+
+  .meal-type-config-card {
+    padding: 14px 12px !important;
+  }
+
+  .meal-inputs-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+  }
+
+  .meal-option-input {
+    padding: 8px 8px !important;
+    font-size: 13px !important;
+  }
+
+  .modal-actions-mobile {
+    flex-direction: column-reverse !important;
+    gap: 8px !important;
+    width: 100% !important;
+  }
+
+  .modal-actions-mobile button {
+    width: 100% !important;
+    justify-content: center !important;
+  }
+}
+
+@media (max-width: 380px) {
+  .meal-inputs-grid {
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+  }
+}
+
+/* 3. Mobile Meal Option Selector Buttons */
+.mobile-meal-type-btn,
+.desktop-meal-type-btn {
+  min-height: 42px;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+@media (max-width: 480px) {
+
+  .mobile-meal-type-btn,
+  .desktop-meal-type-btn {
+    flex: 1 1 calc(33.333% - 6px) !important;
+    min-width: 85px !important;
+    font-size: 12px !important;
+    padding: 8px 6px !important;
+  }
+}
+
+@media (max-width: 360px) {
+
+  .mobile-meal-type-btn,
+  .desktop-meal-type-btn {
+    flex: 1 1 100% !important;
+    width: 100% !important;
+  }
+}
+
+/* 4. Checkout Mobile Ergonomics */
+@media (max-width: 640px) {
+  .checkout-page-container {
+    padding: 0 12px !important;
+    margin: 12px auto !important;
+  }
+
+  .checkout-card {
+    padding: 18px 14px !important;
+    border-radius: 20px !important;
+  }
+
+  .checkout-title {
+    font-size: 22px !important;
+    margin-bottom: 4px !important;
+  }
+
+  .checkout-subtitle {
+    font-size: 13px !important;
+  }
+
+  #checkoutPlanDetails {
+    padding: 14px 12px !important;
+    border-radius: 14px !important;
+    margin-bottom: 20px !important;
+  }
+
+  #payBtn {
+    padding: 15px !important;
+    font-size: 16px !important;
+    min-height: 50px !important;
+    border-radius: 14px !important;
+  }
+}
+
+/* 5. Student Dashboard & Digital Mess Cards on Mobile */
+@media (max-width: 640px) {
+  #subsGrid {
+    grid-template-columns: 1fr !important;
+    gap: 16px !important;
+  }
+
+  #subsGrid>div {
+    border-radius: 20px !important;
+  }
+
+  .dashboard-tabs-bar {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    scrollbar-width: none !important;
+  }
+
+  .dashboard-tabs-bar::-webkit-scrollbar {
+    display: none !important;
+  }
+}
+
+/* 6. Hostels & Browse Grid Single-Column Safety */
+@media (max-width: 640px) {
+
+  #browseGrid,
+  #homeHostelsGrid {
+    grid-template-columns: 1fr !important;
+    gap: 16px !important;
   }
 }

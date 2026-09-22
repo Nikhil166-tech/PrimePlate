@@ -54,6 +54,9 @@ export async function renderCheckout(planId: string) {
     providerId?: string;
     providerName?: string;
     description?: string;
+    mealType: string;
+    customOneDayPrice: number | null;
+    providerRecoveryEnabled?: boolean;
   } | null = null;
   let actualPlanId = planId;
   let planFetchError: string | null = null;
@@ -66,6 +69,11 @@ export async function renderCheckout(planId: string) {
       const sellingNum = Number(fetched.sellingPrice ?? fetched.pricePerMonth);
       const originalNum = Number(fetched.originalPrice ?? fetched.pricePerMonth ?? sellingNum);
       const pId = fetched.provider?.id;
+      const mType = fetched.mealType || 'FULL_DAY';
+      const custom1Day = (fetched.customOneDayPrice !== undefined && fetched.customOneDayPrice !== null && !isNaN(Number(fetched.customOneDayPrice)))
+        ? Number(fetched.customOneDayPrice)
+        : null;
+
       if (!isNaN(sellingNum) && sellingNum > 0) {
         selectedPlan = {
           id: fetched.id,
@@ -76,9 +84,12 @@ export async function renderCheckout(planId: string) {
           providerId: pId,
           providerName: fetched.provider?.name || 'PrimePlate Partner Kitchen',
           description: fetched.description || 'Daily fresh meals',
+          mealType: mType,
+          customOneDayPrice: custom1Day,
         };
 
-        if (pId) {
+        // Strictly fetch and apply meal recovery ONLY for FULL_DAY subscriptions
+        if (pId && mType === 'FULL_DAY') {
           try {
             const balances: any = await getMyRecoveryBalance(pId);
             if (Array.isArray(balances)) {
@@ -90,6 +101,8 @@ export async function renderCheckout(planId: string) {
           } catch (_) {
             providerRecoveryDays = 0;
           }
+        } else {
+          providerRecoveryDays = 0;
         }
       } else {
         planFetchError = 'Unable to load plan price.';
@@ -125,8 +138,23 @@ export async function renderCheckout(planId: string) {
   }
 
   let selectedDays = initialDays;
-  const calcPrice = (days: number) => Math.max(1, Math.round(selectedPlan!.basePrice * (days / 30)));
-  const calcOriginalPrice = (days: number) => Math.max(1, Math.round(selectedPlan!.baseOriginalPrice * (days / 30)));
+  const calcPrice = (days: number): number => {
+    if (!selectedPlan) return 0;
+    if (days === 1 && selectedPlan.customOneDayPrice) {
+      return selectedPlan.customOneDayPrice;
+    }
+    return Math.max(1, Math.round(selectedPlan.basePrice * (days / 30)));
+  };
+
+  const calcOriginalPrice = (days: number): number => {
+    if (!selectedPlan) return 0;
+    if (days === 1 && selectedPlan.customOneDayPrice) {
+      return selectedPlan.hasDiscount
+        ? Math.max(selectedPlan.customOneDayPrice, Math.round(selectedPlan.baseOriginalPrice * (1 / 30)))
+        : selectedPlan.customOneDayPrice;
+    }
+    return Math.max(1, Math.round(selectedPlan!.baseOriginalPrice * (days / 30)));
+  };
 
   const durationOptions = [
     { days: 1, title: '1 Day Pass', description: 'Daily fresh meal' },
@@ -169,16 +197,30 @@ export async function renderCheckout(planId: string) {
   }).join('');
 
   const renderRecoveryPreviewHtml = (days: number) => {
-    if (providerRecoveryDays <= 0) return '';
+    const isRecoveryEnabled = selectedPlan?.providerRecoveryEnabled !== false;
+    let recoveryNoticeHtml = '';
+    if (!isRecoveryEnabled) {
+      recoveryNoticeHtml = `
+        <div style="background: var(--color-neutral-100); border: 1px solid var(--color-neutral-200); border-radius: 10px; padding: 10px 12px; margin-bottom: 14px; font-size: 12px; color: var(--color-neutral-600); display: flex; align-items: center; gap: 8px;">
+          <i class="fa-solid fa-ban" style="color: var(--color-neutral-400);"></i>
+          <span>Meal Recovery is not offered by this kitchen. Unattended meals will not accumulate recovery days.</span>
+        </div>
+      `;
+    }
+
+    if (selectedPlan?.mealType !== 'FULL_DAY' || providerRecoveryDays <= 0) {
+      return recoveryNoticeHtml;
+    }
     const totalDays = days + providerRecoveryDays;
     return `
+      ${recoveryNoticeHtml}
       <div id="checkoutRecoveryBox" class="checkout-recovery-box" style="background: linear-gradient(135deg, #f0fdf4, #ecfdf5); border: 1.5px solid #86efac; border-radius: 14px; padding: 16px; margin-bottom: 16px; box-sizing: border-box;">
         <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
           <span style="font-size: 18px;">🎁</span>
-          <strong style="font-size: 14px; font-weight: 800; color: #166534;">Meal Recovery Available</strong>
+          <strong style="font-size: 14px; font-weight: 800; color: #166534;">Meal Recovery Balance Applied</strong>
         </div>
         <p style="font-size: 13px; color: #15803d; margin: 0 0 10px 0;">
-          You have <strong>${providerRecoveryDays} recovery days</strong> from this mess.
+          You have <strong>${providerRecoveryDays} previously earned recovery days</strong> from this mess.
         </p>
         <div style="background: #ffffff; border: 1px solid #bbf7d0; border-radius: 10px; padding: 10px 12px; font-size: 13px; display: flex; flex-direction: column; gap: 5px;">
           <div style="display: flex; justify-content: space-between; color: var(--color-neutral-600);">
@@ -243,24 +285,42 @@ export async function renderCheckout(planId: string) {
     }
   };
 
+  const mealOptionLabel = selectedPlan.mealType === 'LUNCH_ONLY'
+    ? 'Lunch Only (Lunch)'
+    : selectedPlan.mealType === 'DINNER_ONLY'
+      ? 'Dinner Only (Dinner)'
+      : 'Full Day (All Meals)';
+
+  const mealOptionBadgeStyle = selectedPlan.mealType === 'LUNCH_ONLY'
+    ? 'background: #e0f2fe; color: #0369a1;'
+    : selectedPlan.mealType === 'DINNER_ONLY'
+      ? 'background: #f3e8ff; color: #6b21a8;'
+      : 'background: #ffedd5; color: #c2410c;';
+
   container.innerHTML = `
     ${renderNavbar()}
     <main class="main-content" style="padding-top: 88px; padding-bottom: 60px;">
-      <div style="max-width: 580px; margin: 20px auto; padding: 0 16px;">
-        <div style="background: #fff; border: 1px solid var(--color-neutral-200); border-radius: 24px; padding: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.06);">
-          <div style="text-align: center; margin-bottom: 24px;">
+      <div class="checkout-page-container" style="max-width: 580px; margin: 20px auto; padding: 0 16px;">
+        <div class="checkout-card" style="background: #fff; border: 1px solid var(--color-neutral-200); border-radius: 24px; padding: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.06);">
+          <div class="checkout-header-area" style="text-align: center; margin-bottom: 24px;">
             <span style="font-size: 12px; font-weight: 700; color: var(--color-success-600); background: var(--color-success-50); padding: 4px 12px; border-radius: 999px; display: inline-block; margin-bottom: 12px;">
               <i class="fa-solid fa-shield-halved"></i> Official Razorpay Secure Checkout
             </span>
-            <h1 class="font-display" style="font-size: 28px; font-weight: 800; color: var(--color-neutral-900); margin-bottom: 6px;">Order Summary & Payment</h1>
-            <p style="color: var(--color-neutral-500); font-size: 14px;">Confirm your selected meal plan subscription to activate your digital mess card</p>
+            <h1 class="checkout-title font-display" style="font-size: 28px; font-weight: 800; color: var(--color-neutral-900); margin-bottom: 6px;">Order Summary & Payment</h1>
+            <p class="checkout-subtitle" style="color: var(--color-neutral-500); font-size: 14px;">Confirm your selected meal plan subscription to activate your digital mess card</p>
           </div>
 
           <div id="checkoutPlanDetails" style="background: var(--color-neutral-50); border: 1px solid var(--color-neutral-200); border-radius: 16px; padding: 24px; margin-bottom: 28px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; border-bottom: 1px solid var(--color-neutral-200); padding-bottom: 12px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; border-bottom: 1px solid var(--color-neutral-200); padding-bottom: 12px; flex-wrap: wrap; gap: 8px;">
               <div>
                 <span style="font-size: 11px; text-transform: uppercase; font-weight: 700; color: var(--color-neutral-500);">Kitchen Provider</span>
-                <h3 id="providerName" class="font-display" style="font-size: 18px; font-weight: 700; color: var(--color-neutral-900);">${escapeHtml(selectedPlan.providerName || '')}</h3>
+                <h3 id="providerName" class="font-display" style="font-size: 18px; font-weight: 700; color: var(--color-neutral-900); margin: 2px 0 0 0;">${escapeHtml(selectedPlan.providerName || '')}</h3>
+              </div>
+              <div style="text-align: right;">
+                <span style="font-size: 11px; text-transform: uppercase; font-weight: 700; color: var(--color-neutral-500); display: block; margin-bottom: 4px;">Meal Option</span>
+                <span style="font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 999px; ${mealOptionBadgeStyle}">
+                  ${escapeHtml(mealOptionLabel)}
+                </span>
               </div>
             </div>
 

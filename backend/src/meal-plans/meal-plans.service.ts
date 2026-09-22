@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { MealPlan } from './meal-plan.entity';
+import { MealPlan, MealType } from './meal-plan.entity';
 import { MealProvider } from '../providers/meal-provider.entity';
 import { CreateMealPlanDto } from './dto/create-meal-plan.dto';
 import { UpdateMealPlanDto } from './dto/update-meal-plan.dto';
@@ -36,6 +36,10 @@ export function calculateDiscount(originalPrice: number, sellingPrice: number) {
 export function formatMealPlan(plan: MealPlan) {
   const originalPrice = Number(plan.originalPrice ?? plan.pricePerMonth ?? 0);
   const sellingPrice = Number(plan.sellingPrice ?? plan.pricePerMonth ?? 0);
+  const customOneDayPrice =
+    plan.customOneDayPrice !== null && plan.customOneDayPrice !== undefined
+      ? Number(plan.customOneDayPrice)
+      : null;
   const { discountAmount, discountPercentage, hasDiscount } = calculateDiscount(
     originalPrice,
     sellingPrice,
@@ -43,9 +47,11 @@ export function formatMealPlan(plan: MealPlan) {
 
   return {
     ...plan,
+    mealType: plan.mealType || MealType.FULL_DAY,
     pricePerMonth: sellingPrice,
     originalPrice,
     sellingPrice,
+    customOneDayPrice,
     discountAmount,
     discountPercentage,
     hasDiscount,
@@ -96,6 +102,27 @@ export class MealPlansService {
       );
     }
 
+    let customOneDayPrice: number | null = null;
+    if (dto.customOneDayPrice !== undefined && dto.customOneDayPrice !== null) {
+      const oneDay = Number(dto.customOneDayPrice);
+      if (isNaN(oneDay) || !isFinite(oneDay) || oneDay <= 0) {
+        throw new BadRequestException(
+          '1-day price must be a valid positive number',
+        );
+      }
+      customOneDayPrice = oneDay;
+    }
+
+    const validMealTypes = [
+      MealType.FULL_DAY,
+      MealType.LUNCH_ONLY,
+      MealType.DINNER_ONLY,
+    ];
+    const mealType = dto.mealType || MealType.FULL_DAY;
+    if (!validMealTypes.includes(mealType)) {
+      throw new BadRequestException('Invalid mealType');
+    }
+
     const provider = await this.providerRepo.findOne({
       where: { id: dto.providerId },
       relations: { user: true },
@@ -111,9 +138,11 @@ export class MealPlansService {
     const plan = this.planRepo.create({
       title: dto.title.trim(),
       description: dto.description?.trim(),
+      mealType,
       originalPrice: orig,
       sellingPrice: sell,
       pricePerMonth: sell, // synchronized for backward compatibility
+      customOneDayPrice,
       provider,
       isActive: dto.isActive ?? true,
     });
@@ -178,6 +207,32 @@ export class MealPlansService {
       );
     }
 
+    if (dto.customOneDayPrice !== undefined) {
+      if (dto.customOneDayPrice === null) {
+        plan.customOneDayPrice = null;
+      } else {
+        const oneDay = Number(dto.customOneDayPrice);
+        if (isNaN(oneDay) || !isFinite(oneDay) || oneDay <= 0) {
+          throw new BadRequestException(
+            '1-day price must be a valid positive number',
+          );
+        }
+        plan.customOneDayPrice = oneDay;
+      }
+    }
+
+    if (dto.mealType !== undefined) {
+      const validMealTypes = [
+        MealType.FULL_DAY,
+        MealType.LUNCH_ONLY,
+        MealType.DINNER_ONLY,
+      ];
+      if (!validMealTypes.includes(dto.mealType)) {
+        throw new BadRequestException('Invalid mealType');
+      }
+      plan.mealType = dto.mealType;
+    }
+
     if (dto.title !== undefined) plan.title = dto.title.trim();
     if (dto.description !== undefined)
       plan.description = dto.description?.trim();
@@ -191,9 +246,16 @@ export class MealPlansService {
     return formatMealPlan(saved);
   }
 
-  async findByProvider(providerId: string): Promise<MealPlan[]> {
+  async findByProvider(
+    providerId: string,
+    includeInactive: boolean = false,
+  ): Promise<MealPlan[]> {
+    const where: any = { provider: { id: providerId } };
+    if (!includeInactive) {
+      where.isActive = true;
+    }
     const plans = await this.planRepo.find({
-      where: { provider: { id: providerId }, isActive: true },
+      where,
       relations: { provider: true },
       order: { createdAt: 'ASC' },
     });

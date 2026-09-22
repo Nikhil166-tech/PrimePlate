@@ -11,6 +11,7 @@ import { MealRecovery, MealRecoveryStatus } from './meal-recovery.entity';
 import { MealProvider } from '../providers/meal-provider.entity';
 import { MealUsage } from '../meal-usage/meal-usage.entity';
 import { Subscription } from '../subscriptions/subscription.entity';
+import { MealType } from '../meal-plans/meal-plan.entity';
 
 @Injectable()
 export class MealRecoveryService {
@@ -97,10 +98,41 @@ export class MealRecoveryService {
       throw new NotFoundException('Subscription not found');
     }
 
+    // Meal Recovery is ONLY available for FULL_DAY subscriptions.
+    const planMealType = sub.mealPlan?.mealType || MealType.FULL_DAY;
+    if (planMealType !== MealType.FULL_DAY) {
+      this.logger.log(
+        `Meal Recovery skipped for subscription ${subscriptionId} — mealType=${planMealType} is not eligible for meal recovery`,
+      );
+      return {
+        processed: false,
+        alreadyProcessed: false,
+        subscriptionId,
+        missedDays: 0,
+        recoveryRate: 0,
+        recoveredDays: 0,
+        recovery: null,
+      };
+    }
+
     // 2. Verify provider relationship
     const provider = sub.mealPlan?.provider;
     if (!provider) {
       throw new NotFoundException('Subscription has no associated provider');
+    }
+    if (provider.mealRecoveryEnabled === false) {
+      this.logger.log(
+        `Meal Recovery skipped for subscription ${subscriptionId} — provider ${provider.id} has meal recovery disabled`,
+      );
+      return {
+        processed: false,
+        alreadyProcessed: false,
+        subscriptionId,
+        missedDays: 0,
+        recoveryRate: 0,
+        recoveredDays: 0,
+        recovery: null,
+      };
     }
     if (userId) {
       if (provider.user?.id !== userId && provider.userId !== userId) {
@@ -506,6 +538,7 @@ export class MealRecoveryService {
     providerId: string;
     providerName: string;
     recoveryPercentage: number;
+    mealRecoveryEnabled: boolean;
     missedMealDays: number;
     recoveryDaysGranted: number;
     recoveryDaysUsed: number;
@@ -533,6 +566,7 @@ export class MealRecoveryService {
       providerId: provider.id,
       providerName: provider.name,
       recoveryPercentage: provider.recoveryPercentage ?? 80,
+      mealRecoveryEnabled: provider.mealRecoveryEnabled !== false,
       missedMealDays,
       recoveryDaysGranted,
       recoveryDaysUsed,

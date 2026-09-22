@@ -11,6 +11,7 @@ import api, {
   correctProviderCheckIn,
   getProviderRecoveryStats,
   updateProviderRecoveryPercentage,
+  updateProviderMealRecoveryEnabled,
 } from '../api';
 import { navigate } from '../router';
 import { showToast } from '../components/toast';
@@ -102,6 +103,7 @@ export async function renderOwnerPortal() {
     providerId?: string;
     providerName?: string;
     recoveryPercentage?: number;
+    mealRecoveryEnabled?: boolean;
     missedMealDays?: number;
     recoveryDaysGranted?: number;
     recoveryDaysUsed?: number;
@@ -110,6 +112,7 @@ export async function renderOwnerPortal() {
   } | null = null;
   let recoveryLoading = false;
   let isUpdatingRecoveryPercentage = false;
+  let isUpdatingRecoveryToggle = false;
   let mealQrData: { providerId: string; providerName: string; qrToken: string; qrCodeDataUrl: string } | null = null;
   let mealQrLoading = false;
   let todayCheckInsData: {
@@ -203,7 +206,7 @@ export async function renderOwnerPortal() {
       return;
     }
     try {
-      const data: any = await api.get(`/meal-plans/provider/${selectedHostel.id}`);
+      const data: any = await api.get(`/meal-plans/provider/${selectedHostel.id}?all=true`);
       providerMealPlans = Array.isArray(data) ? data : [];
     } catch {
       providerMealPlans = [];
@@ -447,20 +450,36 @@ export async function renderOwnerPortal() {
       return 'Amount unavailable';
     };
 
-    const primaryPlan = providerMealPlans[0];
+    const activePlans = providerMealPlans.filter((p: any) => p.isActive !== false);
+    const primaryPlan = activePlans[0] || providerMealPlans[0];
     const currentSellingPrice = Number(primaryPlan?.sellingPrice ?? primaryPlan?.pricePerMonth ?? selectedHostel?.monthlyPrice ?? 2999);
-    const currentOriginalPrice = Number(primaryPlan?.originalPrice ?? primaryPlan?.pricePerMonth ?? selectedHostel?.monthlyPrice ?? 2999);
-    const hasDiscount = primaryPlan ? Boolean(primaryPlan.hasDiscount) : (currentOriginalPrice > currentSellingPrice);
-    const discountPercentage = primaryPlan ? Number(primaryPlan.discountPercentage || 0) : (hasDiscount ? Math.floor(((currentOriginalPrice - currentSellingPrice) / currentOriginalPrice) * 100) : 0);
-    const discountAmount = hasDiscount ? currentOriginalPrice - currentSellingPrice : 0;
 
-    const pricingDisplayHtml = hasDiscount && discountPercentage > 0
+    const mealTypeBadgeConfigs: Record<string, { label: string; color: string; bg: string }> = {
+      FULL_DAY: { label: 'Full Day', color: '#ea580c', bg: '#fff7ed' },
+      LUNCH_ONLY: { label: 'Lunch Only', color: '#0284c7', bg: '#f0f9ff' },
+      DINNER_ONLY: { label: 'Dinner Only', color: '#7c3aed', bg: '#faf5ff' },
+    };
+
+    const pricingDisplayHtml = activePlans.length > 0
       ? `
-        <div style="display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap;">
-          <span style="font-size: 13px; color: var(--color-neutral-400); text-decoration: line-through;">₹${currentOriginalPrice.toLocaleString('en-IN')}</span>
-          <span style="font-size: 16px; font-weight: 800; color: var(--color-neutral-900);">₹${currentSellingPrice.toLocaleString('en-IN')} / month</span>
-          <span style="background: #dcfce7; color: #16a34a; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px;">${discountPercentage}% OFF</span>
-          <span style="font-size: 11px; font-weight: 600; color: #059669;">Save ₹${discountAmount.toLocaleString('en-IN')}</span>
+        <div style="display: flex; flex-direction: column; gap: 8px;">
+          ${activePlans.map((p: any) => {
+            const mType = p.mealType || 'FULL_DAY';
+            const mCfg = mealTypeBadgeConfigs[mType] || mealTypeBadgeConfigs.FULL_DAY;
+            const pSell = Number(p.sellingPrice ?? p.pricePerMonth ?? 0);
+            const pOrig = Number(p.originalPrice ?? p.pricePerMonth ?? pSell);
+            const pDisc = pOrig > pSell ? Math.floor(((pOrig - pSell) / pOrig) * 100) : 0;
+            const p1Day = p.customOneDayPrice ? Number(p.customOneDayPrice) : null;
+            return `
+              <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                <span style="font-size: 11px; font-weight: 700; color: ${mCfg.color}; background: ${mCfg.bg}; padding: 2px 8px; border-radius: 999px;">${mCfg.label}</span>
+                ${pDisc > 0 ? `<span style="font-size: 12px; color: var(--color-neutral-400); text-decoration: line-through;">₹${pOrig.toLocaleString('en-IN')}</span>` : ''}
+                <span style="font-size: 14px; font-weight: 800; color: var(--color-neutral-900);">₹${pSell.toLocaleString('en-IN')} / mo</span>
+                ${pDisc > 0 ? `<span style="background: #dcfce7; color: #16a34a; font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 999px;">${pDisc}% OFF</span>` : ''}
+                ${p1Day ? `<span style="font-size: 12px; font-weight: 600; color: var(--color-neutral-600);">(1-Day: ₹${p1Day.toLocaleString('en-IN')})</span>` : ''}
+              </div>
+            `;
+          }).join('')}
         </div>
       `
       : `
@@ -536,46 +555,73 @@ export async function renderOwnerPortal() {
       </div>
     `;
 
-    const renderRecoveryPolicyCard = () => `
+    const renderRecoveryPolicyCard = () => {
+      const isRecoveryEnabled = selectedHostel ? selectedHostel.mealRecoveryEnabled !== false : (recoveryStats ? recoveryStats.mealRecoveryEnabled !== false : true);
+      const currentPct = selectedHostel?.recoveryPercentage ?? recoveryStats?.recoveryPercentage ?? 80;
+
+      return `
       <!-- Meal Recovery Policy Settings Card -->
-      <div style="display: flex; flex-direction: column; gap: 10px; padding: 14px; background: var(--color-neutral-50); border: 1px solid var(--color-neutral-200); border-radius: 14px;">
-        <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 8px;">
+      <div style="display: flex; flex-direction: column; gap: 12px; padding: 16px; background: var(--color-neutral-50); border: 1px solid var(--color-neutral-200); border-radius: 14px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
           <div>
             <span style="font-size: 11px; font-weight: 700; color: var(--color-neutral-500); text-transform: uppercase; display: block; margin-bottom: 2px;">
               Meal Recovery Policy
             </span>
             <span style="font-size: 14px; font-weight: 800; color: var(--color-neutral-900);">
-              Current Rate: <strong style="color: var(--color-primary-600); font-size: 16px;">${selectedHostel?.recoveryPercentage ?? recoveryStats?.recoveryPercentage ?? 80}%</strong>
+              ${isRecoveryEnabled
+                ? `Current Rate: <strong style="color: var(--color-primary-600); font-size: 16px;">${currentPct}%</strong>`
+                : `<span style="color: var(--color-neutral-500); font-size: 14px; font-weight: 700;">Service Disabled</span>`
+              }
             </span>
           </div>
-          <span style="font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 999px; background: #ecfdf5; color: #047857; display: inline-flex; align-items: center; gap: 4px;">
-            <i class="fa-solid fa-shield-halved"></i> Active Policy
-          </span>
-        </div>
 
-        <p style="font-size: 12px; color: var(--color-neutral-600); margin: 0; line-height: 1.4;">
-          Students will receive <strong>${selectedHostel?.recoveryPercentage ?? recoveryStats?.recoveryPercentage ?? 80}%</strong> of their unattended meal days as recovery days added to their next subscription at your mess.
-        </p>
+          <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+            <!-- Mobile-first Toggle Control -->
+            <label class="meal-recovery-toggle-label" style="display: inline-flex; align-items: center; gap: 8px; cursor: pointer; user-select: none; background: #fff; border: 1px solid var(--color-neutral-300); border-radius: 999px; padding: 4px 10px 4px 6px;">
+              <input type="checkbox" id="providerRecoveryToggle" class="recovery-toggle-switch" ${isRecoveryEnabled ? 'checked' : ''} style="width: 18px; height: 18px; accent-color: var(--color-primary-600); cursor: pointer;" />
+              <span id="providerRecoveryToggleStatus" style="font-size: 12px; font-weight: 700; color: ${isRecoveryEnabled ? 'var(--color-primary-700)' : 'var(--color-neutral-500)'};">
+                ${isRecoveryEnabled ? 'Meal Recovery Enabled' : 'Meal Recovery Disabled'}
+              </span>
+            </label>
 
-        <div style="display: flex; flex-direction: column; gap: 6px; margin-top: 4px;">
-          <span style="font-size: 11px; font-weight: 700; color: var(--color-neutral-500); text-transform: uppercase;">Select Recovery Percentage:</span>
-          <div style="display: flex; gap: 8px; flex-wrap: wrap;" class="recovery-percentage-button-group">
-            ${[50, 60, 70, 80, 90, 100].map((pct) => {
-              const currentPct = selectedHostel?.recoveryPercentage ?? recoveryStats?.recoveryPercentage ?? 80;
-              const isActive = currentPct === pct;
-              return `
-                <button type="button" class="set-recovery-pct-btn btn-outline-action" data-pct="${pct}" style="padding: 6px 14px; font-size: 12px; font-weight: 800; border-radius: 8px; cursor: pointer; transition: all 0.15s ease; ${isActive
-                  ? 'background: var(--color-primary-600); color: #fff; border-color: var(--color-primary-600); box-shadow: 0 2px 6px rgba(234, 88, 12, 0.25);'
-                  : 'background: #fff; color: var(--color-neutral-700); border-color: var(--color-neutral-300);'
-                }">
-                  ${pct}%
-                </button>
-              `;
-            }).join('')}
+            <span style="font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 999px; ${isRecoveryEnabled ? 'background: #ecfdf5; color: #047857;' : 'background: var(--color-neutral-200); color: var(--color-neutral-600);'}; display: inline-flex; align-items: center; gap: 4px;">
+              <i class="fa-solid ${isRecoveryEnabled ? 'fa-shield-halved' : 'fa-ban'}"></i> ${isRecoveryEnabled ? 'Active Policy' : 'Disabled'}
+            </span>
           </div>
         </div>
+
+        ${isRecoveryEnabled ? `
+          <p style="font-size: 12px; color: var(--color-neutral-600); margin: 0; line-height: 1.4;">
+            Students will receive <strong>${currentPct}%</strong> of their unattended meal days as recovery days added to their next subscription at your mess.
+          </p>
+
+          <div style="display: flex; flex-direction: column; gap: 6px; margin-top: 4px;">
+            <span style="font-size: 11px; font-weight: 700; color: var(--color-neutral-500); text-transform: uppercase;">Select Recovery Percentage:</span>
+            <div style="display: flex; gap: 8px; flex-wrap: wrap;" class="recovery-percentage-button-group">
+              ${[50, 60, 70, 80, 90, 100].map((pct) => {
+                const isActive = currentPct === pct;
+                return `
+                  <button type="button" class="set-recovery-pct-btn btn-outline-action" data-pct="${pct}" style="padding: 6px 14px; font-size: 12px; font-weight: 800; border-radius: 8px; cursor: pointer; transition: all 0.15s ease; ${isActive
+                    ? 'background: var(--color-primary-600); color: #fff; border-color: var(--color-primary-600); box-shadow: 0 2px 6px rgba(234, 88, 12, 0.25);'
+                    : 'background: #fff; color: var(--color-neutral-700); border-color: var(--color-neutral-300);'
+                  }">
+                    ${pct}%
+                  </button>
+                `;
+              }).join('')}
+            </div>
+          </div>
+        ` : `
+          <div style="background: #fff; border: 1px dashed var(--color-neutral-300); border-radius: 10px; padding: 12px 14px;">
+            <p style="font-size: 12px; color: var(--color-neutral-600); margin: 0; line-height: 1.5;">
+              <i class="fa-solid fa-circle-info" style="color: var(--color-neutral-400); margin-right: 6px;"></i>
+              <strong>Meal Recovery is currently disabled for your mess.</strong> No new recovery days will be generated for unattended meals during this period. Historical recovery days already earned by students remain usable.
+            </p>
+          </div>
+        `}
       </div>
     `;
+    };
 
     const renderRecoveryStatsGrid = () => `
       ${recoveryLoading ? `
@@ -652,12 +698,18 @@ export async function renderOwnerPortal() {
                 const statusUpper = sub.status ? String(sub.status).toUpperCase() : 'UNKNOWN';
                 const statusBadgeStyle = getSubStatusStyle(statusUpper);
                 const amountPaidDisplay = getSubscriberAmount(sub);
+                const subMealType = sub.mealPlan?.mealType || (sub.planType === 'LUNCH_ONLY' ? 'LUNCH_ONLY' : sub.planType === 'DINNER_ONLY' ? 'DINNER_ONLY' : 'FULL_DAY');
+                const subMealTypeLabel = subMealType === 'LUNCH_ONLY' ? 'Lunch Only' : subMealType === 'DINNER_ONLY' ? 'Dinner Only' : 'Full Day';
+                const subMealTypeStyle = subMealType === 'LUNCH_ONLY' ? 'background: #e0f2fe; color: #0369a1;' : subMealType === 'DINNER_ONLY' ? 'background: #f3e8ff; color: #6b21a8;' : 'background: #ffedd5; color: #c2410c;';
 
                 return `
                     <div class="subscriber-card-item" data-sub-id="${escapeHtml(sub.id)}" style="background: var(--color-neutral-50); border-radius: 14px; padding: 12px 14px; border: 1px solid var(--color-neutral-200); font-size: 13px; cursor: pointer; transition: all 0.2s ease;">
                       <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; margin-bottom: 6px;">
                         <div>
-                          <strong style="font-size: 14px; color: var(--color-neutral-900); display: block;">${studentName}</strong>
+                          <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                            <strong style="font-size: 14px; color: var(--color-neutral-900);">${studentName}</strong>
+                            <span style="font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 999px; ${subMealTypeStyle}">${subMealTypeLabel}</span>
+                          </div>
                           <span style="font-size: 12px; color: var(--color-neutral-500);"><i class="fa-solid fa-phone"></i> ${studentPhone}</span>
                         </div>
                         <span style="font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; ${statusBadgeStyle}">${statusUpper}</span>
@@ -1670,10 +1722,10 @@ export async function renderOwnerPortal() {
                   <div class="compact-action-card">
                     <div>
                       <span style="font-size: 14px; font-weight: 700; color: var(--color-neutral-900); display: block;"><i class="fa-solid fa-sliders" style="color: #047857; margin-right: 6px;"></i> Recovery Settings</span>
-                      <span style="font-size: 12px; font-weight: 600; color: var(--color-neutral-600);">${selectedHostel?.recoveryPercentage ?? recoveryStats?.recoveryPercentage ?? 80}% Policy Active</span>
+                      <span style="font-size: 12px; font-weight: 600; color: var(--color-neutral-600);">${(selectedHostel ? selectedHostel.mealRecoveryEnabled !== false : (recoveryStats ? recoveryStats.mealRecoveryEnabled !== false : true)) ? `${selectedHostel?.recoveryPercentage ?? recoveryStats?.recoveryPercentage ?? 80}% Policy Active` : 'Meal Recovery Disabled'}</span>
                     </div>
                     <button class="open-recovery-settings-sheet-btn btn-outline-action" style="padding: 8px 14px; font-size: 12px; font-weight: 700; border-radius: 10px; min-height: 40px; background: #fff;">
-                      Configure Rate
+                      Configure
                     </button>
                   </div>
                 </div>
@@ -2055,50 +2107,84 @@ export async function renderOwnerPortal() {
       </div>
 
       <!-- Modal: Edit Subscription Price -->
-      <div id="editPriceModal" style="display: ${showEditPriceModal ? 'flex' : 'none'}; position: fixed; inset: 0; background: rgba(0,0,0,0.55); align-items: center; justify-content: center; z-index: 2000; padding: 20px;">
-        <div style="background: #fff; border-radius: 24px; max-width: 480px; width: 100%; padding: 32px; box-shadow: 0 20px 40px rgba(0,0,0,0.2);">
+      <div id="editPriceModal" class="modal-backdrop-mobile" style="display: ${showEditPriceModal ? 'flex' : 'none'}; position: fixed; inset: 0; background: rgba(0,0,0,0.55); align-items: center; justify-content: center; z-index: 2000; padding: 20px;">
+        <div class="modal-dialog-mobile" style="background: #fff; border-radius: 24px; max-width: 580px; width: 100%; padding: 28px; box-shadow: 0 20px 40px rgba(0,0,0,0.2); max-height: 90vh; overflow-y: auto;">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
             <div>
-              <h3 class="font-display" style="font-size: 20px; font-weight: 800; color: var(--color-neutral-900); margin: 0 0 4px 0;">Meal Plan Pricing</h3>
-              <p style="font-size: 13px; color: var(--color-neutral-500); margin: 0;">Set reference original price and selling price for subscribers.</p>
+              <h3 class="font-display" style="font-size: 20px; font-weight: 800; color: var(--color-neutral-900); margin: 0 0 4px 0;">Meal Plan & Pricing Management</h3>
+              <p style="font-size: 13px; color: var(--color-neutral-500); margin: 0;">Configure options, monthly rates, and custom 1-day pass pricing.</p>
             </div>
             <button id="closeEditPriceModalBtn" style="background: none; border: none; font-size: 24px; cursor: pointer; color: var(--color-neutral-500);">&times;</button>
           </div>
 
           <form id="editPriceForm" style="display: flex; flex-direction: column; gap: 16px;">
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-              <div>
-                <label style="font-size: 13px; font-weight: 700; color: var(--color-neutral-800); display: block; margin-bottom: 6px;">Original Price (₹) *</label>
-                <input type="number" id="mOriginalPriceInput" class="btn-outline-action" style="width: 100%; background: #fff; padding: 12px 14px; font-size: 15px;" value="${currentOriginalPrice}" placeholder="e.g. 2700" min="1" required />
-                <span style="font-size: 11px; color: var(--color-neutral-500);">Reference / strikethrough</span>
-              </div>
-              <div>
-                <label style="font-size: 13px; font-weight: 700; color: var(--color-neutral-800); display: block; margin-bottom: 6px;">Selling Price (₹) *</label>
-                <input type="number" id="mSellingPriceInput" class="btn-outline-action" style="width: 100%; background: #fff; padding: 12px 14px; font-size: 15px;" value="${currentSellingPrice}" placeholder="e.g. 2500" min="1" required />
-                <span style="font-size: 11px; color: var(--color-neutral-500);">Actual purchase price</span>
-              </div>
-            </div>
+            ${[
+              { type: 'FULL_DAY', title: 'Full Day Plan', subtitle: 'Breakfast + Lunch + Dinner', icon: 'fa-sun', color: '#ea580c', defaultOrig: 2700, defaultSell: 2500, defaultDay1: 99 },
+              { type: 'LUNCH_ONLY', title: 'Lunch Only Plan', subtitle: 'Lunch', icon: 'fa-bowl-food', color: '#0284c7', defaultOrig: 1800, defaultSell: 1600, defaultDay1: 65 },
+              { type: 'DINNER_ONLY', title: 'Dinner Only Plan', subtitle: 'Dinner', icon: 'fa-moon', color: '#7c3aed', defaultOrig: 1800, defaultSell: 1600, defaultDay1: 65 },
+            ].map((cfg) => {
+              const matchedPlan = providerMealPlans.find((p: any) => p.mealType === cfg.type || (!p.mealType && cfg.type === 'FULL_DAY'));
+              const isEnabled = matchedPlan ? matchedPlan.isActive !== false : (cfg.type === 'FULL_DAY');
+              const origVal = Number(matchedPlan?.originalPrice ?? matchedPlan?.pricePerMonth ?? (cfg.type === 'FULL_DAY' ? (selectedHostel?.monthlyPrice ?? cfg.defaultOrig) : cfg.defaultOrig));
+              const sellVal = Number(matchedPlan?.sellingPrice ?? matchedPlan?.pricePerMonth ?? (cfg.type === 'FULL_DAY' ? (selectedHostel?.monthlyPrice ?? cfg.defaultSell) : cfg.defaultSell));
+              const day1Val = Number(matchedPlan?.customOneDayPrice ?? cfg.defaultDay1);
+              const hasDisc = origVal > sellVal;
+              const discPct = hasDisc ? Math.floor(((origVal - sellVal) / origVal) * 100) : 0;
+              const discAmt = hasDisc ? origVal - sellVal : 0;
 
-            <!-- Live Discount Preview -->
-            <div id="pricingPreviewContainer" style="background: var(--color-neutral-50); border: 1px solid var(--color-neutral-200); border-radius: 14px; padding: 12px 16px;">
-              <span style="font-size: 11px; font-weight: 700; color: var(--color-neutral-500); text-transform: uppercase; display: block; margin-bottom: 6px;">Live Customer Display Preview</span>
-              <div id="pricingPreviewContent" style="display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; min-height: 24px;">
-                ${hasDiscount && discountPercentage > 0
-        ? `
-                    <span style="font-size: 13px; color: var(--color-neutral-400); text-decoration: line-through;">₹${currentOriginalPrice.toLocaleString('en-IN')}</span>
-                    <span style="font-size: 16px; font-weight: 800; color: var(--color-neutral-900);">₹${currentSellingPrice.toLocaleString('en-IN')}</span>
-                    <span style="background: #dcfce7; color: #16a34a; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px;">${discountPercentage}% OFF</span>
-                    <span style="font-size: 11px; font-weight: 600; color: #059669;">Save ₹${discountAmount.toLocaleString('en-IN')}</span>
-                  `
-        : `
-                    <span style="font-size: 15px; font-weight: 800; color: var(--color-neutral-900);">₹${currentSellingPrice.toLocaleString('en-IN')}</span>
-                    <span style="font-size: 12px; color: var(--color-neutral-500);">(Regular price · No discount)</span>
-                  `
-      }
-              </div>
-            </div>
+              return `
+                <div class="meal-type-config-card" style="border: 1px solid var(--color-neutral-200); border-radius: 16px; padding: 16px; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; gap: 8px;">
+                    <div>
+                      <div style="display: flex; align-items: center; gap: 8px;">
+                        <span style="display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 8px; background: ${cfg.color}15; color: ${cfg.color}; font-size: 13px;">
+                          <i class="fa-solid ${cfg.icon}"></i>
+                        </span>
+                        <strong style="font-size: 15px; font-weight: 700; color: var(--color-neutral-900);">${escapeHtml(cfg.title)}</strong>
+                      </div>
+                      <span style="font-size: 12px; color: var(--color-neutral-500); margin-left: 34px; display: block;">${escapeHtml(cfg.subtitle)}</span>
+                    </div>
+                    <label style="display: inline-flex; align-items: center; gap: 8px; cursor: pointer; user-select: none;">
+                      <input type="checkbox" id="mToggle_${cfg.type}" class="meal-type-toggle" data-meal-type="${cfg.type}" ${isEnabled ? 'checked' : ''} style="width: 18px; height: 18px; accent-color: var(--color-primary-600); cursor: pointer;" />
+                      <span id="mToggleStatus_${cfg.type}" style="font-size: 12px; font-weight: 700; color: ${isEnabled ? 'var(--color-primary-700)' : 'var(--color-neutral-500)'};">${isEnabled ? 'Enabled' : 'Disabled'}</span>
+                    </label>
+                  </div>
 
-            <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 8px;">
+                  <div id="mFieldsContainer_${cfg.type}" style="display: ${isEnabled ? 'flex' : 'none'}; flex-direction: column; gap: 10px;">
+                    <div class="meal-inputs-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px;">
+                      <div>
+                        <label style="font-size: 11px; font-weight: 700; color: var(--color-neutral-700); display: block; margin-bottom: 4px;">Original (₹/mo) *</label>
+                        <input type="number" id="mOrig_${cfg.type}" class="btn-outline-action meal-option-input" data-meal-type="${cfg.type}" style="width: 100%; background: #fff; padding: 9px 12px; font-size: 13px;" value="${origVal}" placeholder="${cfg.defaultOrig}" min="1" required />
+                      </div>
+                      <div>
+                        <label style="font-size: 11px; font-weight: 700; color: var(--color-neutral-700); display: block; margin-bottom: 4px;">Selling (₹/mo) *</label>
+                        <input type="number" id="mSell_${cfg.type}" class="btn-outline-action meal-option-input" data-meal-type="${cfg.type}" style="width: 100%; background: #fff; padding: 9px 12px; font-size: 13px;" value="${sellVal}" placeholder="${cfg.defaultSell}" min="1" required />
+                      </div>
+                      <div>
+                        <label style="font-size: 11px; font-weight: 700; color: var(--color-neutral-700); display: block; margin-bottom: 4px;">1-Day Price (₹) *</label>
+                        <input type="number" id="mDay1_${cfg.type}" class="btn-outline-action meal-option-input" data-meal-type="${cfg.type}" style="width: 100%; background: #fff; padding: 9px 12px; font-size: 13px;" value="${day1Val}" placeholder="${cfg.defaultDay1}" min="1" required />
+                      </div>
+                    </div>
+
+                    <!-- Live Preview For This Meal Type -->
+                    <div id="mPreview_${cfg.type}" style="background: var(--color-neutral-50); border: 1px solid var(--color-neutral-200); border-radius: 10px; padding: 8px 12px; font-size: 12px; min-height: 20px;">
+                      ${hasDisc && discPct > 0
+                        ? `<span style="color: var(--color-neutral-400); text-decoration: line-through; margin-right: 6px;">₹${origVal.toLocaleString('en-IN')}</span>
+                           <strong style="color: var(--color-neutral-900); margin-right: 6px;">₹${sellVal.toLocaleString('en-IN')} / mo</strong>
+                           <span style="background: #dcfce7; color: #16a34a; font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 999px; margin-right: 6px;">${discPct}% OFF</span>
+                           <span style="color: #059669; font-weight: 600; margin-right: 8px;">Save ₹${discAmt.toLocaleString('en-IN')}</span>
+                           <span style="color: var(--color-neutral-600); font-weight: 600;">• 1-Day Pass: <strong>₹${day1Val.toLocaleString('en-IN')}</strong></span>`
+                        : `<strong style="color: var(--color-neutral-900); margin-right: 6px;">₹${sellVal.toLocaleString('en-IN')} / mo</strong>
+                           <span style="color: var(--color-neutral-500); margin-right: 8px;">(No discount)</span>
+                           <span style="color: var(--color-neutral-600); font-weight: 600;">• 1-Day Pass: <strong>₹${day1Val.toLocaleString('en-IN')}</strong></span>`
+                      }
+                    </div>
+                  </div>
+                </div>
+              `;
+            }).join('')}
+
+            <div class="modal-actions-mobile" style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 8px;">
               <button type="button" id="cancelEditPriceBtn" class="btn-outline-action" style="padding: 10px 18px; font-size: 14px;">Cancel</button>
               <button type="submit" id="savePriceBtn" class="btn-primary-action" style="padding: 10px 20px; font-size: 14px;">Save Changes</button>
             </div>
@@ -3690,83 +3776,181 @@ export async function renderOwnerPortal() {
 
     const editPriceForm = document.getElementById('editPriceForm') as HTMLFormElement;
     if (editPriceForm) {
-      const origInput = editPriceForm.querySelector('#mOriginalPriceInput') as HTMLInputElement;
-      const sellInput = editPriceForm.querySelector('#mSellingPriceInput') as HTMLInputElement;
-      const previewEl = document.getElementById('pricingPreviewContent');
-      const saveBtn = document.getElementById('savePriceBtn') as HTMLButtonElement;
+      const mealTypes = ['FULL_DAY', 'LUNCH_ONLY', 'DINNER_ONLY'];
 
-      const updateLivePreview = () => {
-        if (!origInput || !sellInput || !previewEl) return;
-        const oVal = parseFloat(origInput.value);
-        const sVal = parseFloat(sellInput.value);
+      // Attach toggle handlers
+      mealTypes.forEach((type) => {
+        const toggleEl = editPriceForm.querySelector(`#mToggle_${type}`) as HTMLInputElement;
+        const statusEl = editPriceForm.querySelector(`#mToggleStatus_${type}`) as HTMLElement;
+        const containerEl = editPriceForm.querySelector(`#mFieldsContainer_${type}`) as HTMLElement;
 
-        if (isNaN(oVal) || isNaN(sVal) || oVal <= 0 || sVal <= 0) {
-          previewEl.innerHTML = `<span style="font-size: 13px; color: var(--color-neutral-400);">Enter valid prices greater than 0</span>`;
-          if (saveBtn) saveBtn.disabled = true;
+        toggleEl?.addEventListener('change', () => {
+          const checkedCount = mealTypes.filter((t) => (editPriceForm.querySelector(`#mToggle_${t}`) as HTMLInputElement)?.checked).length;
+          if (!toggleEl.checked && checkedCount === 0) {
+            toggleEl.checked = true;
+            showToast('At least one meal option must remain enabled.', 'info');
+            return;
+          }
+
+          if (statusEl) {
+            statusEl.innerText = toggleEl.checked ? 'Enabled' : 'Disabled';
+            statusEl.style.color = toggleEl.checked ? 'var(--color-primary-700)' : 'var(--color-neutral-500)';
+          }
+          if (containerEl) {
+            containerEl.style.display = toggleEl.checked ? 'flex' : 'none';
+          }
+        });
+      });
+
+      // Attach live preview handlers for each meal type
+      const updateMealPreview = (type: string) => {
+        const origInp = editPriceForm.querySelector(`#mOrig_${type}`) as HTMLInputElement;
+        const sellInp = editPriceForm.querySelector(`#mSell_${type}`) as HTMLInputElement;
+        const day1Inp = editPriceForm.querySelector(`#mDay1_${type}`) as HTMLInputElement;
+        const prevEl = editPriceForm.querySelector(`#mPreview_${type}`) as HTMLElement;
+
+        if (!origInp || !sellInp || !day1Inp || !prevEl) return;
+        const oVal = parseFloat(origInp.value);
+        const sVal = parseFloat(sellInp.value);
+        const dVal = parseFloat(day1Inp.value);
+
+        if (isNaN(oVal) || isNaN(sVal) || isNaN(dVal) || oVal <= 0 || sVal <= 0 || dVal <= 0) {
+          prevEl.innerHTML = `<span style="color: var(--color-neutral-400);">Enter valid positive prices greater than 0</span>`;
           return;
         }
 
         if (sVal > oVal) {
-          previewEl.innerHTML = `<span style="font-size: 13px; font-weight: 700; color: #dc2626;"><i class="fa-solid fa-circle-exclamation"></i> Selling price (₹${sVal}) cannot exceed original price (₹${oVal})</span>`;
-          if (saveBtn) saveBtn.disabled = true;
+          prevEl.innerHTML = `<span style="font-weight: 700; color: #dc2626;"><i class="fa-solid fa-circle-exclamation"></i> Selling price (₹${sVal}) cannot exceed original price (₹${oVal})</span>`;
           return;
         }
 
-        if (saveBtn) saveBtn.disabled = false;
-
         if (sVal === oVal) {
-          previewEl.innerHTML = `
-            <span style="font-size: 16px; font-weight: 800; color: var(--color-neutral-900);">₹${sVal.toLocaleString('en-IN')}</span>
-            <span style="font-size: 12px; color: var(--color-neutral-500);">(Regular price · No discount)</span>
+          prevEl.innerHTML = `
+            <strong style="color: var(--color-neutral-900); margin-right: 6px;">₹${sVal.toLocaleString('en-IN')} / mo</strong>
+            <span style="color: var(--color-neutral-500); margin-right: 8px;">(No discount)</span>
+            <span style="color: var(--color-neutral-600); font-weight: 600;">• 1-Day Pass: <strong>₹${dVal.toLocaleString('en-IN')}</strong></span>
           `;
         } else {
           const diff = oVal - sVal;
           const pct = Math.floor((diff / oVal) * 100);
-          previewEl.innerHTML = `
-            <span style="font-size: 13px; color: var(--color-neutral-400); text-decoration: line-through;">₹${oVal.toLocaleString('en-IN')}</span>
-            <span style="font-size: 16px; font-weight: 800; color: var(--color-neutral-900);">₹${sVal.toLocaleString('en-IN')}</span>
-            <span style="background: #dcfce7; color: #16a34a; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px;">${pct}% OFF</span>
-            <span style="font-size: 11px; font-weight: 600; color: #059669;">Save ₹${diff.toLocaleString('en-IN')}</span>
+          prevEl.innerHTML = `
+            <span style="color: var(--color-neutral-400); text-decoration: line-through; margin-right: 6px;">₹${oVal.toLocaleString('en-IN')}</span>
+            <strong style="color: var(--color-neutral-900); margin-right: 6px;">₹${sVal.toLocaleString('en-IN')} / mo</strong>
+            <span style="background: #dcfce7; color: #16a34a; font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 999px; margin-right: 6px;">${pct}% OFF</span>
+            <span style="color: #059669; font-weight: 600; margin-right: 8px;">Save ₹${diff.toLocaleString('en-IN')}</span>
+            <span style="color: var(--color-neutral-600); font-weight: 600;">• 1-Day Pass: <strong>₹${dVal.toLocaleString('en-IN')}</strong></span>
           `;
         }
       };
 
-      origInput?.addEventListener('input', updateLivePreview);
-      sellInput?.addEventListener('input', updateLivePreview);
+      mealTypes.forEach((type) => {
+        ['#mOrig_', '#mSell_', '#mDay1_'].forEach((prefix) => {
+          editPriceForm.querySelector(prefix + type)?.addEventListener('input', () => updateMealPreview(type));
+        });
+      });
 
       editPriceForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         if (!selectedHostel) return;
-        const origVal = parseFloat(origInput?.value);
-        const sellVal = parseFloat(sellInput?.value);
 
-        if (isNaN(origVal) || origVal <= 0 || isNaN(sellVal) || sellVal <= 0) {
-          showToast('Please enter valid positive price amounts', 'error');
+        const enabledTypes = mealTypes.filter((t) => (editPriceForm.querySelector(`#mToggle_${t}`) as HTMLInputElement)?.checked);
+        if (enabledTypes.length === 0) {
+          showToast('At least one meal option must remain enabled.', 'error');
           return;
         }
-        if (sellVal > origVal) {
-          showToast('Selling price cannot exceed original price', 'error');
-          return;
+
+        // Validate enabled types
+        for (const type of enabledTypes) {
+          const origInp = editPriceForm.querySelector(`#mOrig_${type}`) as HTMLInputElement;
+          const sellInp = editPriceForm.querySelector(`#mSell_${type}`) as HTMLInputElement;
+          const day1Inp = editPriceForm.querySelector(`#mDay1_${type}`) as HTMLInputElement;
+          const oVal = parseFloat(origInp?.value || '0');
+          const sVal = parseFloat(sellInp?.value || '0');
+          const dVal = parseFloat(day1Inp?.value || '0');
+          const typeLabel = type === 'FULL_DAY' ? 'Full Day' : type === 'LUNCH_ONLY' ? 'Lunch Only' : 'Dinner Only';
+
+          if (isNaN(oVal) || oVal <= 0 || isNaN(sVal) || sVal <= 0 || isNaN(dVal) || dVal <= 0) {
+            showToast(`Please enter valid positive prices for ${typeLabel}`, 'error');
+            return;
+          }
+          if (sVal > oVal) {
+            showToast(`Selling price cannot exceed original price for ${typeLabel}`, 'error');
+            return;
+          }
+        }
+
+        const saveBtn = editPriceForm.querySelector('#savePriceBtn') as HTMLButtonElement;
+        if (saveBtn) {
+          saveBtn.disabled = true;
+          saveBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Saving...';
         }
 
         try {
-          const primaryPlan = providerMealPlans[0];
-          if (primaryPlan) {
-            await api.put(`/meal-plans/${primaryPlan.id}`, {
-              originalPrice: origVal,
-              sellingPrice: sellVal,
-            });
-          } else {
-            await api.post('/meal-plans', {
-              title: `${selectedHostel.name} Monthly Plan`,
-              originalPrice: origVal,
-              sellingPrice: sellVal,
-              providerId: selectedHostel.id,
-            });
+          let primarySellingPrice = 0;
+
+          for (const type of mealTypes) {
+            const isEnabled = enabledTypes.includes(type);
+            const matchingPlans = providerMealPlans.filter((p: any) => p.mealType === type || (!p.mealType && type === 'FULL_DAY'));
+            const matchedPlan = matchingPlans[0];
+
+            if (isEnabled) {
+              const origInp = editPriceForm.querySelector(`#mOrig_${type}`) as HTMLInputElement;
+              const sellInp = editPriceForm.querySelector(`#mSell_${type}`) as HTMLInputElement;
+              const day1Inp = editPriceForm.querySelector(`#mDay1_${type}`) as HTMLInputElement;
+              const oVal = parseFloat(origInp.value);
+              const sVal = parseFloat(sellInp.value);
+              const dVal = parseFloat(day1Inp.value);
+
+              if (type === 'FULL_DAY' || primarySellingPrice === 0) {
+                primarySellingPrice = sVal;
+              }
+
+              if (matchedPlan) {
+                await api.put(`/meal-plans/${matchedPlan.id}`, {
+                  originalPrice: oVal,
+                  sellingPrice: sVal,
+                  customOneDayPrice: dVal,
+                  isActive: true,
+                  mealType: type,
+                });
+              } else {
+                const planTitle = type === 'FULL_DAY'
+                  ? `${selectedHostel.name} Full Day Plan`
+                  : type === 'LUNCH_ONLY'
+                    ? `${selectedHostel.name} Lunch Only Plan`
+                    : `${selectedHostel.name} Dinner Only Plan`;
+
+                await api.post('/meal-plans', {
+                  title: planTitle,
+                  mealType: type,
+                  originalPrice: oVal,
+                  sellingPrice: sVal,
+                  customOneDayPrice: dVal,
+                  isActive: true,
+                  providerId: selectedHostel.id,
+                });
+              }
+
+              // Deactivate any extra duplicate legacy plans of the same type
+              if (matchingPlans.length > 1) {
+                for (let i = 1; i < matchingPlans.length; i++) {
+                  await api.put(`/meal-plans/${matchingPlans[i].id}`, { isActive: false });
+                }
+              }
+            } else {
+              // Deactivate all matching plans when option is disabled
+              for (const p of matchingPlans) {
+                await api.put(`/meal-plans/${p.id}`, {
+                  isActive: false,
+                });
+              }
+            }
           }
 
-          await api.put(`/providers/${selectedHostel.id}`, { monthlyPrice: sellVal });
-          selectedHostel.monthlyPrice = sellVal;
+          if (primarySellingPrice > 0) {
+            await api.put(`/providers/${selectedHostel.id}`, { monthlyPrice: primarySellingPrice });
+            selectedHostel.monthlyPrice = primarySellingPrice;
+          }
 
           showToast('Meal plan pricing updated successfully!', 'success');
           showEditPriceModal = false;
@@ -3774,6 +3958,10 @@ export async function renderOwnerPortal() {
           render();
         } catch (err: any) {
           showToast(err.message || 'Failed to update pricing', 'error');
+          if (saveBtn) {
+            saveBtn.disabled = false;
+            saveBtn.innerHTML = 'Save Changes';
+          }
         }
       });
     }
@@ -3914,6 +4102,30 @@ export async function renderOwnerPortal() {
       };
       window.addEventListener('keydown', handleEscapeKey, { once: true });
     }
+
+    // Meal Recovery Toggle Button — enable / disable provider's meal recovery policy
+    const recoveryToggleEl = document.getElementById('providerRecoveryToggle') as HTMLInputElement | null;
+    recoveryToggleEl?.addEventListener('change', async () => {
+      if (!selectedHostel) return;
+      if (isUpdatingRecoveryToggle) return;
+      const targetChecked = recoveryToggleEl.checked;
+      isUpdatingRecoveryToggle = true;
+      try {
+        await updateProviderMealRecoveryEnabled(selectedHostel.id, targetChecked);
+        selectedHostel.mealRecoveryEnabled = targetChecked;
+        if (recoveryStats) recoveryStats.mealRecoveryEnabled = targetChecked;
+        showToast(
+          targetChecked ? 'Meal Recovery Enabled for your kitchen' : 'Meal Recovery Disabled for your kitchen',
+          'success',
+        );
+        render();
+      } catch (err: any) {
+        recoveryToggleEl.checked = !targetChecked;
+        showToast(err.message || 'Failed to update Meal Recovery setting', 'error');
+      } finally {
+        isUpdatingRecoveryToggle = false;
+      }
+    });
 
     // Recovery Percentage Buttons — update provider's recovery policy
     document.querySelectorAll('.set-recovery-pct-btn').forEach((btn) => {

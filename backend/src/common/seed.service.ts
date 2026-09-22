@@ -31,7 +31,7 @@ export class SeedService implements OnApplicationBootstrap {
     @InjectRepository(Review) private reviewRepo: Repository<Review>,
     @InjectRepository(WeeklyMenu)
     private weeklyMenuRepo: Repository<WeeklyMenu>,
-  ) {}
+  ) { }
 
   async onApplicationBootstrap() {
     const isProduction = process.env.NODE_ENV === 'production';

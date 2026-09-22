@@ -10,7 +10,7 @@ if (isProd && !rawApiUrl) {
   throw new Error('[PRIMEPLATE CONFIG ERROR] VITE_API_URL environment variable is required in production mode!');
 }
 
-const apiBaseUrl = (rawApiUrl || 'http://127.0.0.1:5000/api/v1').replace(/\/+$/, '');
+const apiBaseUrl = (rawApiUrl || '/api/v1').replace(/\/+$/, '');
 
 const api: AxiosInstance = axios.create({
   baseURL: apiBaseUrl,
@@ -216,6 +216,9 @@ export const processSubscriptionRecovery = (subscriptionId: string, providerId?:
 
 export const updateProviderRecoveryPercentage = (providerId: string, percentage: number) =>
   api.patch(`/providers/${encodeURIComponent(providerId)}/recovery-percentage`, { percentage });
+
+export const updateProviderMealRecoveryEnabled = (providerId: string, enabled: boolean) =>
+  api.patch(`/providers/${encodeURIComponent(providerId)}/recovery-toggle`, { enabled });
 
 export default api;
 

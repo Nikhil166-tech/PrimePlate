@@ -42,9 +42,13 @@ export class MealUsageController {
   @Roles(Role.STUDENT)
   async checkIn(
     @Req() req: AuthenticatedRequest,
-    @Body() body: { qrToken: string },
+    @Body() body: { qrToken: string; subscriptionId?: string },
   ) {
-    return this.mealUsageService.checkIn(req.user.userId, body.qrToken);
+    return this.mealUsageService.checkIn(
+      req.user.userId,
+      body.qrToken,
+      body.subscriptionId,
+    );
   }
 
   /**
